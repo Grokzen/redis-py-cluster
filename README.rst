@@ -47,6 +47,13 @@ Implemented commands
 
 
 
+Speed
+=====
+
+On my laptop with x2 redis servers in cluster mode and one python process on the same machine i do 50k set/get commands in between 6-8 sec
+
+
+
 Disclaimer
 ==========
 
