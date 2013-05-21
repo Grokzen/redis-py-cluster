@@ -118,10 +118,6 @@ class RedisCluster(object):
         return crc16(key) % self.RedisClusterHashSlots
 
     def get_key_from_command(self, argv):
-        # if argv[0].lower() in self.blocked_commands:
-        #     return None
-        # else:
-        #     return argv[1]
         return None if argv[0].lower() in self.blocked_commands else argv[1]
 
     def close_existing_connection(self):
