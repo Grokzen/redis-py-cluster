@@ -63,6 +63,10 @@ class RedisCluster(object):
         self.refresh_table_asap = False
         self.initialize_slots_cache()
 
+    def get_redis_link(self, host, port):
+        timeout = self.opt.get("timeout") or RedisClusterDefaultTimeout
+        return redis.StrictRedis(host=host, port=port, socket_timeout=timeout)
+
     def set_node_name(self, n):
         if "name" not in n:
             n["name"] = "{0}:{1}".format(n["host"], n["port"])
@@ -73,7 +77,7 @@ class RedisCluster(object):
                 self.slots = {}
                 self.nodes = []
 
-                r = redis.StrictRedis(host=node["host"], port=node["port"])
+                r = self.get_redis_link(node["host"], node["port"])
                 resp = r.execute_command("cluster", "nodes")
 
                 for line in resp.split("\n"):
@@ -121,7 +125,7 @@ class RedisCluster(object):
         start = key.find("{")
         if start > -1:
             end = key.find("}", start + 1)
-            if end > -1 && end != start + 1
+            if end > -1 and end != start + 1:
                 key = key[start + 1:end]
         return crc16(key) % self.RedisClusterHashSlots
 
