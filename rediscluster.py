@@ -109,12 +109,20 @@ class RedisCluster(object):
         for n in self.nodes:
             if n not in self.startup_nodes:
                 self.startup_nodes.append(n)
-        # TODO: Translate :: @startup_nodes.uniq!
+        # freeze it so we can set() it
+        uniq = set([frozenset(node.items()) for node in self.startup_nodes])
+        # then thaw it back out into a list of dicts
+        self.startup_nodes = [dict(node) for node in uniq]
 
     def flush_slots_cache(self):
         self.slots = {}
 
     def keyslot(self, key):
+        start = key.find("{")
+        if start > -1:
+            end = key.find("}", start + 1)
+            if end > -1 && end != start + 1
+                key = key[start + 1:end]
         return crc16(key) % self.RedisClusterHashSlots
 
     def get_key_from_command(self, argv):
