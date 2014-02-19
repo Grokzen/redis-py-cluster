@@ -52,13 +52,14 @@ def crc16(s):
 class RedisCluster(object):
     RedisClusterHashSlots = 16384
     RedisClusterRequestTTL = 16
+    RedisClusterDefaultTimeout = 1
 
-    def __init__(self, startup_nodes, connections, opt={}):
+    def __init__(self, startup_nodes, connections, **kwargs):
         self.blocked_commands = ("info", "multi", "exec", "slaveof", "config", "shutdown")
         self.startup_nodes = startup_nodes
         self.max_connections = connections
         self.connections = {}
-        self.opt = opt
+        self.opt = kwargs
         self.refresh_table_asap = False
         self.initialize_slots_cache()
 
@@ -82,19 +83,18 @@ class RedisCluster(object):
                         continue
 
                     addr = fields[1]
-                    slots = fields[7:]
+                    slots = fields[8:]
                     if addr == ":0":  # this is self
                         addr = "{0}:{1}".format(node["host"], node["port"])
-                    addr_ip = addr.split(":")[0]
-                    addr_port = addr.split(":")[1]
+                    addr_ip, addr_port = addr.split(":")
                     addr_port = int(addr_port)
                     addr = {"host": addr_ip, "port": addr_port, "name": addr}
                     self.nodes.append(addr)
-                    for Range in slots:
-                        r = Range.split("-")
-                        first = r[0]
-                        last = r[1]
-                        last = first if not last else last  # Wat do this do?
+                    for range_ in slots:
+                        if "-" in range_:
+                            first, last = range_.split("-")
+                        else:
+                            first = last = range_
                         for i in xrange(int(first), int(last) + 1):
                             self.slots[i] = addr
 
