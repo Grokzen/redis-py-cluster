@@ -38,6 +38,19 @@ This video willdescribe how to setup and use a redis cluster: http://vimeo.com/6
 
 - set
 - get
+- smembers
+- srem
+- delete
+- sadd
+- publish
+- hset
+- hget
+- hdel
+- hexists
+- type
+- exists
+- rename (NYI)
+- renamex (NYI)
 
 
 
