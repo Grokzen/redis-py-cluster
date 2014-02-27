@@ -99,7 +99,7 @@ class RedisCluster(object):
                             first, last = range_.split("-")
                         else:
                             first = last = range_
-                        for i in xrange(int(first), int(last) + 1):
+                        for i in range(int(first), int(last) + 1):
                             self.slots[i] = addr
 
                 self.populate_startup_nodes()
