@@ -1,2 +1,4 @@
 # Ignore all python compiled files
 *.pyc
+*.swp
+env27*
