@@ -64,7 +64,7 @@ class RedisCluster(object):
         self.initialize_slots_cache()
 
     def get_redis_link(self, host, port):
-        timeout = self.opt.get("timeout") or RedisClusterDefaultTimeout
+        timeout = self.opt.get("timeout") or RedisCluster.RedisClusterDefaultTimeout
         return redis.StrictRedis(host=host, port=port, socket_timeout=timeout)
 
     def set_node_name(self, n):
