@@ -55,6 +55,8 @@ class RedisCluster(object):
     RedisClusterDefaultTimeout = 1
 
     def __init__(self, startup_nodes, connections, **kwargs):
+        """
+        """
         self.blocked_commands = ("info", "multi", "exec", "slaveof", "config", "shutdown")
         self.startup_nodes = startup_nodes
         self.max_connections = connections
@@ -64,14 +66,20 @@ class RedisCluster(object):
         self.initialize_slots_cache()
 
     def get_redis_link(self, host, port):
+        """ Open new connection to a redis server and return the connection object
+        """
         timeout = self.opt.get("timeout") or RedisCluster.RedisClusterDefaultTimeout
         return redis.StrictRedis(host=host, port=port, socket_timeout=timeout)
 
     def set_node_name(self, n):
+        """
+        """
         if "name" not in n:
             n["name"] = "{0}:{1}".format(n["host"], n["port"])
 
     def initialize_slots_cache(self):
+        """ Init the slots cache by asking all startup nodes what the current cluster configuration is
+        """
         for node in self.startup_nodes:
             try:
                 self.slots = {}
@@ -108,6 +116,8 @@ class RedisCluster(object):
                 pass
 
     def populate_startup_nodes(self):
+        """ Do something with all startup nodes and filters out any duplicates
+        """
         for item in self.startup_nodes:
             self.set_node_name(item)
         for n in self.nodes:
@@ -119,9 +129,13 @@ class RedisCluster(object):
         self.startup_nodes = [dict(node) for node in uniq]
 
     def flush_slots_cache(self):
+        """ Reset slots cache back to empty dict
+        """
         self.slots = {}
 
     def keyslot(self, key):
+        """ Calculate keyslot for a given key
+        """
         start = key.find("{")
         if start > -1:
             end = key.find("}", start + 1)
@@ -130,14 +144,20 @@ class RedisCluster(object):
         return crc16(key) % self.RedisClusterHashSlots
 
     def get_key_from_command(self, argv):
+        """ returns the key from argv list if the command is not present in blocked_commands set
+        """
         return None if argv[0].lower() in self.blocked_commands else argv[1]
 
     def close_existing_connection(self):
+        """ Close random connections until open connections >= max_connections
+        """
         while len(self.connections) >= self.max_connections:
             # TODO: Close a random connection
             print("Close connections")
 
     def get_random_connection(self):
+        """ Open new connection to random redis server.
+        """
         random.shuffle(self.startup_nodes)
         for node in self.startup_nodes:
             try:
@@ -164,6 +184,8 @@ class RedisCluster(object):
         raise Exception("Cant reach a single startup node.")
 
     def get_connection_by_slot(self, slot):
+        """ Determine what server a specific slot belongs to and return a redis object that is connected
+        """
         node = self.slots[slot]
         if not node:
             return self.get_random_connection()
@@ -181,6 +203,8 @@ class RedisCluster(object):
         return self.connections[node["name"]]
 
     def send_cluster_command(self, *argv, **kwargs):
+        """ Send a cluster command to the redis cluster.
+        """
         if self.refresh_table_asap:
             self.initialize_slots_cache()
 
