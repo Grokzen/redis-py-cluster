@@ -216,3 +216,45 @@ class RedisCluster(object):
 
     def set(self, key, value):
         return self.send_cluster_command("SET", key, value)
+
+    def smembers(self, key):
+        return self.send_cluster_command("SMEMBERS", key)
+
+    def srem(self, key, value):
+        return self.send_cluster_command("SREM", key, value)
+
+    def delete(self, key):
+        """
+        DEL is a reserved word in python so delete instead
+        """
+        return self.send_cluster_command("DEL", key)
+
+    def sadd(self, key, value):
+        return self.send_cluster_command("SADD", key, value)
+
+    def publish(self, key, value):
+        return self.send_cluster_command("PUBLISH", key, value)
+
+    def hset(self, key, field, value):
+        return self.send_cluster_command("HSET", key, field, value)
+
+    def hget(self, key, field):
+        return self.send_cluster_command("HGET", key, field)
+
+    def hdel(self, key, field):
+        return self.send_cluster_command("HDEL", key, field)
+
+    def hexists(self, key, field):
+        return self.send_cluster_command("HEXISTS", key, field)
+
+    def type(self, key):
+        return self.send_cluster_command("TYPE", key)
+
+    def exists(self, key):
+        return self.send_cluster_command("EXISTS", key)
+
+    def rename(self, key1, key2):
+        raise Exception("MULTI KEY requests NOT SUPPORTED")
+
+    def renamex(self, key1, key2):
+        raise Exception("MULTI KEY requests NOT SUPPORTED")
