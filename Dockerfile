@@ -22,10 +22,10 @@ RUN gem install redis
 RUN mkdir /redis-data && mkdir /redis-data/7000 && mkdir /redis-data/7001 && mkdir /redis-data/7002 && mkdir /redis-data/7003 && mkdir /redis-data/7004 && mkdir /redis-data/7005
 
 # Add all config files for all clusters
-ADD ./redis-conf /redis-conf
+ADD ./docker-data/redis-conf /redis-conf
 
 # Add supervisord configuration
-ADD ./supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+ADD ./docker-data/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Expose all cluster ports to the outside
 EXPOSE 7000
@@ -36,7 +36,7 @@ EXPOSE 7004
 EXPOSE 7005
 
 # Add startup script
-ADD ./start.sh /start.sh
+ADD ./docker-data/start.sh /start.sh
 RUN chmod 755 /start.sh
 
 # ENTRYPOINT ["/bin/bash"]
