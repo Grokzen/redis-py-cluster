@@ -16,7 +16,7 @@ def loop(rc):
             print("error {0}".format(e))
             time.sleep(1)
 
-    for i in range(last, 1000000000):
+    for i in xrange(last, 1000000000):
         try:
             print("SET foo{0} {1}".format(i, i))
             rc.set("foo{0}".format(i), i)
