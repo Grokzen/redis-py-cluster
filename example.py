@@ -11,17 +11,20 @@ def loop(rc):
         try:
             last = rc.get("__last__")
             last = 0 if not last else int(last)
+            print("starting at foo{0}".format(last))
         except Exception as e:
-            print("error {}".format(e))
+            print("error {0}".format(e))
             time.sleep(1)
 
     for i in range(last, 1000000000):
         try:
-            rc.set("foo{}".format(i), i)
-            print(rc.get("foo{}".format(i)))
+            print("SET foo{0} {1}".format(i, i))
+            rc.set("foo{0}".format(i), i)
+            got = rc.get("foo{0}".format(i))
+            print("GET foo{0} {1}".format(i, got))
             rc.set("__last__", i)
         except Exception as e:
-            print("error {}".format(e))
+            print("error {0}".format(e))
 
         time.sleep(0.1)
 
