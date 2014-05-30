@@ -2,7 +2,7 @@ import sys
 import time
 import argparse
 
-from rediscluster import RedisCluster
+from rediscluster.rediscluster import RedisCluster
 
 
 def loop(rc):
