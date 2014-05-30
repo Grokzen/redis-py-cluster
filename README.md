@@ -70,4 +70,6 @@ Both this client and Redis Cluster are a work in progress that is not suitable t
 
 ## License
 
-This is done for educational purposes and to test the official cluster support for redis
+MIT (See LICENSE file)
+
+The license should be the same as redis-py library (https://github.com/andymccurdy/redis-py)
