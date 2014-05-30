@@ -11,7 +11,7 @@ settings.update(
     description="",
     author="Johan Grokzen Andersson",
     author_email="Grokzen@gmail.com",
-    packages=["redis-cluster"],
+    packages=["rediscluster"],
     install_requires=[
         'redis>=2.9.1'
     ],
