@@ -27,10 +27,10 @@ test:
 	python runtests.py
 	pep8 --ignore=E501,E241 --show-source --exclude=.vev,.tox,dist,doc,build,*.egg .
 
-sdist:
+sdist: cleanmeta
 	python setup.py sdist
 
-bdist:
+bdist: cleanmeta
 	python setup.py bdist_egg
 
 install:
