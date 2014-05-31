@@ -16,7 +16,7 @@ clean:
 cleanmeta:
 	-rm -rf redis_cluster.egg-info/
 
-cleanall: clean cleanmeta cleancoverage
+cleanall: clean cleanmeta
 	-find . -type f -name "*~" -exec rm -f "{}" \;
 	-find . -type f -name "*.orig" -exec rm -f "{}" \;
 	-find . -type f -name "*.rej" -exec rm -f "{}" \;
