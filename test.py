@@ -75,7 +75,7 @@ if __name__ == "__main__":
         action="store_true"
     )
     parser.add_argument(
-        "--resetlastkey'",
+        "--resetlastkey",
         help="reset __last__ key",
         action="store_true"
     )
