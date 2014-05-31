@@ -6,6 +6,9 @@ from rediscluster.rediscluster import RedisCluster
 
 
 def loop(rc):
+    """
+    Regular debug loop that can be used to test how redis behaves during changes in the cluster.
+    """
     last = False
     while last is False:
         try:
@@ -29,6 +32,22 @@ def loop(rc):
         time.sleep(0.1)
 
 
+def timeit(rc, itterations=50000):
+    """ Time how long it take to run a number of set/get:s
+    """
+    t0 = time.time()
+    for i in xrange(0, itterations):
+        try:
+            s = "foo{0}".format(i)
+            rc.set(s, i)
+            rc.get(s)
+        except Exception as e:
+            print("error {0}".format(e))
+
+    t1 = time.time() - t0
+    print("{}k SET and then GET took: {} seconds... {} itterations per second".format((itterations / 1000), t1, (itterations / t1)))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         conflict_handler="resolve",
@@ -47,6 +66,11 @@ if __name__ == "__main__":
         type=int,
         default=7000
     )
+    parser.add_argument(
+        "--timeit",
+        help="run a mini benchmark to test performance",
+        action="store_true"
+    )
     args = parser.parse_args()
 
     startup_nodes = [
@@ -54,4 +78,13 @@ if __name__ == "__main__":
     ]
 
     rc = RedisCluster(startup_nodes, 32, timeout=0.1)
-    loop(rc)
+
+    if args.timeit:
+        test_itterstions = [
+            10000,
+            25000,
+        ]
+        for itterations in test_itterstions:
+            timeit(rc, itterations=itterations)
+    else:
+        loop(rc)
