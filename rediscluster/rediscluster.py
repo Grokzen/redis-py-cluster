@@ -11,36 +11,69 @@ from .crc import crc16
 import redis
 
 
+class RedisClusterException(Exception):
+    pass
+
+
 class RedisCluster(object):
     RedisClusterHashSlots = 16384
     RedisClusterRequestTTL = 16
     RedisClusterDefaultTimeout = 1
 
-    def __init__(self, startup_nodes, connections, **kwargs):
+    def __init__(self, startup_nodes=[], max_connections=32, blocked_commands=None, **kwargs):
         """
+        startup_nodes     --> List of nodes that initial bootstrapping can be done from
+        max_connections   --> Maximum number of connections that should be kept open at one time
+        blocked_commands  --> Provide custom list/tuple of commands that should be blocked by this cluster object
+        **kwargs          --> Extra arguments that will be sent into StrictRedis instance when created
+                              (See Official redis-py doc for supported kwargs [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
+                              Some kwargs is not supported and will raise RedisClusterException
+                               - db    (Redis do not support database SELECT in cluster mode)
+                               - host  (Redis provides this when bootstrapping the cluster)
+                               - port  (Redis provides this when bootstrapping the cluster)
         """
-        self.blocked_commands = ("info", "multi", "exec", "slaveof", "config", "shutdown")
+        if not blocked_commands:
+            self.blocked_commands = ("info", "multi", "exec", "slaveof", "config", "shutdown")
+        else:
+            self.blocked_commands = blocked_commands
+
         self.startup_nodes = startup_nodes
-        self.max_connections = connections
+        self.max_connections = max_connections
         self.connections = {}
         self.opt = kwargs
         self.refresh_table_asap = False
+
+        # Tweaks to StrictRedis client arguments when running in cluster mode
+        if "socket_timeout" not in self.opt:
+            self.opt["socket_timeout"] = RedisCluster.RedisClusterDefaultTimeout
+        if "db" in self.opt:
+            raise RedisClusterException("(error) ERR SELECT is not allowed in cluster mode [Remove 'db' from kwargs]")
+        if "host" in self.opt:
+            raise RedisClusterException("[Remove 'host' from kwargs]")
+        if "port" in self.opt:
+            raise RedisClusterException("[Remove 'port' from kwargs]")
+
         self.initialize_slots_cache()
 
     def get_redis_link(self, host, port):
-        """ Open new connection to a redis server and return the connection object
         """
-        timeout = self.opt.get("timeout") or RedisCluster.RedisClusterDefaultTimeout
-        return redis.StrictRedis(host=host, port=port, socket_timeout=timeout)
+        Open new connection to a redis server and return the connection object
+        """
+        try:
+            return redis.StrictRedis(host=host, port=port, **self.opt)
+        except Exception as e:
+            raise RedisClusterException(repr(e))
 
     def set_node_name(self, n):
         """
+        Format the name for the given node object
         """
         if "name" not in n:
             n["name"] = "{0}:{1}".format(n["host"], n["port"])
 
     def initialize_slots_cache(self):
-        """ Init the slots cache by asking all startup nodes what the current cluster configuration is
+        """
+        Init the slots cache by asking all startup nodes what the current cluster configuration is
         """
         for node in self.startup_nodes:
             try:
@@ -74,11 +107,14 @@ class RedisCluster(object):
 
                 self.populate_startup_nodes()
                 self.refresh_table_asap = False
+            except RedisClusterException:
+                raise
             except Exception:
                 pass
 
     def populate_startup_nodes(self):
-        """ Do something with all startup nodes and filters out any duplicates
+        """
+        Do something with all startup nodes and filters out any duplicates
         """
         for item in self.startup_nodes:
             self.set_node_name(item)
@@ -91,12 +127,14 @@ class RedisCluster(object):
         self.startup_nodes = [dict(node) for node in uniq]
 
     def flush_slots_cache(self):
-        """ Reset slots cache back to empty dict
+        """
+        Reset slots cache back to empty dict
         """
         self.slots = {}
 
     def keyslot(self, key):
-        """ Calculate keyslot for a given key
+        """
+        Calculate keyslot for a given key
         """
         start = key.find("{")
         if start > -1:
@@ -106,19 +144,22 @@ class RedisCluster(object):
         return crc16(key) % self.RedisClusterHashSlots
 
     def get_key_from_command(self, argv):
-        """ returns the key from argv list if the command is not present in blocked_commands set
+        """
+        returns the key from argv list if the command is not present in blocked_commands set
         """
         return None if argv[0].lower() in self.blocked_commands else argv[1]
 
     def close_existing_connection(self):
-        """ Close random connections until open connections >= max_connections
+        """
+        Close random connections until open connections >= max_connections
         """
         while len(self.connections) >= self.max_connections:
             # TODO: Close a random connection
             print("Close connections")
 
     def get_random_connection(self):
-        """ Open new connection to random redis server.
+        """
+        Open new connection to random redis server.
         """
         random.shuffle(self.startup_nodes)
         for node in self.startup_nodes:
@@ -127,7 +168,7 @@ class RedisCluster(object):
                 conn = self.connections.get(node["name"], None)
 
                 if not conn:
-                    conn = redis.StrictRedis(host=node["host"], port=int(node["port"]))
+                    conn = self.get_redis_link(node["host"], int(node["port"]))
                     if conn.ping() is True:
                         self.close_existing_connection()
                         self.connections[node["name"]] = conn
@@ -139,6 +180,8 @@ class RedisCluster(object):
                 else:
                     if conn.ping() is True:
                         return conn
+            except RedisClusterException:
+                raise
             except Exception:
                 # Just try with the next node
                 pass
@@ -146,7 +189,8 @@ class RedisCluster(object):
         raise Exception("Cant reach a single startup node.")
 
     def get_connection_by_slot(self, slot):
-        """ Determine what server a specific slot belongs to and return a redis object that is connected
+        """
+        Determine what server a specific slot belongs to and return a redis object that is connected
         """
         node = self.slots[slot]
         if not node:
@@ -155,7 +199,9 @@ class RedisCluster(object):
         if not self.connections.get(node["name"], None):
             try:
                 self.close_existing_connection()
-                self.connections[node["name"]] = redis.StrictRedis(host=node["host"], port=node["port"])
+                self.connections[node["name"]] = self.get_redis_link(node["host"], node["port"])
+            except RedisClusterException:
+                raise
             except Exception:
                 # This will probably never happen with recent redis-rb
                 # versions because the connection is enstablished in a lazy
@@ -165,7 +211,8 @@ class RedisCluster(object):
         return self.connections[node["name"]]
 
     def send_cluster_command(self, *argv, **kwargs):
-        """ Send a cluster command to the redis cluster.
+        """
+        Send a cluster command to the redis cluster.
         """
         if self.refresh_table_asap:
             self.initialize_slots_cache()
