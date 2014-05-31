@@ -11,7 +11,15 @@ The original source can be found at https://github.com/antirez/redis-rb-cluster
 ## Dependencies
 
 - redis (Python client - https://github.com/andymccurdy/redis-py - Install [pip install redis])
-- Cluster enabled redis server (Download the branch that is version 2.9.9+ and that will be 3.0.0 in the future. Build redis and setup a cluster with n machines. Redis can be found at https://github.com/antirez/redis) (Or use the docker image to create a new cluster)
+- Cluster enabled redis servers (Download the branch that is version 2.9.9+ and that will be 3.0.0 in the future. Build redis and setup a cluster with x number of machines. Redis can be found at https://github.com/antirez/redis)
+
+
+
+## Docker
+
+I have created a Dockerfile/Image that I recommend you to use to make testing of this lib easy. 
+
+It can be found at https://github.com/Grokzen/docker-redis-cluster
 
 
 
