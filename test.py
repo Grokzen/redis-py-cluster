@@ -77,7 +77,7 @@ if __name__ == "__main__":
         {"host": args.host, "port": args.port}
     ]
 
-    rc = RedisCluster(startup_nodes, 32, timeout=0.1)
+    rc = RedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1)
 
     if args.timeit:
         test_itterstions = [
