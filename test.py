@@ -5,10 +5,13 @@ import argparse
 from rediscluster.rediscluster import RedisCluster
 
 
-def loop(rc):
+def loop(rc, reset_last_key=None):
     """
     Regular debug loop that can be used to test how redis behaves during changes in the cluster.
     """
+    if reset_last_key:
+        rc.set("__last__", 0)
+
     last = False
     while last is False:
         try:
@@ -71,6 +74,11 @@ if __name__ == "__main__":
         help="run a mini benchmark to test performance",
         action="store_true"
     )
+    parser.add_argument(
+        "--resetlastkey'",
+        help="reset __last__ key",
+        action="store_true"
+    )
     args = parser.parse_args()
 
     startup_nodes = [
@@ -87,4 +95,4 @@ if __name__ == "__main__":
         for itterations in test_itterstions:
             timeit(rc, itterations=itterations)
     else:
-        loop(rc)
+        loop(rc, reset_last_key=args.resetlastkey)
