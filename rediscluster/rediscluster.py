@@ -555,11 +555,11 @@ class RedisCluster(StrictRedis):
             raise RedisError("RedisError: ``start`` and ``num`` must both be specified")
         try:
             data_type = self.type(name)
-            if data_type == "none":
+            if data_type == b("none"):
                 return []
-            elif data_type == "set":
+            elif data_type == b("set"):
                 data = list(self.smembers(name))[:]
-            elif data_type == "list":
+            elif data_type == b("list"):
                 data = list(self[name])[:]
             else:
                 raise RedisClusterException("Unable to sort data type : {}".format(data_type))
