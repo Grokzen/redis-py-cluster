@@ -10,8 +10,8 @@ The original source can be found at https://github.com/antirez/redis-rb-cluster
 
 ## Dependencies
 
-- redis (Python client - https://github.com/andymccurdy/redis-py - Install [pip install redis])
-- Cluster enabled redis servers (Download the branch that is version 2.9.9+ and that will be 3.0.0 in the future. Build redis and setup a cluster with x number of machines. Redis can be found at https://github.com/antirez/redis)
+- redis >= 2.9.1 (Python client - https://github.com/andymccurdy/redis-py - Install [pip install redis])
+- Cluster enabled redis servers (Download unstable branch for 3.0.0. Build redis and setup a cluster with x number of machines. Redis can be found at https://github.com/antirez/redis)
 
 
 
@@ -25,21 +25,133 @@ It can be found at https://github.com/Grokzen/docker-redis-cluster
 
 ## Implemented commands
 
-- set
-- get
-- smembers
-- srem
-- delete
-- sadd
-- publish
-- hset
-- hget
-- hdel
-- hexists
-- type
-- exists
-- rename (NYI)
-- renamex (NYI)
+If a command is not listed here then the default implementation in 'StrictRedis' is used.
+
+
+
+### Fanout Commands
+
+These commands is changed to send the same request to all nodes in sequence in the cluster and all results is returned as a dict.
+
+ - bgrewriteaof
+ - bgsave
+ - client_kill
+ - client_list
+ - client_getname
+ - client_setname
+ - config_get
+ - config_set
+ - config_resetstat
+ - config_rewrite
+ - dbsize
+ - echo
+ - info
+ - lastsave
+ - ping
+ - save
+ - slowlog_get
+ - slowlog_len
+ - slowlog_reset
+ - time
+
+These commands is changed to send the same request to all nodes in sequence in the cluster and all results is returned as a unified list.
+
+ - keys
+
+These commands is only sent to all master nodes in the cluster.
+
+ - flushall
+ - flushdb
+
+
+
+### Blocked commands
+
+These commands is currently blocked from use in cluster mode. 
+Either because they do not work or it is not good to use them with a cluster.
+
+ - client_setname
+ - sentinel
+ - sentinel_get_master_addr_by_name
+ - sentinel_master
+ - sentinel_masters
+ - sentinel_monitor
+ - sentinel_remove
+ - sentinel_sentinels
+ - sentinel_set
+ - sentinel_slaves
+ - shutdown  # Danger to shutdown entire cluster at same time
+ - slaveof  # Cluster management should be done via redis-trib.rb manually
+ - restore
+ - watch
+ - unwatch
+ - pfmerge  # Will not work because merging HLL in python is extremly complex currently...
+ - publish
+ - eval
+ - evalsha
+ - script_exists
+ - script_flush
+ - script_kill
+ - script_load
+ - register_script
+ - move  # It is not possible to move a key from one db to another in cluster mode
+ - bitop  # Currently to hard to implement a solution in python space
+
+
+
+### Overridden methods
+
+These methods is overridden from StrictRedis to enable them to work in cluster mode.
+
+ - mget
+ - mset
+ - msetnx
+ - randomkey
+ - rename
+ - renamenx
+ - brpoplpus
+ - rpoplpush
+ - sort
+ - scan_iter
+ - sscan_iter
+ - hscan_iter
+ - zscan_iter
+ - sdiff
+ - sdiffstore
+ - sinter
+ - sinterstore
+ - smove
+ - sunion
+ - sunionstore
+ - zinterstore
+ - zunionstore
+
+
+
+### Commands that will behave different
+
+These methods will behave different from the normal implementation in 'StrictRedis'
+
+#### Scan methods
+
+These methods will call each master node and return a dict with k,v pair (NodeID, Scan-result). I reccomend to use the *scan_iter functions.
+
+  - scan
+  - sscan
+  - hscan
+  - zscan
+
+
+
+## Limitations and differences with redis-py
+
+There is alot of differences that have to be taken into consideration when using cluster mode in redis.
+
+Any method that can operate on multiple keys have to be reimplemented in the client and in some cases that is not possible to do. In general any method that is overriden in RedisCluster have lost the ability of being atomic. 
+
+Pipelines do not work the same way in cluster mode. In 'StrictRedis' it batch all commands so that they can be executed at the same time when requested. But with RedisCluster pipelines will send the command directly to the server when it is called, but it will still store the result internally and return the same data from .execute(). This is done so that the code still behaves like a pipeline and no code will break. Some better solution will be implemented in the future but a true transactional pipeline will not be possible right now.
+
+Alot of methods will behave very different when using RedisCluster. Some methods send the same request to all servers and return the result in another format then 'StrictRedis' do. Some methods is blocked because they do not work / is not implemented / is dangerous to use in cluster mode (like shutdown()).
 
 
 
@@ -55,18 +167,18 @@ It can be found at https://github.com/Grokzen/docker-redis-cluster
 
 Current python support is
 
-- 2.6   (Not yet tested)
-- 2.7.5 (Working)
-- 3.1   (Not yet tested)
-- 3.2   (Not yet tested)
-- 3.3   (Not yet tested)
-- 3.4   (Not yet tested)
+- 2.7  Yes
+- 3.2  Yes
+- 3.3  (Not yet tested)
+- 3.4  (Not yet tested)
 
 
 
-## Speed
+## Redisco support
 
-On my laptop with x2 redis servers in cluster mode and one python process on the same machine i do 50k set/get commands in between 6-8 sec
+Redisco is a ORM lib for Django and it is a good lib for testing redis-py-cluster because it use alot of redis functionality. Currently all tests pass when running on python-3.2
+
+The working redisco branch can be found at https://github.com/Grokzen/redisco/tree/python3
 
 
 

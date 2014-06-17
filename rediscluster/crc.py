@@ -38,7 +38,7 @@ XMODEMCRC16Lookup = [
 
 def crc16(s):
     crc = 0
-    for ch in s:
-        crc = ((crc << 8) & 0xffff) ^ XMODEMCRC16Lookup[((crc >> 8) ^ ord(ch)) & 0xff]
+    for ch in s.encode("utf-8"):
+        crc = ((crc << 8) & 0xffff) ^ XMODEMCRC16Lookup[((crc >> 8) ^ ch) & 0xff]
 
     return crc

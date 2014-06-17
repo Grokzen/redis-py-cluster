@@ -3,11 +3,9 @@ try:
 except ImportError:
     from distutils.core import setup
 
-settings = dict()
-
-settings.update(
-    name="redis-cluster",
-    version="0.0.1",
+setup(
+    name="rediscluster",
+    version="0.1.0",
     description="",
     author="Johan Grokzen Andersson",
     author_email="Grokzen@gmail.com",
@@ -43,5 +41,3 @@ settings.update(
         'Topic :: Redis Cluster'
     )
 )
-
-setup(**settings)
