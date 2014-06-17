@@ -95,6 +95,9 @@ class RedisCluster(StrictRedis):
                 r = self.get_redis_link(node["host"], node["port"])
                 resp = r.execute_command("cluster", "nodes")
 
+                if getattr(resp, "decode", None):
+                    resp = resp.decode("utf-8")
+
                 for line in resp.split("\n"):
                     fields = line.split(" ")
                     if len(fields) == 1:
