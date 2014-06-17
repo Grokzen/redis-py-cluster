@@ -560,7 +560,7 @@ class RedisCluster(StrictRedis):
             elif data_type == b("set"):
                 data = list(self.smembers(name))[:]
             elif data_type == b("list"):
-                data = list(self[name])[:]
+                data = self.lrange(name, 0, -1)
             else:
                 raise RedisClusterException("Unable to sort data type : {}".format(data_type))
             if by is not None:
