@@ -10,7 +10,7 @@ from rediscluster.crc import crc16
 import redis
 from redis import StrictRedis
 from redis.client import list_or_args
-from redis._compat import iteritems, basestring
+from redis._compat import iteritems, basestring, b
 from redis.exceptions import RedisError, ResponseError
 
 
@@ -444,34 +444,36 @@ class RedisCluster(StrictRedis):
 
         t = self.type(src)
 
-        if t == "string":
+        if t == b("string"):
             v = self.get(src)
             self.delete(src)
             self.delete(dst)
             self.set(dst, v)
-        elif t == "hash":
+        elif t == b("hash"):
             values = self.hgetall(src)
             self.delete(src)
             self.delete(dst)
             self.hmset(dst, values)
-        elif t == "set":
+        elif t == b("set"):
             values = self.smembers(src)
             self.delete(src)
             self.delete(dst)
             self.sadd(dst, values)
-        elif t == "zset":
+        elif t == b("zset"):
             values = self.zrange("myzset", 0, -1, withscores=True)
             self.delete(src)
             self.delete(dst)
             # Remap values so they can be sent into ZADD
             self.zadd(dst, *[j for i in values for j in i[::-1]])
-        elif t == "list":
+        elif t == b("list"):
             values = self.lrange(src, 0, -1)
             self.delete(src)
             self.delete(dst)
             self.rpush(dst, *values)
         else:
-            raise RedisClusterException("Unknown keytype when calling cluster version of rename method")
+            raise RedisClusterException("Unknown keytype when calling cluster version of rename method : {}".format(t))
+
+        return True
 
     def renamenx(self, src, dst):
         """
