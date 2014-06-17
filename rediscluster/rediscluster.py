@@ -4,8 +4,15 @@
 import random
 
 # rediscluster imports
-from rediscluster.crc import crc16
-from .decorators import send_to_connection_by_key
+from .crc import crc16
+from .exceptions import RedisClusterException, RedisClusterError
+from .decorators import (send_to_connection_by_key, 
+                         send_to_all_master_nodes, 
+                         send_to_all_masters_merge_list, 
+                         send_to_all_nodes, 
+                         send_to_all_nodes_merge_list, 
+                         get_connection_from_node_obj, 
+                         block_command)
 
 # 3rd party imports
 import redis
@@ -14,14 +21,6 @@ from redis.client import list_or_args
 from redis._compat import iteritems, basestring, b, izip
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError
 from redis.connection import Token
-
-
-class RedisClusterException(Exception):
-    pass
-
-
-class RedisClusterError(Exception):
-    pass
 
 
 class RedisCluster(StrictRedis):
@@ -786,110 +785,6 @@ class RedisCluster(StrictRedis):
         res = self.sunion(keys, *args)
         self.delete(dest)
         return self.sadd(dest, *res)
-
-
-def send_to_all_master_nodes(func):
-    """
-    Use the following command only on master nodes
-    """
-    def inner(self, *args, **kwargs):
-        res = {}
-
-        # TODO: Bug, until startup_nodes is refactored "master" must be default because some nodes do not have "server_type"
-        for node in self.startup_nodes:
-            if node.get("server_type", "master") != "master":
-                continue
-
-            conn = get_connection_from_node_obj(self, node)
-            res[node["name"]] = func(conn, *args, **kwargs)
-        return res
-    return inner
-
-
-def send_to_all_masters_merge_list(func):
-    """
-    Use the following command only on master nodes and merge result into list
-    """
-    def inner(self, *args, **kwargs):
-        res = set([])
-
-        # TODO: Bug, until startup_nodes is refactored "master" must be default because some nodes do not have "server_type"
-        for node in self.startup_nodes:
-            if node.get("server_type", "master") != "master":
-                continue
-
-            conn = get_connection_from_node_obj(self, node)
-            d = func(conn, *args, **kwargs)
-            for i in d:
-                res.add(i)
-        return res
-    return inner
-
-
-def send_to_all_nodes(func):
-    """
-    Itterate over all connections and call 'func' on each StrictRedis connection object.
-    Store and return all items in one dict object.
-    """
-    def inner(self, *args, **kwargs):
-        res = {}
-        for node in self.startup_nodes:
-            conn = get_connection_from_node_obj(self, node)
-            res[node["name"]] = func(conn, *args, **kwargs)
-        return res
-    return inner
-
-
-def send_to_all_nodes_merge_list(func):
-    """
-    Itterate over all connections and call 'func' on each StrictRedis connection object.
-    Store and return all items in one list object.
-    """
-    def inner(self, *args, **kwargs):
-        # TODO: Currently there is a bug with startup_nodes that cause one or more nodes to be querried multiple times
-        #  and that will corrupt results. Using a set will remove any result duplicates. It should be a list.
-        res = set([])
-        for node in self.startup_nodes:
-            conn = get_connection_from_node_obj(self, node)
-            d = func(conn, *args, **kwargs)
-            for i in d:
-                res.add(i)
-        return res
-    return inner
-
-
-def get_connection_from_node_obj(self, node):
-    """
-    Gets a connection object from a 'node' object
-    """
-    try:
-        self.set_node_name(node)
-        conn = self.connections.get(node["name"], None)
-
-        if not conn:
-            conn = self.get_redis_link(node["host"], int(node["port"]))
-            if conn.ping() is True:
-                self.close_existing_connection()
-                self.connections[node["name"]] = conn
-            else:
-                print(" ERROR: unable to open new connection")
-
-        return conn
-    except RedisClusterException as rce:
-        print(" RedisClusterException: {}".format(rce))
-        raise
-    except Exception as e:
-        print("{}".format(e))
-        raise
-
-
-def block_command(func):
-    """
-    Prints error because some commands should be blocked when running in cluster-mode
-    """
-    def inner(*args, **kwargs):
-        raise RedisClusterException(" ERROR: Calling function {} is blocked when running redis in cluster mode...".format(func.__name__))
-    return inner
 
 
 #####
