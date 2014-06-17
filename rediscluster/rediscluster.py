@@ -12,6 +12,7 @@ from redis import StrictRedis
 from redis.client import list_or_args
 from redis._compat import iteritems, basestring, b, izip
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError
+from redis.connection import Token
 
 
 class RedisClusterException(Exception):
