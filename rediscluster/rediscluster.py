@@ -31,11 +31,10 @@ class RedisCluster(StrictRedis):
     RedisClusterRequestTTL = 16
     RedisClusterDefaultTimeout = 1
 
-    def __init__(self, startup_nodes=[], max_connections=32, blocked_commands=None, init_slot_cache=True, **kwargs):
+    def __init__(self, startup_nodes=[], max_connections=32, init_slot_cache=True, **kwargs):
         """
         startup_nodes     --> List of nodes that initial bootstrapping can be done from
         max_connections   --> Maximum number of connections that should be kept open at one time
-        blocked_commands  --> Provide custom list/tuple of commands that should be blocked by this cluster object
         **kwargs          --> Extra arguments that will be sent into StrictRedis instance when created
                               (See Official redis-py doc for supported kwargs [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
                               Some kwargs is not supported and will raise RedisClusterException
@@ -45,7 +44,6 @@ class RedisCluster(StrictRedis):
         """
         super(RedisCluster, self).__init__(**kwargs)
 
-        self.blocked_commands = blocked_commands if blocked_commands else ("info", "multi", "exec", "slaveof", "config", "shutdown")
         self.startup_nodes = startup_nodes
         self.max_connections = max_connections
         self.connections = {}
@@ -162,12 +160,6 @@ class RedisCluster(StrictRedis):
                 key = key[start + 1:end]
         return crc16(key) % self.RedisClusterHashSlots
 
-    def get_key_from_command(self, argv):
-        """
-        returns the key from argv list if the command is not present in blocked_commands set
-        """
-        return None if argv[0].lower() in self.blocked_commands else argv[1]
-
     def close_existing_connection(self):
         """
         Close random connections until open connections >= max_connections
@@ -257,7 +249,7 @@ class RedisCluster(StrictRedis):
                 r = self.get_random_connection()
                 try_random_node = False
             else:
-                key = self.get_key_from_command(argv)
+                key = argv[1]
                 if not key:
                     raise Exception("No way to dispatch this command to Redis Cluster.")
                 slot = self.keyslot(key)
@@ -352,7 +344,6 @@ class RedisCluster(StrictRedis):
         """
         r = RedisCluster(startup_nodes=self.startup_nodes,
                          max_connections=self.max_connections,
-                         blocked_commands=self.blocked_commands,
                          init_slot_cache=False)
         r.connections = self.connections
         r.opt = self.opt
