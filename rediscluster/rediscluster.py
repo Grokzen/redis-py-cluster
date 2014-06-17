@@ -164,19 +164,21 @@ class RedisCluster(StrictRedis):
         """
         Close random connections until open connections >= max_connections
         """
+        # TODO: It could be possible that this code will get stuck in a infinite loop. It must be fixed
         while len(self.connections) >= self.max_connections:
-            print("Closing random connection...")
             # Shuffle all connections and close the first one in the list.
             random.shuffle(self.startup_nodes)
-            self.close_redis_connection(self.startup_nodes[0])
-            self.startup_nodes.pop(0)
+            connection = self.connections.get(self.startup_nodes[0]["name"], None)
+            if connection:
+                self.close_redis_connection(connection)
+                del self.connections[self.startup_nodes[0]["name"]]
 
     def close_redis_connection(self, connection):
         """
-        Close a redis connection
+        Close a redis connection by disconnecting all connections in connection_pool
         """
         try:
-            connection.reset()
+            connection.connection_pool.disconnect()
         except Exception as e:
             raise RedisClusterException("Error when closing random connection... {}".format(repr(e)))
 
