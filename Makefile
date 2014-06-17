@@ -14,7 +14,7 @@ clean:
 	-rm -rf build/
 
 cleanmeta:
-	-rm -rf redis_cluster.egg-info/
+	-rm -rf rediscluster.egg-info/
 
 cleanall: clean cleanmeta
 	-find . -type f -name "*~" -exec rm -f "{}" \;
