@@ -580,19 +580,23 @@ class RedisCluster(StrictRedis):
                 data = data[::-1]
             if not (start is None and num is None):
                 data = data[start:start + num]
+
+            if get:
+                data = self._retrive_data_from_sort(data, get)
+
             if store is not None:
-                if data_type == "set":
+                if data_type == b("set"):
                     self.delete(store)
                     self.rpush(store, *data)
-                elif data_type == "list":
+                elif data_type == b("list"):
                     self.delete(store)
                     self.rpush(store, *data)
                 else:
                     raise RedisClusterException("Unable to store sorted data for data type : {}".format(data_type))
 
                 return len(data)
-            else:
-                return self._retrive_data_from_sort(data, get)
+
+            return data
         except KeyError:
             return []
 
@@ -611,6 +615,23 @@ class RedisCluster(StrictRedis):
             data = new_data
         return data
 
+    def _get_single_item(self, k, g):
+        if getattr(k, "decode", None):
+            k = k.decode("utf-8")
+
+        if '*' in g:
+            g = g.replace('*', k)
+            if '->' in g:
+                key, hash_key = g.split('->')
+                single_item = self.get(key, {}).get(hash_key)
+            else:
+                single_item = self.get(g)
+        elif '#' in g:
+            single_item = k
+        else:
+            single_item = None
+        return b(single_item)
+
     def _strtod_key_func(self, arg):
         """
         Used by sort()
@@ -621,7 +642,13 @@ class RedisCluster(StrictRedis):
         """
         Used by sort()
         """
+        if getattr(by, "decode", None):
+            by = by.decode("utf-8")
+
         def _by_key(arg):
+            if getattr(arg, "decode", None):
+                arg = arg.decode("utf-8")
+
             key = by.replace('*', arg)
             if '->' in by:
                 key, hash_key = key.split('->')
