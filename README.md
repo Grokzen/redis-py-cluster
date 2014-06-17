@@ -146,6 +146,24 @@ Alot of methods will behave very different when using RedisCluster. Some methods
 
 
 
+## Usage example
+
+Small sample script that show how to get started with RedisCluster(). 'decode_responses=True' is required to have when running on python3.
+
+```python
+from rediscluster import RedisCluster
+
+startup_nodes = [
+    {"host": "127.0.0.1", "port": "7000"}
+]
+
+rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+rc.set("foo", "bar")
+rc.get("foobar")
+```
+
+
+
 ## How to setup a cluster manually
 
  - This video will describe how to setup and use a redis cluster: http://vimeo.com/63672368 (This video is old so look at instructions in Redis cluster tutorial link below)
