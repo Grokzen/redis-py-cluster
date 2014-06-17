@@ -792,10 +792,10 @@ class RedisCluster(StrictRedis):
         res = self.sinter(keys, *args)
         self.delete(dest)
         if len(res) != 0:
-            return self.sadd(dest, *res)
+            self.sadd(dest, *res)
+            return len(res)
         else:
-            # TODO: Possibly wrong return data
-            return None
+            return 0
 
     def smove(self, src, dst, value):
         """
