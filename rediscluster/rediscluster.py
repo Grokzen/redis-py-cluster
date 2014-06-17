@@ -216,6 +216,11 @@ class RedisCluster(StrictRedis):
 
         raise Exception("Cant reach a single startup node.")
 
+    def get_connection_by_key(self, key):
+        if not key:
+            raise Exception("No way to dispatch this command to Redis Cluster.")
+        return self.get_connection_by_slot(self.keyslot(key))
+
     def get_connection_by_slot(self, slot):
         """
         Determine what server a specific slot belongs to and return a redis object that is connected
@@ -664,19 +669,14 @@ class RedisCluster(StrictRedis):
 
         ``count`` allows for hint the minimum number of returns
 
-        Cluster impl: Itterate over all connections and yield each item one after another
+        Cluster impl: Get correct connection, do querry and yield each item one after another
         """
-        for node in self.startup_nodes:
-            if node.get("server_type", "master") != "master":
-                continue
-
-            conn = get_connection_from_node_obj(self, node)
-
-            cursor = '0'
-            while cursor != 0:
-                cursor, data = conn.sscan(name, cursor=cursor, match=match, count=count)
-                for item in data:
-                    yield item
+        conn = self.get_connection_by_key(name)
+        cursor = '0'
+        while cursor != 0:
+            cursor, data = conn.sscan(name, cursor=cursor, match=match, count=count)
+            for item in data:
+                yield item
 
     def hscan_iter(self, name, match=None, count=None):
         """
@@ -687,19 +687,14 @@ class RedisCluster(StrictRedis):
 
         ``count`` allows for hint the minimum number of returns
 
-        Cluster impl: Itterate over all connections and yield each item one after another
+        Cluster impl: Get correct connection, do querry and yield each item one after another
         """
-        for node in self.startup_nodes:
-            if node.get("server_type", "master") != "master":
-                continue
-
-            conn = get_connection_from_node_obj(self, node)
-
-            cursor = '0'
-            while cursor != 0:
-                cursor, data = conn.hscan(name, cursor=cursor, match=match, count=count)
-                for item in data.items():
-                    yield item
+        conn = self.get_connection_by_key(name)
+        cursor = '0'
+        while cursor != 0:
+            cursor, data = conn.hscan(name, cursor=cursor, match=match, count=count)
+            for item in data.items():
+                yield item
 
     def zscan_iter(self, name, match=None, count=None, score_cast_func=float):
         """
@@ -712,19 +707,14 @@ class RedisCluster(StrictRedis):
 
         ``score_cast_func`` a callable used to cast the score return value
 
-        Cluster impl: Itterate over all connections and yield each item one after another
+        Cluster impl: Get correct connection, do querry and yield each item one after another
         """
-        for node in self.startup_nodes:
-            if node.get("server_type", "master") != "master":
-                continue
-
-            conn = get_connection_from_node_obj(self, node)
-
-            cursor = '0'
-            while cursor != 0:
-                cursor, data = conn.zscan(name, cursor=cursor, match=match, count=count, score_cast_func=score_cast_func)
-                for item in data:
-                    yield item
+        conn = self.get_connection_by_key(name)
+        cursor = '0'
+        while cursor != 0:
+            cursor, data = conn.zscan(name, cursor=cursor, match=match, count=count, score_cast_func=score_cast_func)
+            for item in data:
+                yield item
 
     ###
     # Set commands
