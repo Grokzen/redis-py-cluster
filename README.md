@@ -63,6 +63,12 @@ These commands is only sent to all master nodes in the cluster.
  - flushall
  - flushdb
 
+These methods will call each master node and return a dict with k,v pair (NodeID, Scan-result). I reccomend to use the *scan_iter functions.
+
+  - scan
+  - sscan
+  - hscan
+  - zscan
 
 
 ### Blocked commands
@@ -125,21 +131,6 @@ These methods is overridden from StrictRedis to enable them to work in cluster m
  - sunionstore
  - zinterstore
  - zunionstore
-
-
-
-### Commands that will behave different
-
-These methods will behave different from the normal implementation in 'StrictRedis'
-
-#### Scan methods
-
-These methods will call each master node and return a dict with k,v pair (NodeID, Scan-result). I reccomend to use the *scan_iter functions.
-
-  - scan
-  - sscan
-  - hscan
-  - zscan
 
 
 
