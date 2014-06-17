@@ -66,9 +66,6 @@ These commands is only sent to all master nodes in the cluster.
 These methods will call each master node and return a dict with k,v pair (NodeID, Scan-result). I reccomend to use the *scan_iter functions.
 
   - scan
-  - sscan
-  - hscan
-  - zscan
 
 
 ### Blocked commands
@@ -118,9 +115,12 @@ These methods is overridden from StrictRedis to enable them to work in cluster m
  - brpoplpus
  - rpoplpush
  - sort
+ - sscan
  - scan_iter
  - sscan_iter
+ - hscan
  - hscan_iter
+ - zscan
  - zscan_iter
  - sdiff
  - sdiffstore

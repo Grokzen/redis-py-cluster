@@ -10,8 +10,8 @@ from rediscluster.crc import crc16
 import redis
 from redis import StrictRedis
 from redis.client import list_or_args
-from redis._compat import iteritems, basestring, b
-from redis.exceptions import RedisError, ResponseError, TimeoutError
+from redis._compat import iteritems, basestring, b, izip
+from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError
 
 
 class RedisClusterException(Exception):
@@ -533,7 +533,7 @@ class RedisCluster(StrictRedis):
             return value
         return None
 
-    def sort(self, name, start=None, num=None, by=None, get=None, desc=False, alpha=False, store=None):
+    def sort(self, name, start=None, num=None, by=None, get=None, desc=False, alpha=False, store=None, groups=None):
         """Sort and return the list, set or sorted set at ``name``.
 
         ``start`` and ``num`` allow for paging through the sorted data
@@ -596,7 +596,15 @@ class RedisCluster(StrictRedis):
 
                 return len(data)
 
-            return data
+            if groups:
+                if not get or isinstance(get, basestring) or len(get) < 2:
+                    raise DataError('when using "groups" the "get" argument '
+                                    'must be specified and contain at least '
+                                    'two keys')
+                n = len(get)
+                return list(izip(*[data[i::n] for i in range(n)]))
+            else:
+                return data
         except KeyError:
             return []
 
@@ -680,12 +688,28 @@ class RedisCluster(StrictRedis):
                 continue
 
             conn = get_connection_from_node_obj(self, node)
-
             cursor = '0'
             while cursor != 0:
                 cursor, data = conn.scan(cursor=cursor, match=match, count=count)
                 for item in data:
                     yield item
+
+    def sscan(self, name, cursor=0, match=None, count=None):
+        """
+        Incrementally return lists of elements in a set. Also return a cursor
+        indicating the scan position.
+
+        ``match`` allows for filtering the keys by pattern
+
+        ``count`` allows for hint the minimum number of returns
+        """
+        conn = self.get_connection_by_key(name)
+        pieces = [name, cursor]
+        if match is not None:
+            pieces.extend([Token('MATCH'), match])
+        if count is not None:
+            pieces.extend([Token('COUNT'), count])
+        return conn.execute_command('SSCAN', *pieces)
 
     def sscan_iter(self, name, match=None, count=None):
         """
@@ -705,6 +729,23 @@ class RedisCluster(StrictRedis):
             for item in data:
                 yield item
 
+    def hscan(self, name, cursor=0, match=None, count=None):
+        """
+        Incrementally return key/value slices in a hash. Also return a cursor
+        indicating the scan position.
+
+        ``match`` allows for filtering the keys by pattern
+
+        ``count`` allows for hint the minimum number of returns
+        """
+        conn = self.get_connection_by_key(name)
+        pieces = [name, cursor]
+        if match is not None:
+            pieces.extend([Token('MATCH'), match])
+        if count is not None:
+            pieces.extend([Token('COUNT'), count])
+        return conn.execute_command('HSCAN', *pieces)
+
     def hscan_iter(self, name, match=None, count=None):
         """
         Make an iterator using the HSCAN command so that the client doesn't
@@ -722,6 +763,26 @@ class RedisCluster(StrictRedis):
             cursor, data = conn.hscan(name, cursor=cursor, match=match, count=count)
             for item in data.items():
                 yield item
+
+    def zscan(self, name, cursor=0, match=None, count=None, score_cast_func=float):
+        """
+        Incrementally return lists of elements in a sorted set. Also return a
+        cursor indicating the scan position.
+
+        ``match`` allows for filtering the keys by pattern
+
+        ``count`` allows for hint the minimum number of returns
+
+        ``score_cast_func`` a callable used to cast the score return value
+        """
+        conn = self.get_connection_by_key(name)
+        pieces = [name, cursor]
+        if match is not None:
+            pieces.extend([Token('MATCH'), match])
+        if count is not None:
+            pieces.extend([Token('COUNT'), count])
+        options = {'score_cast_func': score_cast_func}
+        return conn.execute_command('ZSCAN', *pieces, **options)
 
     def zscan_iter(self, name, match=None, count=None, score_cast_func=float):
         """
@@ -970,9 +1031,6 @@ RedisCluster.keys = send_to_all_nodes_merge_list(StrictRedis.keys)
 RedisCluster.flushall = send_to_all_master_nodes(StrictRedis.flushall)
 RedisCluster.flushdb = send_to_all_master_nodes(StrictRedis.flushdb)
 RedisCluster.scan = send_to_all_master_nodes(StrictRedis.scan)
-RedisCluster.sscan = send_to_all_master_nodes(StrictRedis.sscan)
-RedisCluster.hscan = send_to_all_master_nodes(StrictRedis.hscan)
-RedisCluster.zscan = send_to_all_master_nodes(StrictRedis.zscan)
 
 # All commands that shold be blocked
 RedisCluster.client_setname = block_command(StrictRedis.client_setname)
