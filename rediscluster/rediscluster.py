@@ -5,6 +5,7 @@ import random
 
 # rediscluster imports
 from rediscluster.crc import crc16
+from .decorators import send_to_connection_by_key
 
 # 3rd party imports
 import redis
@@ -695,116 +696,6 @@ class RedisCluster(StrictRedis):
                 for item in data:
                     yield item
 
-    def sscan(self, name, cursor=0, match=None, count=None):
-        """
-        Incrementally return lists of elements in a set. Also return a cursor
-        indicating the scan position.
-
-        ``match`` allows for filtering the keys by pattern
-
-        ``count`` allows for hint the minimum number of returns
-        """
-        conn = self.get_connection_by_key(name)
-        pieces = [name, cursor]
-        if match is not None:
-            pieces.extend([Token('MATCH'), match])
-        if count is not None:
-            pieces.extend([Token('COUNT'), count])
-        return conn.execute_command('SSCAN', *pieces)
-
-    def sscan_iter(self, name, match=None, count=None):
-        """
-        Make an iterator using the SSCAN command so that the client doesn't
-        need to remember the cursor position.
-
-        ``match`` allows for filtering the keys by pattern
-
-        ``count`` allows for hint the minimum number of returns
-
-        Cluster impl: Get correct connection, do querry and yield each item one after another
-        """
-        conn = self.get_connection_by_key(name)
-        cursor = '0'
-        while cursor != 0:
-            cursor, data = conn.sscan(name, cursor=cursor, match=match, count=count)
-            for item in data:
-                yield item
-
-    def hscan(self, name, cursor=0, match=None, count=None):
-        """
-        Incrementally return key/value slices in a hash. Also return a cursor
-        indicating the scan position.
-
-        ``match`` allows for filtering the keys by pattern
-
-        ``count`` allows for hint the minimum number of returns
-        """
-        conn = self.get_connection_by_key(name)
-        pieces = [name, cursor]
-        if match is not None:
-            pieces.extend([Token('MATCH'), match])
-        if count is not None:
-            pieces.extend([Token('COUNT'), count])
-        return conn.execute_command('HSCAN', *pieces)
-
-    def hscan_iter(self, name, match=None, count=None):
-        """
-        Make an iterator using the HSCAN command so that the client doesn't
-        need to remember the cursor position.
-
-        ``match`` allows for filtering the keys by pattern
-
-        ``count`` allows for hint the minimum number of returns
-
-        Cluster impl: Get correct connection, do querry and yield each item one after another
-        """
-        conn = self.get_connection_by_key(name)
-        cursor = '0'
-        while cursor != 0:
-            cursor, data = conn.hscan(name, cursor=cursor, match=match, count=count)
-            for item in data.items():
-                yield item
-
-    def zscan(self, name, cursor=0, match=None, count=None, score_cast_func=float):
-        """
-        Incrementally return lists of elements in a sorted set. Also return a
-        cursor indicating the scan position.
-
-        ``match`` allows for filtering the keys by pattern
-
-        ``count`` allows for hint the minimum number of returns
-
-        ``score_cast_func`` a callable used to cast the score return value
-        """
-        conn = self.get_connection_by_key(name)
-        pieces = [name, cursor]
-        if match is not None:
-            pieces.extend([Token('MATCH'), match])
-        if count is not None:
-            pieces.extend([Token('COUNT'), count])
-        options = {'score_cast_func': score_cast_func}
-        return conn.execute_command('ZSCAN', *pieces, **options)
-
-    def zscan_iter(self, name, match=None, count=None, score_cast_func=float):
-        """
-        Make an iterator using the ZSCAN command so that the client doesn't
-        need to remember the cursor position.
-
-        ``match`` allows for filtering the keys by pattern
-
-        ``count`` allows for hint the minimum number of returns
-
-        ``score_cast_func`` a callable used to cast the score return value
-
-        Cluster impl: Get correct connection, do querry and yield each item one after another
-        """
-        conn = self.get_connection_by_key(name)
-        cursor = '0'
-        while cursor != 0:
-            cursor, data = conn.zscan(name, cursor=cursor, match=match, count=count, score_cast_func=score_cast_func)
-            for item in data:
-                yield item
-
     ###
     # Set commands
 
@@ -1032,6 +923,14 @@ RedisCluster.keys = send_to_all_nodes_merge_list(StrictRedis.keys)
 RedisCluster.flushall = send_to_all_master_nodes(StrictRedis.flushall)
 RedisCluster.flushdb = send_to_all_master_nodes(StrictRedis.flushdb)
 RedisCluster.scan = send_to_all_master_nodes(StrictRedis.scan)
+
+# All commands that should fetch the connection object based on a key and then call command in StrictRedis
+RedisCluster.sscan = send_to_connection_by_key(StrictRedis.sscan)
+RedisCluster.sscan_iter = send_to_connection_by_key(StrictRedis.sscan_iter)
+RedisCluster.hscan = send_to_connection_by_key(StrictRedis.hscan)
+RedisCluster.hscan_iter = send_to_connection_by_key(StrictRedis.hscan_iter)
+RedisCluster.zscan = send_to_connection_by_key(StrictRedis.zscan)
+RedisCluster.zscan_iter = send_to_connection_by_key(StrictRedis.zscan_iter)
 
 # All commands that shold be blocked
 RedisCluster.client_setname = block_command(StrictRedis.client_setname)
