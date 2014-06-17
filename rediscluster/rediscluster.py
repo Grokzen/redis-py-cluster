@@ -11,7 +11,7 @@ import redis
 from redis import StrictRedis
 from redis.client import list_or_args
 from redis._compat import iteritems, basestring, b
-from redis.exceptions import RedisError, ResponseError
+from redis.exceptions import RedisError, ResponseError, TimeoutError
 
 
 class RedisClusterException(Exception):
@@ -505,8 +505,14 @@ class RedisCluster(StrictRedis):
         Cluster impl: Call brpop() then send the result into lpush()
                       This method is no longer atomic.
         """
-        value = self.brpop(src, timeout=timeout)
-        return self.lpush(dst, value)
+        try:
+            value = self.brpop(src, timeout=timeout)
+        except TimeoutError:
+            # Timeout was reached
+            return None
+
+        self.lpush(dst, value[1])
+        return value[1]
 
     def rpoplpush(self, src, dst):
         """
