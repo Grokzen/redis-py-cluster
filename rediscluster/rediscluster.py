@@ -405,12 +405,9 @@ class RedisCluster(StrictRedis):
          - HyperLogLog: (GET --> SET)
         """
         if src == dst:
-            raise RedisClusterException("src and dst cannot be the same key...")
+            raise ResponseError("source and destination objects are the same")
 
-        if not self.exists(src):
-            raise ResponseError("no such key")
-
-        t = self.type(src)
+        t = b(self.type(src))
 
         if t == b("string"):
             # This will also work with HLL objects
@@ -440,7 +437,7 @@ class RedisCluster(StrictRedis):
             self.delete(dst)
             self.rpush(dst, *values)
         else:
-            raise RedisClusterException("Unknown keytype when calling cluster version of rename method : {}".format(t))
+            raise ResponseError("no such key")
 
         return True
 
