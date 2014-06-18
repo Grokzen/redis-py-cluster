@@ -388,7 +388,6 @@ class RedisCluster(StrictRedis):
         """
         return self.get_random_connection().execute_command('RANDOMKEY')
 
-    # TODO: Some more work is required.
     def rename(self, src, dst):
         """
         Rename key ``src`` to ``dst``
@@ -403,7 +402,7 @@ class RedisCluster(StrictRedis):
          - Sets (SMEMBERS --> SADD)
          - Sorted Sets (ZRANGE --> ZADD)
          - Lists (LRANGE --> RPUSH)
-         - TODO: HyperLogLog objects
+         - HyperLogLog: (GET --> SET)
         """
         if src == dst:
             raise RedisClusterException("src and dst cannot be the same key...")
@@ -414,6 +413,7 @@ class RedisCluster(StrictRedis):
         t = self.type(src)
 
         if t == b("string"):
+            # This will also work with HLL objects
             v = self.get(src)
             self.delete(src)
             self.delete(dst)
