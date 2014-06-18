@@ -560,7 +560,8 @@ class RedisCluster(StrictRedis):
            (start is not None and num is None):
             raise RedisError("RedisError: ``start`` and ``num`` must both be specified")
         try:
-            data_type = self.type(name)
+            data_type = b(self.type(name))
+
             if data_type == b("none"):
                 return []
             elif data_type == b("set"):
