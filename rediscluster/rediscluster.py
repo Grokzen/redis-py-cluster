@@ -1,26 +1,25 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
+import sys
 import random
 
 # rediscluster imports
 from .crc import crc16
-from .exceptions import RedisClusterException, RedisClusterError
-from .decorators import (send_to_connection_by_key, 
-                         send_to_all_master_nodes, 
-                         send_to_all_masters_merge_list, 
-                         send_to_all_nodes, 
-                         send_to_all_nodes_merge_list, 
-                         get_connection_from_node_obj, 
+from .exceptions import RedisClusterException
+from .decorators import (send_to_connection_by_key,
+                         send_to_all_master_nodes,
+                         send_to_all_nodes,
+                         send_to_all_nodes_merge_list,
+                         get_connection_from_node_obj,
                          block_command)
 
 # 3rd party imports
 import redis
 from redis import StrictRedis
 from redis.client import list_or_args
-from redis._compat import iteritems, basestring, b, izip
-from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError
-from redis.connection import Token
+from redis._compat import iteritems, basestring, b, izip, unicode, imap
+from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError
 
 
 class RedisCluster(StrictRedis):
@@ -50,7 +49,6 @@ class RedisCluster(StrictRedis):
         self.connections = {}
         self.opt = kwargs
         self.refresh_table_asap = False
-        self.result_stack = []
 
         # Tweaks to StrictRedis client arguments when running in cluster mode
         if "socket_timeout" not in self.opt:
@@ -304,72 +302,34 @@ class RedisCluster(StrictRedis):
 
         raise Exception("To many Cluster redirections?")
 
-    ##########
-    # Pipeline methods
-
-    def __len__(self):
-        """
-        Cluster impl: Used by pipelines
-        """
-        return len(self.result_stack)
-
-    def __del__(self):
-        """
-        Cluster impl: Used by pipelines
-        """
-        try:
-            self.reset()
-        except Exception:
-            pass
-
-    def __enter__(self):
-        """
-        Cluster impl: Used by pipelines to enable 'with' usage
-        """
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """
-        Cluster impl: Used by pipelines
-        """
-        self.reset()
-
-    def reset(self):
-        """
-        Cluster impl: Used by pipelines
-        """
-        self.result_stack = []
-
-    def execute(self, *args, **kwargs):
-        """
-        Cluster impl: Used by pipelines
-        """
-        # TODO: Should execute() reset the result_stack variable?
-        return self.result_stack
-
-    def pipeline(self):
+    def pipeline(self, transaction=None, shard_hint=None):
         """
         Cluster impl: Pipelines do not work in cluster mode the same way they do in normal mode.
                       Create a clone of this object so that simulating pipelines will work correctly.
                       Each command will be called directly when used and when calling execute() will only return the result stack.
         """
-        r = RedisCluster(startup_nodes=self.startup_nodes,
-                         max_connections=self.max_connections,
-                         init_slot_cache=False)
-        r.connections = self.connections
-        r.opt = self.opt
-        r.refresh_table_asap = self.refresh_table_asap
-        r.slots = self.slots
-        r.nodes = self.nodes
-        return r
+        if shard_hint:
+            raise RedisClusterException("shard_hint is deprecated in cluster mode")
+
+        if transaction:
+            raise RedisClusterException("transaction is deprecated in cluster mode")
+
+        return StrictClusterPipeline(startup_nodes=self.startup_nodes,
+                                     max_connections=self.max_connections,
+                                     connections=self.connections,
+                                     opt=self.opt,
+                                     refresh_table_asap=self.refresh_table_asap,
+                                     slots=self.slots,
+                                     nodes=self.nodes)
+
+    def transaction(self, func, *watches, **kwargs):
+        raise RedisClusterException("method RedisCluster.transaction() is not implemented")
 
     def execute_command(self, *args, **kwargs):
         """
         Cluster impl: Overwrite method in StrictRedis so that we can use the functions that works from StrictRedis
         """
-        res = self.send_cluster_command(*args, **kwargs)
-        self.result_stack.append(res)
-        return res
+        return self.send_cluster_command(*args, **kwargs)
 
     ##########
     # All methods that must have custom implementation
@@ -626,6 +586,9 @@ class RedisCluster(StrictRedis):
         return data
 
     def _get_single_item(self, k, g):
+        """
+        Used by sort()
+        """
         if getattr(k, "decode", None):
             k = k.decode("utf-8")
 
@@ -857,3 +820,109 @@ RedisCluster.move = block_command(StrictRedis.move)  # It is not possible to mov
 RedisCluster.bitop = block_command(StrictRedis.bitop)  # Currently to hard to implement a solution in python space
 RedisCluster.zinterstore = block_command(StrictRedis.zinterstore)  # TODO: Need impl
 RedisCluster.zunionstore = block_command(StrictRedis.zunionstore)  # TODO: Need impl
+
+
+class BaseClusterPipeline(object):
+    """
+    """
+
+    def __init__(self, startup_nodes=[], max_connections=32, connections=[], opt={}, refresh_table_asap=False, slots={}, nodes=[]):
+        self.startup_nodes = startup_nodes
+        self.max_connections = max_connections
+        self.connections = connections
+        self.opt = opt
+        self.refresh_table_asap = refresh_table_asap
+        self.slots = slots
+        self.nodes = nodes
+        self.command_stack = []
+
+    def __repr__(self):
+        return "%s".format(type(self).__name__)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.reset()
+
+    def __del__(self):
+        try:
+            self.reset()
+        except Exception:
+            pass
+
+    def __len__(self):
+        return len(self.command_stack)
+
+    def execute_command(self, *args, **kwargs):
+        return self.pipeline_execute_command(*args, **kwargs)
+
+    def pipeline_execute_command(self, *args, **options):
+        self.command_stack.append((args, options))
+        return self
+
+    def _execute_pipeline(self, commands, raise_on_error):
+        response = []
+        for args, options in commands:
+            try:
+                response.append(self.send_cluster_command(*args, **options))
+            except ResponseError:
+                response.append(sys.exc_info()[1])
+
+        if raise_on_error:
+            self.raise_first_error(commands, response)
+        return response
+
+    def raise_first_error(self, commands, response):
+        for i, r in enumerate(response):
+            if isinstance(r, ResponseError):
+                self.annotate_exception(r, i + 1, commands[i][0])
+                raise r
+
+    def annotate_exception(self, exception, number, command):
+        cmd = unicode(' ').join(imap(unicode, command))
+        msg = unicode('Command # %d (%s) of pipeline caused error: %s') % (
+            number, cmd, unicode(exception.args[0]))
+        exception.args = (msg,) + exception.args[1:]
+
+    def execute(self, raise_on_error=True):
+        stack = self.command_stack
+        if not stack:
+            return []
+
+        try:
+            return self._execute_pipeline(stack, raise_on_error)
+        except (ConnectionError, TimeoutError) as e:
+            print(" EXCEPTION : {}".format(e))
+            raise
+        finally:
+            self.reset()
+
+    def reset(self):
+        self.command_stack = []
+
+    def multi(self):
+        raise RedisClusterException("method multi() is not implemented")
+
+    def immediate_execute_command(self, *args, **options):
+        raise RedisClusterException("method immediate_execute_command() is not implemented")
+
+    def _execute_transaction(self, connection, commands, raise_on_error):
+        raise RedisClusterException("method _execute_transaction() is not implemented")
+
+    def load_scripts(self):
+        raise RedisClusterException("method load_scripts() is not implemented")
+
+    def watch(self, *names):
+        raise RedisClusterException("method watch() is not implemented")
+
+    def unwatch(self):
+        raise RedisClusterException("method unwatch() is not implemented")
+
+    def script_load_for_pipeline(self, script):
+        raise RedisClusterException("method script_load_for_pipeline() is not implemented")
+
+
+class StrictClusterPipeline(BaseClusterPipeline, RedisCluster):
+    "Pipeline for the StrictRedis class"
+    pass
