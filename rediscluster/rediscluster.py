@@ -3,6 +3,7 @@
 # python std lib
 import sys
 import random
+import string
 
 # rediscluster imports
 from .crc import crc16
@@ -747,6 +748,66 @@ class RedisCluster(StrictRedis):
         self.delete(dest)
         return self.sadd(dest, *res)
 
+    def pfmerge(self, dest, *sources):
+        """
+        Merge N different HyperLogLogs into a single one.
+
+        Cluster impl: Very special implementation is required to make pfmerge() work
+                      But it works :]
+                      It works by first fetching all HLL objects that should be merged and
+                      move them to one hashslot so that pfmerge operation can be performed without
+                      any 'CROSSSLOT' error.
+                      After the PFMERGE operation is done then it will be moved to the correct location
+                      within the cluster and cleanup is done.
+
+                      This operation is no longer atomic because of all the operations that has to be done.
+        """
+        all_k = []
+
+        # Fetch all HLL objects via GET and store them client side as strings
+        all_hll_objects = [self.get(hll_key) for hll_key in sources]
+
+        # Randomize a keyslot hash that should be used inside {} when doing SET
+        random_hash_slot = self._random_id()
+
+        # Special handling of dest variable if it allready exists, then it shold be included in the HLL merge
+        # dest can exists anywhere in the cluster.
+        dest_data = self.get(dest)
+        if dest_data:
+            all_hll_objects.append(dest_data)
+
+        # SET all stored HLL objects with SET {RandomHash}RandomKey hll_obj
+        for hll_object in all_hll_objects:
+            k = self._random_good_hashslot_key(random_hash_slot)
+            all_k.append(k)
+            self.set(k, hll_object)
+
+        # Do regular PFMERGE operation and store value in random key in {RandomHash}
+        tmp_dest = self._random_good_hashslot_key(random_hash_slot)
+        self.execute_command("PFMERGE", tmp_dest, *all_k)
+
+        # Do GET and SET so that result will be stored in the destination object any where in the cluster
+        parsed_dest = self.get(tmp_dest)
+        self.set(dest, parsed_dest)
+
+        # Cleanup tmp variables
+        self.delete(tmp_dest)
+        for k in all_k:
+            self.delete(k)
+
+        return True
+
+    def _random_good_hashslot_key(self, hashslot):
+        """
+        Generate a good random key with a low probability of collision between any other key.
+        """
+        # TODO: Check if the key exists or not. continue to randomize until a empty key is found
+        random_id = "{%s}%s" % (hashslot, self._random_id())
+        return random_id
+
+    def _random_id(self, size=16, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for _ in range(size))
+
 
 #####
 # Path all methods that requires it. This will avoid reimplement some methods in RedisCluster class
@@ -804,7 +865,6 @@ RedisCluster.slaveof = block_command(StrictRedis.slaveof)  # Cluster management 
 RedisCluster.restore = block_command(StrictRedis.restore)
 RedisCluster.watch = block_command(StrictRedis.watch)
 RedisCluster.unwatch = block_command(StrictRedis.unwatch)
-RedisCluster.pfmerge = block_command(StrictRedis.pfmerge)  # Will not work because merging HLL in python is extremly complex currently...
 RedisCluster.publish = block_command(StrictRedis.publish)
 RedisCluster.eval = block_command(StrictRedis.eval)
 RedisCluster.evalsha = block_command(StrictRedis.evalsha)

@@ -88,7 +88,6 @@ Either because they do not work or it is not good to use them with a cluster.
  - restore
  - watch
  - unwatch
- - pfmerge  # Will not work because merging HLL in python is extremly complex currently...
  - publish
  - eval
  - evalsha
@@ -113,6 +112,7 @@ These methods is overridden from StrictRedis to enable them to work in cluster m
  - rename
  - renamenx
  - brpoplpus
+ - pfmerge
  - rpoplpush
  - sort
  - sscan
