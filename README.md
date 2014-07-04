@@ -11,7 +11,7 @@ The original source can be found at https://github.com/antirez/redis-rb-cluster
 ## Dependencies
 
 - redis >= 2.9.1 (Python client - https://github.com/andymccurdy/redis-py - Install [pip install redis])
-- Cluster enabled redis servers (Download unstable branch for 3.0.0. Build redis and setup a cluster with x number of machines. Redis can be found at https://github.com/antirez/redis)
+- Cluster enabled redis servers. Only Redis 3.0 beta.7 and above is supported because of CLUSTER SLOTS command was introduced in that release.
 
 
 
