@@ -50,6 +50,11 @@ class RedisCluster(StrictRedis):
         self.connections = {}
         self.opt = kwargs
         self.refresh_table_asap = False
+        self.slots = {}
+        self.nodes = []
+
+        if len(self.startup_nodes) == 0:
+            raise RedisClusterException("No startup nodes provided")
 
         # Tweaks to StrictRedis client arguments when running in cluster mode
         if "socket_timeout" not in self.opt:
@@ -86,51 +91,60 @@ class RedisCluster(StrictRedis):
     def initialize_slots_cache(self):
         """
         Init the slots cache by asking all startup nodes what the current cluster configuration is
+
+        TODO: Currently the last node will have the last say about how the configuration is setup.
+        Maybe it should stop to try after it have correctly covered all slots or when one node is reached
+         and it could execute CLUSTER SLOTS command.
         """
+        # Reset variables
+        self.slots = {}
+        self.nodes = []
+
         for node in self.startup_nodes:
             try:
-                self.slots = {}
-                self.nodes = []
+                r = self.get_redis_link_from_node(node)
+                cluster_slots = r.execute_command("cluster", "slots")
+            except Exception as e:
+                print("ERROR sending 'cluster slots' command to redis server: {}".format(node))
+                raise e
 
-                r = self.get_redis_link(node["host"], node["port"])
-                resp = r.execute_command("cluster", "nodes")
+            all_slots_covered = True
 
-                if getattr(resp, "decode", None):
-                    resp = resp.decode("utf-8")
+            # No need to decode response because StrictRedis should handle that for us...
+            for slot in cluster_slots:
+                master_node = slot[2]
 
-                for line in resp.split("\n"):
-                    fields = line.split(" ")
-                    if len(fields) == 1:
-                        # We have an empty row so do not parse it
-                        continue
+                # Only store the master node as address for each slot.
+                # TODO: Slave nodes have to be fixed/patched in later...
+                master_addr = {"host": master_node[0], "port": master_node[1], "name": "{}:{}".format(master_node[0], master_node[1]), "server_type": "master"}
+                self.nodes.append(master_addr)
+                for i in range(int(slot[0]), int(slot[1]) + 1):
+                    if i not in self.slots:
+                        self.slots[i] = master_addr
+                    else:
+                        # Validate that 2 nodes want to use the same slot cache setup
+                        if self.slots[i] != master_addr:
+                            raise RedisClusterException("startup_nodes could not agree on a valid slots cache. {} vs {}".format(self.slots[i], master_addr))
 
-                    addr = fields[1]
-                    slots = fields[8:]
-                    server_type = fields[2]
-                    if addr == ":0":  # this is self
-                        addr = "{0}:{1}".format(node["host"], node["port"])
-                    addr_ip, addr_port = addr.split(":")
-                    addr_port = int(addr_port)
-
-                    s = server_type.split(",")
-                    addr = {"host": addr_ip, "port": addr_port, "name": addr, "server_type": server_type if len(s) == 1 else s[1]}
-                    self.nodes.append(addr)
-
-                    for range_ in slots:
-                        if "-" in range_:
-                            first, last = range_.split("-")
-                        else:
-                            first = last = range_
-                        for i in range(int(first), int(last) + 1):
-                            self.slots[i] = addr
+                slave_nodes = [slot[i] for i in range(3, len(slot))]
+                for slave_node in slave_nodes:
+                    slave_addr = {"host": slave_node[0], "port": slave_node[1], "name": "{}:{}".format(slave_node[0], slave_node[1]), "server_type": "slave"}
+                    self.nodes.append(slave_addr)
 
                 self.populate_startup_nodes()
                 self.refresh_table_asap = False
-            except RedisClusterException:
-                raise
-            except Exception as e:
-                print(" EXCEPTION : {}".format(e))
-                raise
+
+            # Validate if all slots are covered or if we should try next startup node
+            for i in range(0, self.RedisClusterHashSlots):
+                if i not in self.slots:
+                    all_slots_covered = False
+
+            if all_slots_covered:
+                # All slots are covered and application can continue to execute
+                return
+
+        if not all_slots_covered:
+            raise RedisClusterException("All slots are not covered after querry all startup_nodes. {} of {} covered...".format(len(self.slots), self.RedisClusterHashSlots))
 
     def populate_startup_nodes(self):
         """
