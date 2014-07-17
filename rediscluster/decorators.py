@@ -10,13 +10,17 @@ def send_to_connection_by_key(func):
 
 def send_eval_to_connection_by_key(func):
     """
-    If there is one and only only one key as an argument to the lua script,
-    we can safely route the script to a node in the cluster. otherwise, fail.
+    If all the keys route to the same slot we can safely route the script to a node in the cluster.
     """
     def inner(self, script, numkeys, *keys_and_args):
-        if numkeys != 1:
-            raise RedisClusterException(" ERROR: eval only works with 1 key when running redis in cluster mode...")
-        conn = self.get_connection_by_key(keys_and_args[0])
+        if numkeys < 1:
+            raise RedisClusterException(" ERROR: eval only works with 1 or more keys when running redis in cluster mode...")
+        
+        keys = keys_and_args[0:numkeys]
+        keyslots = set([self.keyslot(key) for key in keys])
+        if len(keyslots) != 1:
+            raise RedisClusterException(" ERROR: eval only works if all keys map to the same node when running redis in cluster mode...")
+        conn = self.get_connection_by_key(keys[0])
         return func(conn, script, numkeys, *keys_and_args)
     return inner
 

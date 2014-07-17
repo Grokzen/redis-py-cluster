@@ -864,10 +864,7 @@ RedisCluster.hscan_iter = send_to_connection_by_key(StrictRedis.hscan_iter)
 RedisCluster.zscan = send_to_connection_by_key(StrictRedis.zscan)
 RedisCluster.zscan_iter = send_to_connection_by_key(StrictRedis.zscan_iter)
 RedisCluster.eval = send_eval_to_connection_by_key(StrictRedis.eval)
-RedisCluster.watch = send_to_connection_by_key(StrictRedis.watch)
-RedisCluster.unwatch = send_to_connection_by_key(StrictRedis.unwatch)
 RedisCluster.publish = send_to_connection_by_key(StrictRedis.publish)
-
 
 
 # All commands that shold be blocked
@@ -890,11 +887,13 @@ RedisCluster.script_flush = block_command(StrictRedis.script_flush)
 RedisCluster.script_kill = block_command(StrictRedis.script_kill)
 RedisCluster.script_load = block_command(StrictRedis.script_load)
 RedisCluster.register_script = block_command(StrictRedis.register_script)
+RedisCluster.watch = block_command(StrictRedis.watch)
+RedisCluster.unwatch = block_command(StrictRedis.unwatch)
 RedisCluster.move = block_command(StrictRedis.move)  # It is not possible to move a key from one db to another in cluster mode
 RedisCluster.bitop = block_command(StrictRedis.bitop)  # Currently to hard to implement a solution in python space
 RedisCluster.zinterstore = block_command(StrictRedis.zinterstore)  # TODO: Need impl
 RedisCluster.zunionstore = block_command(StrictRedis.zunionstore)  # TODO: Need impl
-
+RedisCluster.pubsub = block_command(StrictRedis.pubsub) # TODO: Need impl
 
 class BaseClusterPipeline(object):
     """
