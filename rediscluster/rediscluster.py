@@ -9,6 +9,7 @@ import string
 from .crc import crc16
 from .exceptions import RedisClusterException
 from .decorators import (send_to_connection_by_key,
+                         send_eval_to_connection_by_key,
                          send_to_all_master_nodes,
                          send_to_all_nodes,
                          send_to_all_nodes_merge_list,
@@ -862,6 +863,12 @@ RedisCluster.hscan = send_to_connection_by_key(StrictRedis.hscan)
 RedisCluster.hscan_iter = send_to_connection_by_key(StrictRedis.hscan_iter)
 RedisCluster.zscan = send_to_connection_by_key(StrictRedis.zscan)
 RedisCluster.zscan_iter = send_to_connection_by_key(StrictRedis.zscan_iter)
+RedisCluster.eval = send_eval_to_connection_by_key(StrictRedis.eval)
+RedisCluster.watch = send_to_connection_by_key(StrictRedis.watch)
+RedisCluster.unwatch = send_to_connection_by_key(StrictRedis.unwatch)
+RedisCluster.publish = send_to_connection_by_key(StrictRedis.publish)
+
+
 
 # All commands that shold be blocked
 RedisCluster.client_setname = block_command(StrictRedis.client_setname)
@@ -877,11 +884,7 @@ RedisCluster.sentinel_slaves = block_command(StrictRedis.sentinel_slaves)
 RedisCluster.shutdown = block_command(StrictRedis.shutdown)  # Danger to shutdown entire cluster at same time
 RedisCluster.slaveof = block_command(StrictRedis.slaveof)  # Cluster management should be done via redis-trib.rb manually
 RedisCluster.restore = block_command(StrictRedis.restore)
-RedisCluster.watch = block_command(StrictRedis.watch)
-RedisCluster.unwatch = block_command(StrictRedis.unwatch)
-RedisCluster.publish = block_command(StrictRedis.publish)
-RedisCluster.eval = block_command(StrictRedis.eval)
-RedisCluster.evalsha = block_command(StrictRedis.evalsha)
+RedisCluster.evalsha = block_command(StrictRedis.evalsha) # Might be possible to send via send_eval_to_connection_by_key? haven't tested.
 RedisCluster.script_exists = block_command(StrictRedis.script_exists)
 RedisCluster.script_flush = block_command(StrictRedis.script_flush)
 RedisCluster.script_kill = block_command(StrictRedis.script_kill)

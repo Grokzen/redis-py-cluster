@@ -8,6 +8,17 @@ def send_to_connection_by_key(func):
         return func(conn, key, *args, **kwargs)
     return inner
 
+def send_eval_to_connection_by_key(func):
+    """
+    If there is one and only only one key as an argument to the lua script,
+    we can safely route the script to a node in the cluster. otherwise, fail.
+    """
+    def inner(self, script, numkeys, *keys_and_args):
+        if numkeys != 1:
+            raise RedisClusterException(" ERROR: eval only works with 1 key when running redis in cluster mode...")
+        conn = self.get_connection_by_key(keys_and_args[0])
+        return func(conn, script, numkeys, *keys_and_args)
+    return inner
 
 def send_to_all_master_nodes(func):
     """
@@ -109,5 +120,5 @@ def block_command(func):
     Prints error because some commands should be blocked when running in cluster-mode
     """
     def inner(*args, **kwargs):
-        raise RedisClusterException(" ERROR: Calling function {} is blocked when running redis in cluster mode...".format(func.__name__))
+        raise RedisClusterException(" ERROR: Calling function {0} is blocked when running redis in cluster mode...".format(func.__name__))
     return inner
