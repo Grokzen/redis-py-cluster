@@ -32,7 +32,7 @@ class RedisCluster(StrictRedis):
     RedisClusterRequestTTL = 16
     RedisClusterDefaultTimeout = 1
 
-    def __init__(self, startup_nodes=[], max_connections=32, init_slot_cache=True, **kwargs):
+    def __init__(self, startup_nodes=None, max_connections=32, init_slot_cache=True, **kwargs):
         """
         startup_nodes     --> List of nodes that initial bootstrapping can be done from
         max_connections   --> Maximum number of connections that should be kept open at one time
@@ -45,7 +45,7 @@ class RedisCluster(StrictRedis):
         """
         super(RedisCluster, self).__init__(**kwargs)
 
-        self.startup_nodes = startup_nodes
+        self.startup_nodes = [] if startup_nodes is None else startup_nodes
         self.max_connections = max_connections
         self.connections = {}
         self.opt = kwargs
