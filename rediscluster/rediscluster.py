@@ -9,6 +9,7 @@ import string
 from .crc import crc16
 from .exceptions import RedisClusterException
 from .decorators import (send_to_connection_by_key,
+                         send_eval_to_connection,
                          send_to_all_master_nodes,
                          send_to_all_nodes,
                          send_to_all_nodes_merge_list,
@@ -863,6 +864,8 @@ RedisCluster.hscan = send_to_connection_by_key(StrictRedis.hscan)
 RedisCluster.hscan_iter = send_to_connection_by_key(StrictRedis.hscan_iter)
 RedisCluster.zscan = send_to_connection_by_key(StrictRedis.zscan)
 RedisCluster.zscan_iter = send_to_connection_by_key(StrictRedis.zscan_iter)
+RedisCluster.eval = send_eval_to_connection(StrictRedis.eval)
+
 
 # All commands that shold be blocked
 RedisCluster.client_setname = block_command(StrictRedis.client_setname)
@@ -880,7 +883,6 @@ RedisCluster.slaveof = block_command(StrictRedis.slaveof)  # Cluster management 
 RedisCluster.restore = block_command(StrictRedis.restore)
 RedisCluster.watch = block_command(StrictRedis.watch)
 RedisCluster.unwatch = block_command(StrictRedis.unwatch)
-RedisCluster.eval = block_command(StrictRedis.eval)
 RedisCluster.evalsha = block_command(StrictRedis.evalsha)
 RedisCluster.script_exists = block_command(StrictRedis.script_exists)
 RedisCluster.script_flush = block_command(StrictRedis.script_flush)
