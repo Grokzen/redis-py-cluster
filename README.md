@@ -73,6 +73,11 @@ These methods will call each master node and return a dict with k,v pair (NodeID
 
   - scan
 
+These methods will pick any random node and send the command to it
+
+ - publish
+
+
 
 ### Blocked commands
 
@@ -94,7 +99,6 @@ Either because they do not work or it is not good to use them with a cluster.
  - restore
  - watch
  - unwatch
- - publish
  - eval
  - evalsha
  - script_exists

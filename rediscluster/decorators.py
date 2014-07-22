@@ -104,6 +104,13 @@ def get_connection_from_node_obj(self, node):
         raise
 
 
+def send_to_random_node(func):
+    def inner(self, *args, **kwargs):
+        conn = self.get_random_connection()
+        return func(conn, *args, **kwargs)
+    return inner
+
+
 def block_command(func):
     """
     Prints error because some commands should be blocked when running in cluster-mode

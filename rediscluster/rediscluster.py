@@ -13,6 +13,7 @@ from .decorators import (send_to_connection_by_key,
                          send_to_all_nodes,
                          send_to_all_nodes_merge_list,
                          get_connection_from_node_obj,
+                         send_to_random_node,
                          block_command)
 
 # 3rd party imports
@@ -879,7 +880,6 @@ RedisCluster.slaveof = block_command(StrictRedis.slaveof)  # Cluster management 
 RedisCluster.restore = block_command(StrictRedis.restore)
 RedisCluster.watch = block_command(StrictRedis.watch)
 RedisCluster.unwatch = block_command(StrictRedis.unwatch)
-RedisCluster.publish = block_command(StrictRedis.publish)
 RedisCluster.eval = block_command(StrictRedis.eval)
 RedisCluster.evalsha = block_command(StrictRedis.evalsha)
 RedisCluster.script_exists = block_command(StrictRedis.script_exists)
@@ -891,6 +891,9 @@ RedisCluster.move = block_command(StrictRedis.move)  # It is not possible to mov
 RedisCluster.bitop = block_command(StrictRedis.bitop)  # Currently to hard to implement a solution in python space
 RedisCluster.zinterstore = block_command(StrictRedis.zinterstore)  # TODO: Need impl
 RedisCluster.zunionstore = block_command(StrictRedis.zunionstore)  # TODO: Need impl
+
+# All commands that can be sent to any node in the cluster and dont care about key routing
+RedisCluster.publish = send_to_random_node(StrictRedis.publish)
 
 
 class BaseClusterPipeline(object):
