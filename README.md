@@ -22,6 +22,12 @@ I have created a Dockerfile/Image that I recommend you to use to make testing of
 It can be found at https://github.com/Grokzen/docker-redis-cluster
 
 
+## Vagrant
+
+Alternatively, you can also use vagrant to spin up redis cluster in a vm for testing.
+
+Check it out at https://github.com/72squared/vagrant-redis-cluster
+
 
 ## Implemented commands
 
