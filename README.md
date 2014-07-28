@@ -167,6 +167,14 @@ Pipelines do not work the same way in cluster mode. In 'StrictRedis' it batch al
 
 Alot of methods will behave very different when using RedisCluster. Some methods send the same request to all servers and return the result in another format then 'StrictRedis' do. Some methods is blocked because they do not work / is not implemented / is dangerous to use in cluster mode (like shutdown()).
 
+Some of the commands are only partially supported when using RedisCluster.  The commands ``zinterstore`` and ``zunionstore`` are only supported if all the keys map to the same key slot in the cluster. This can be achieved by namespacing related keys with a prefix followed by a bracketed common key. Example: 
+
+
+```
+r.zunionstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'])
+```
+
+This corresponds to how redis behaves in cluster mode. Eventually these commands will likely be more fully supported by implementing the logic in the client library at the expense of atomicity and performance.
 
 
 ## Usage example
