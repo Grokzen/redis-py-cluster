@@ -233,7 +233,7 @@ class RedisCluster(StrictRedis):
 
     def get_connection_by_key(self, key):
         if not key:
-            raise Exception("No way to dispatch this command to Redis Cluster.")
+            raise RedisClusterException("No way to dispatch this command to Redis Cluster.")
         return self.get_connection_by_slot(self.keyslot(key))
 
     def get_connection_by_slot(self, slot):
