@@ -29,6 +29,19 @@ Alternatively, you can also use vagrant to spin up redis cluster in a vm for tes
 Check it out at https://github.com/72squared/vagrant-redis-cluster
 
 
+
+## Testing
+
+Note: All tests should currently be built around a 6 redis server cluster setup (3 masters + 3 slaves) but may change in the future. Atleast one server must be using port 7000 for tests to pass.
+
+To make it easier to run tests it is recommended to run either the Docker or Vagrant machines described earlier in this document.
+
+To run all tests first install py.test with `pip install pytest`
+
+To run entire test suite, first start your redis cluster then run command `py.test`
+
+
+
 ## Implemented commands
 
 If a command is not listed here then the default implementation in 'StrictRedis' is used.

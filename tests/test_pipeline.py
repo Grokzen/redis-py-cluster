@@ -3,6 +3,7 @@ import pytest
 
 import redis
 from redis._compat import b, u, unichr, unicode
+from rediscluster.exceptions import RedisClusterException
 
 
 class TestPipeline(object):
@@ -230,3 +231,49 @@ class TestPipeline(object):
             assert unicode(ex.value).startswith(expected)
 
         assert r[key] == b('1')
+
+    def test_blocked_methods(self, r):
+        """
+        Currently some method calls on a Cluster pipeline
+        is blocked when using in cluster mode.
+        They maybe implemented in the future.
+        """
+        pipe = r.pipeline(transaction=False)
+        with pytest.raises(RedisClusterException):
+            pipe.multi()
+
+        with pytest.raises(RedisClusterException):
+            pipe.immediate_execute_command()
+
+        with pytest.raises(RedisClusterException):
+            pipe._execute_transaction(None, None, None)
+
+        with pytest.raises(RedisClusterException):
+            pipe.load_scripts()
+
+        with pytest.raises(RedisClusterException):
+            pipe.watch()
+
+        with pytest.raises(RedisClusterException):
+            pipe.unwatch()
+
+        with pytest.raises(RedisClusterException):
+            pipe.script_load_for_pipeline(None)
+
+        with pytest.raises(RedisClusterException):
+            pipe.transaction(None)
+
+    def test_blocked_arguments(self, r):
+        """
+        Currently some arguments is blocked when using in cluster mode.
+        They maybe implemented in the future.
+        """
+        with pytest.raises(RedisClusterException) as ex:
+            r.pipeline(transaction=True)
+
+        assert unicode(ex.value).startswith("transaction is deprecated in cluster mode"), True
+
+        with pytest.raises(RedisClusterException) as ex:
+            r.pipeline(shard_hint=True)
+
+        assert unicode(ex.value).startswith("shard_hint is deprecated in cluster mode"), True
