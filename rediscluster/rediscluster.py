@@ -70,6 +70,11 @@ class RedisCluster(StrictRedis):
         if init_slot_cache:
             self.initialize_slots_cache()
 
+    def __repr__(self):
+        servers = list(set(['%s:%s'%(info['host'], info['port']) for info in self.startup_nodes]) )
+        servers.sort()
+        return "%s<%s>" % (type(self).__name__, ','.join(servers))
+
     def get_redis_link_from_node(self, node_obj):
         return self.get_redis_link(node_obj["host"], node_obj["port"])
 
