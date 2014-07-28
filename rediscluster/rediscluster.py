@@ -474,8 +474,8 @@ class RedisCluster(StrictRedis):
         """
         "Delete one or more keys specified by ``names``"
 
-        Cluster impl: Itterate all keys and send DELETE for each key.
-                      This will go alot slower than a normal mget call in StrictRedis.
+        Cluster impl: Iterate all keys and send DELETE for each key.
+                      This will go a lot slower than a normal delete call in StrictRedis.
                       This method is no longer atomic.
         """
         keys_removed = 0
