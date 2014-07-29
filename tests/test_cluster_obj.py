@@ -4,6 +4,7 @@ import pytest
 import redis
 from .conftest import _get_client, skip_if_server_version_lt
 from rediscluster.exceptions import RedisClusterException
+from redis._compat import unicode
 
 
 pytestmark = skip_if_server_version_lt('2.9.0')
