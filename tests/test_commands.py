@@ -256,10 +256,9 @@ class TestRedisCommands(object):
         assert r.incrbyfloat('a', 1.1) == 2.1
         assert float(r['a']) == float(2.1)
 
-    @pytest.mark.xfail(reason="redis-py returns list, not set from keys")
     def test_keys(self, r):
         keys = r.keys()
-        assert keys == []  # set([]) works
+        assert keys == []
         keys_with_underscores = set([b('test_a'), b('test_b')])
         keys = keys_with_underscores.union(set([b('testc')]))
         for key in keys:
