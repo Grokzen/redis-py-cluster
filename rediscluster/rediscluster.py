@@ -473,7 +473,21 @@ class RedisCluster(StrictRedis):
             self.rename(src, dst)
         else:
             return False
+            
+    
+    def delete(self, *names):
+        """
+        "Delete one or more keys specified by ``names``"
 
+        Cluster impl: Iterate all keys and send DELETE for each key.
+                      This will go a lot slower than a normal delete call in StrictRedis.
+                      This method is no longer atomic.
+        """
+        keys_removed = 0
+        for arg in names:
+            keys_removed += self.execute_command('DEL', arg)
+        return keys_removed
+    
     ####
     # List commands
 
@@ -491,10 +505,11 @@ class RedisCluster(StrictRedis):
         """
         try:
             value = self.brpop(src, timeout=timeout)
+            if value is None:
+                return None
         except TimeoutError:
             # Timeout was reached
             return None
-
         self.lpush(dst, value[1])
         return value[1]
 
@@ -882,7 +897,6 @@ RedisCluster.sentinel_set = block_command(StrictRedis.sentinel_set)
 RedisCluster.sentinel_slaves = block_command(StrictRedis.sentinel_slaves)
 RedisCluster.shutdown = block_command(StrictRedis.shutdown)  # Danger to shutdown entire cluster at same time
 RedisCluster.slaveof = block_command(StrictRedis.slaveof)  # Cluster management should be done via redis-trib.rb manually
-RedisCluster.restore = block_command(StrictRedis.restore)
 RedisCluster.watch = block_command(StrictRedis.watch)
 RedisCluster.unwatch = block_command(StrictRedis.unwatch)
 RedisCluster.eval = block_command(StrictRedis.eval)
@@ -894,8 +908,6 @@ RedisCluster.script_load = block_command(StrictRedis.script_load)
 RedisCluster.register_script = block_command(StrictRedis.register_script)
 RedisCluster.move = block_command(StrictRedis.move)  # It is not possible to move a key from one db to another in cluster mode
 RedisCluster.bitop = block_command(StrictRedis.bitop)  # Currently to hard to implement a solution in python space
-RedisCluster.zinterstore = block_command(StrictRedis.zinterstore)  # TODO: Need impl
-RedisCluster.zunionstore = block_command(StrictRedis.zunionstore)  # TODO: Need impl
 
 # All commands that can be sent to any node in the cluster and dont care about key routing
 RedisCluster.publish = send_to_random_node(StrictRedis.publish)

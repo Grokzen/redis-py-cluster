@@ -5,7 +5,7 @@ import time
 import redis
 from . import conftest
 from rediscluster.exceptions import RedisClusterException
-
+import re
 
 pytestmark = conftest.skip_if_server_version_lt('2.9.0')
 
@@ -133,7 +133,6 @@ class TestRedisCommands(object):
         r['a'] = 'foo'
         assert r.delete('a') == 1
 
-    @pytest.mark.xfail(reason="need to break out the keys to the correct nodes")
     def test_delete_with_multiple_keys(self, r):
         r['a'] = 'foo'
         r['b'] = 'bar'
@@ -146,7 +145,6 @@ class TestRedisCommands(object):
         del r['a']
         assert r.get('a') is None
 
-    @pytest.mark.xfail(reason="restore supported in a future version of the client")
     def test_dump_and_restore(self, r):
         r['a'] = 'foo'
         dumped = r.dump('a')
@@ -164,14 +162,14 @@ class TestRedisCommands(object):
         r['a'] = 'foo'
         assert 'a' in r
 
-    @pytest.mark.xfail(reason="bug ... looks like persist command isn't being handled")
     def test_expire(self, r):
         assert not r.expire('a', 10)
         r['a'] = 'foo'
         assert r.expire('a', 10)
         assert 0 < r.ttl('a') <= 10
         assert r.persist('a')
-        assert not r.ttl('a')
+        # the ttl command changes behavior in redis-2.8+ http://redis.io/commands/ttl
+        assert r.ttl('a') == -1
 
     def test_expireat_datetime(self, r):
         expire_at = redis_server_time(r) + datetime.timedelta(minutes=1)
@@ -256,8 +254,7 @@ class TestRedisCommands(object):
         assert r['a'] == b('1')
         assert r.incrbyfloat('a', 1.1) == 2.1
         assert float(r['a']) == float(2.1)
-
-    @pytest.mark.xfail(reason="redis-py returns list, not set from keys")
+    
     def test_keys(self, r):
         keys = r.keys()
         assert keys == []  # set([]) works
@@ -305,14 +302,16 @@ class TestRedisCommands(object):
             assert r[k] == v
         assert r.get('d') is None
 
-    @pytest.mark.xfail(reason="bug???")
     def test_pexpire(self, r):
         assert not r.pexpire('a', 60000)
         r['a'] = 'foo'
         assert r.pexpire('a', 60000)
         assert 0 < r.pttl('a') <= 60000
         assert r.persist('a')
-        assert r.pttl('a') is None
+        # redis-py tests seemed to be for older version of redis?
+        # redis-2.8+ returns -1 if key exists but is non-expiring: http://redis.io/commands/pttl
+        # assert r.pttl('a') is None
+        assert r.pttl('a') == -1
 
     def test_pexpireat_datetime(self, r):
         expire_at = redis_server_time(r) + datetime.timedelta(minutes=1)
@@ -464,8 +463,7 @@ class TestRedisCommands(object):
         assert r.brpop(['b{foo}', 'a{foo}'], timeout=1) is None
         r.rpush('c{foo}', '1')
         assert r.brpop('c{foo}', timeout=1) == (b('c{foo}'), b('1'))
-
-    @pytest.mark.xfail(reason="don't know. bug?")
+    
     def test_brpoplpush(self, r):
         r.rpush('a{foo}', '1', '2')
         r.rpush('b{foo}', '3', '4')
@@ -760,40 +758,44 @@ class TestRedisCommands(object):
         r.zadd('a', a=0, b=0, c=0, d=0, e=0, f=0, g=0)
         assert r.zlexcount('a', '-', '+') == 7
         assert r.zlexcount('a', '[b', '[f') == 5
+    
+    def test_zinterstore_fail_cross_slot(self, r):
+        r.zadd('a', a1=1, a2=1, a3=1)
+        r.zadd('b', a1=2, a2=2, a3=2)
+        r.zadd('c', a1=6, a3=5, a4=4)
+        with pytest.raises(redis.ResponseError) as excinfo:
+            r.zinterstore('d', ['a', 'b', 'c'])
+        assert re.search('CROSSSLOT', str(excinfo))
 
-    @pytest.mark.xfail(reason='could support it in the future if all the keys in zinterstore map to same keyslot')
     def test_zinterstore_sum(self, r):
         r.zadd('a{foo}', a1=1, a2=1, a3=1)
         r.zadd('b{foo}', a1=2, a2=2, a3=2)
         r.zadd('c{foo}', a1=6, a3=5, a4=4)
-        assert r.zinterstore('d{foo}', ['a', 'b', 'c']) == 2
+        assert r.zinterstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}']) == 2
         assert r.zrange('d{foo}', 0, -1, withscores=True) == \
             [(b('a3'), 8), (b('a1'), 9)]
 
-    @pytest.mark.xfail(reason='could support it in the future if all the keys in zinterstore map to same keyslot')
     def test_zinterstore_max(self, r):
         r.zadd('a{foo}', a1=1, a2=1, a3=1)
         r.zadd('b{foo}', a1=2, a2=2, a3=2)
         r.zadd('c{foo}', a1=6, a3=5, a4=4)
-        assert r.zinterstore('d{foo}', ['a', 'b', 'c'], aggregate='MAX') == 2
+        assert r.zinterstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'], aggregate='MAX') == 2
         assert r.zrange('d{foo}', 0, -1, withscores=True) == \
             [(b('a3'), 5), (b('a1'), 6)]
 
-    @pytest.mark.xfail(reason='could support it in the future if all the keys in zinterstore map to same keyslot')
     def test_zinterstore_min(self, r):
         r.zadd('a{foo}', a1=1, a2=2, a3=3)
         r.zadd('b{foo}', a1=2, a2=3, a3=5)
         r.zadd('c{foo}', a1=6, a3=5, a4=4)
-        assert r.zinterstore('d{foo}', ['a', 'b', 'c'], aggregate='MIN') == 2
+        assert r.zinterstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'], aggregate='MIN') == 2
         assert r.zrange('d{foo}', 0, -1, withscores=True) == \
             [(b('a1'), 1), (b('a3'), 3)]
 
-    @pytest.mark.xfail(reason='could support in the future if all the keys map to same keyslot')
     def test_zinterstore_with_weight(self, r):
         r.zadd('a{foo}', a1=1, a2=1, a3=1)
         r.zadd('b{foo}', a1=2, a2=2, a3=2)
         r.zadd('c{foo}', a1=6, a3=5, a4=4)
-        assert r.zinterstore('d{foo}', {'a': 1, 'b': 2, 'c': 3}) == 2
+        assert r.zinterstore('d{foo}', {'a{foo}': 1, 'b{foo}': 2, 'c{foo}': 3}) == 2
         assert r.zrange('d{foo}', 0, -1, withscores=True) == \
             [(b('a3'), 20), (b('a1'), 23)]
 
@@ -922,39 +924,43 @@ class TestRedisCommands(object):
         assert r.zscore('a', 'a2') == 2.0
         assert r.zscore('a', 'a4') is None
 
-    @pytest.mark.xfail(reason='could support in the future if all the keys map to same keyslot')
+    def test_zunionstore_fail_crossslot(self, r):
+        r.zadd('a', a1=1, a2=1, a3=1)
+        r.zadd('b', a1=2, a2=2, a3=2)
+        r.zadd('c', a1=6, a3=5, a4=4)
+        with pytest.raises(redis.ResponseError) as excinfo:
+            r.zunionstore('d', ['a', 'b', 'c'])
+        assert re.search('CROSSSLOT', str(excinfo))
+        
     def test_zunionstore_sum(self, r):
         r.zadd('a{foo}', a1=1, a2=1, a3=1)
         r.zadd('b{foo}', a1=2, a2=2, a3=2)
         r.zadd('c{foo}', a1=6, a3=5, a4=4)
-        assert r.zunionstore('d{foo}', ['a', 'b', 'c']) == 4
+        assert r.zunionstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}']) == 4
         assert r.zrange('d{foo}', 0, -1, withscores=True) == \
             [(b('a2'), 3), (b('a4'), 4), (b('a3'), 8), (b('a1'), 9)]
-
-    @pytest.mark.xfail(reason='could support in the future if all the keys map to same keyslot')
+        
     def test_zunionstore_max(self, r):
         r.zadd('a{foo}', a1=1, a2=1, a3=1)
         r.zadd('b{foo}', a1=2, a2=2, a3=2)
         r.zadd('c{foo}', a1=6, a3=5, a4=4)
-        assert r.zunionstore('d{foo}', ['a', 'b', 'c'], aggregate='MAX') == 4
+        assert r.zunionstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'], aggregate='MAX') == 4
         assert r.zrange('d{foo}', 0, -1, withscores=True) == \
             [(b('a2'), 2), (b('a4'), 4), (b('a3'), 5), (b('a1'), 6)]
 
-    @pytest.mark.xfail(reason='could support in the future if all the keys map to same keyslot')
     def test_zunionstore_min(self, r):
         r.zadd('a{foo}', a1=1, a2=2, a3=3)
         r.zadd('b{foo}', a1=2, a2=2, a3=4)
         r.zadd('c{foo}', a1=6, a3=5, a4=4)
-        assert r.zunionstore('d{foo}', ['a', 'b', 'c'], aggregate='MIN') == 4
+        assert r.zunionstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'], aggregate='MIN') == 4
         assert r.zrange('d{foo}', 0, -1, withscores=True) == \
             [(b('a1'), 1), (b('a2'), 2), (b('a3'), 3), (b('a4'), 4)]
-
-    @pytest.mark.xfail(reason='could support in the future if all the keys map to same keyslot')
+    
     def test_zunionstore_with_weight(self, r):
         r.zadd('a{foo}', a1=1, a2=1, a3=1)
         r.zadd('b{foo}', a1=2, a2=2, a3=2)
         r.zadd('c{foo}', a1=6, a3=5, a4=4)
-        assert r.zunionstore('d{foo}', {'a': 1, 'b': 2, 'c': 3}) == 4
+        assert r.zunionstore('d{foo}', {'a{foo}': 1, 'b{foo}': 2, 'c{foo}': 3}) == 4
         assert r.zrange('d{foo}', 0, -1, withscores=True) == \
             [(b('a2'), 5), (b('a4'), 12), (b('a3'), 20), (b('a1'), 23)]
 
