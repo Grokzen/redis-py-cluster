@@ -18,12 +18,12 @@ def get_versions(**kwargs):
     key = json.dumps(kwargs)
     if key not in _REDIS_VERSIONS:
         client = _get_client(**kwargs)
-        _REDIS_VERSIONS[key] = {key: value['redis_version'] for key, value in client.info().iteritems()}
+        _REDIS_VERSIONS[key] = {key: value['redis_version'] for key, value in client.info().items()}
     return _REDIS_VERSIONS[key]
 
 
 def _get_client(**kwargs):
-    params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}], 'socket_timeout': 10}
+    params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}], 'socket_timeout': 10, 'decode_responses': False}
     params.update(kwargs)
     return RedisCluster(**params)
 
@@ -34,7 +34,7 @@ def _init_client(cls, request=None, **kwargs):
     if request:
         def teardown():
             client.flushdb()
-            #client.connection_pool.disconnect()
+            # client.connection_pool.disconnect()
         request.addfinalizer(teardown)
     return client
 

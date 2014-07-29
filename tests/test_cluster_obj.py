@@ -2,8 +2,10 @@ from __future__ import with_statement
 from rediscluster import RedisCluster
 import pytest
 import redis
+import re
 from .conftest import _get_client, skip_if_server_version_lt
 from rediscluster.exceptions import RedisClusterException
+from redis._compat import unicode
 
 
 pytestmark = skip_if_server_version_lt('2.9.0')
@@ -11,6 +13,9 @@ pytestmark = skip_if_server_version_lt('2.9.0')
 
 class TestClusterObj(object):
 
+    def test_representation(self, r):
+        assert re.search('^RedisCluster<[0-9\.\:\,]+>$', str(r) )
+    
     def test_blocked_strict_redis_args(self):
         """
         Some arguments should explicitly be blocked because they will not work in a cluster setup

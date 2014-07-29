@@ -41,6 +41,17 @@ To run all tests first install py.test with `pip install pytest`
 To run entire test suite, first start your redis cluster then run command `py.test`
 
 
+### Tox - Multienv testing
+
+To install tox run `pip install tox`
+
+To run all environments you need all supported python versions installed on your machine. (See list below) and you also need the python-dev package for all python versions to build hiredis.
+
+To run tox run `tox` from a command-line.
+
+All tests must pass in all environments before a code fix will be accepted.
+
+
 
 ## Implemented commands
 
@@ -207,10 +218,10 @@ rc.get("foobar")
 
 Current python support is
 
-- 2.7  Yes
-- 3.2  Yes
-- 3.3  (Not yet tested)
-- 3.4  (Not yet tested)
+- 2.7 + hiredis, Yes
+- 3.2 + hiredis, Yes
+- 3.3 + hiredis, Yes
+- 3.4 + hiredis, Yes
 
 
 
