@@ -75,7 +75,7 @@ def send_to_all_nodes_merge_list(func):
             d = func(conn, *args, **kwargs)
             for i in d:
                 res.add(i)
-        return res
+        return list(res)
     return inner
 
 
