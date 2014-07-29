@@ -20,7 +20,7 @@ from .decorators import (send_to_connection_by_key,
 import redis
 from redis import StrictRedis
 from redis.client import list_or_args
-from redis._compat import iteritems, basestring, b, izip, unicode, imap
+from redis._compat import iteritems, basestring, b, izip, imap, nativestr, unicode
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError
 
 
@@ -71,9 +71,9 @@ class RedisCluster(StrictRedis):
             self.initialize_slots_cache()
 
     def __repr__(self):
-        servers = list(set(['%s:%s'%(info['host'], info['port']) for info in self.startup_nodes]) )
+        servers = list(set(['{}:{}'.format(nativestr(info['host']), info['port']) for info in self.startup_nodes]))
         servers.sort()
-        return "%s<%s>" % (type(self).__name__, ','.join(servers))
+        return "{}<{}>".format(type(self).__name__, ','.join(servers))
 
     def get_redis_link_from_node(self, node_obj):
         return self.get_redis_link(node_obj["host"], node_obj["port"])
