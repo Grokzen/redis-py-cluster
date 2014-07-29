@@ -907,8 +907,6 @@ RedisCluster.script_load = block_command(StrictRedis.script_load)
 RedisCluster.register_script = block_command(StrictRedis.register_script)
 RedisCluster.move = block_command(StrictRedis.move)  # It is not possible to move a key from one db to another in cluster mode
 RedisCluster.bitop = block_command(StrictRedis.bitop)  # Currently to hard to implement a solution in python space
-RedisCluster.zinterstore = block_command(StrictRedis.zinterstore)  # TODO: Need impl
-RedisCluster.zunionstore = block_command(StrictRedis.zunionstore)  # TODO: Need impl
 
 # All commands that can be sent to any node in the cluster and dont care about key routing
 RedisCluster.publish = send_to_random_node(StrictRedis.publish)
