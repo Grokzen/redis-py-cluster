@@ -463,6 +463,19 @@ class RedisCluster(StrictRedis):
 
         return True
 
+    def delete(self, *names):
+        """
+        "Delete one or more keys specified by ``names``"
+
+        Cluster impl: Iterate all keys and send DELETE for each key.
+                      This will go a lot slower than a normal delete call in StrictRedis.
+                      This method is no longer atomic.
+        """
+        count = 0
+        for arg in names:
+            count += self.execute_command('DEL', arg)
+        return count
+
     def renamenx(self, src, dst):
         """
         Rename key ``src`` to ``dst`` if ``dst`` doesn't already exist

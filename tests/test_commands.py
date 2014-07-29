@@ -133,7 +133,6 @@ class TestRedisCommands(object):
         r['a'] = 'foo'
         assert r.delete('a') == 1
 
-    @pytest.mark.xfail(reason="need to break out the keys to the correct nodes")
     def test_delete_with_multiple_keys(self, r):
         r['a'] = 'foo'
         r['b'] = 'bar'
