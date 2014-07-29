@@ -83,6 +83,7 @@ These commands is changed to send the same request to all nodes in sequence in t
  - slowlog_len
  - slowlog_reset
  - time
+ - script_flush
 
 These commands is changed to send the same request to all nodes in sequence in the cluster and all results is returned as a unified list.
 
@@ -100,6 +101,10 @@ These methods will call each master node and return a dict with k,v pair (NodeID
 These methods will pick any random node and send the command to it
 
  - publish
+
+These commands will be sent to the server that matches the first key.
+
+ - eval
 
 
 
@@ -123,10 +128,8 @@ Either because they do not work or it is not good to use them with a cluster.
  - restore
  - watch
  - unwatch
- - eval
  - evalsha
  - script_exists
- - script_flush
  - script_kill
  - script_load
  - register_script

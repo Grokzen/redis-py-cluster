@@ -13,6 +13,7 @@ from .decorators import (send_to_connection_by_key,
                          send_to_all_nodes,
                          send_to_all_nodes_merge_list,
                          get_connection_from_node_obj,
+                         send_eval_to_connection,
                          send_to_random_node,
                          block_command)
 
@@ -20,7 +21,7 @@ from .decorators import (send_to_connection_by_key,
 import redis
 from redis import StrictRedis
 from redis.client import list_or_args
-from redis._compat import iteritems, basestring, b, izip, unicode, imap
+from redis._compat import iteritems, basestring, b, izip, imap, nativestr, unicode
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError
 
 
@@ -71,9 +72,9 @@ class RedisCluster(StrictRedis):
             self.initialize_slots_cache()
 
     def __repr__(self):
-        servers = list(set(['%s:%s'%(info['host'], info['port']) for info in self.startup_nodes]) )
+        servers = list(set(['{}:{}'.format(nativestr(info['host']), info['port']) for info in self.startup_nodes]))
         servers.sort()
-        return "%s<%s>" % (type(self).__name__, ','.join(servers))
+        return "{}<{}>".format(type(self).__name__, ','.join(servers))
 
     def get_redis_link_from_node(self, node_obj):
         return self.get_redis_link(node_obj["host"], node_obj["port"])
@@ -852,6 +853,7 @@ RedisCluster.slowlog_get = send_to_all_nodes(StrictRedis.slowlog_get)
 RedisCluster.slowlog_len = send_to_all_nodes(StrictRedis.slowlog_len)
 RedisCluster.slowlog_reset = send_to_all_nodes(StrictRedis.slowlog_reset)
 RedisCluster.time = send_to_all_nodes(StrictRedis.time)
+RedisCluster.script_flush = send_to_all_nodes(StrictRedis.script_flush)
 
 # All commands that shold be sent to all nodes and return result as a unified list and not dict
 RedisCluster.keys = send_to_all_nodes_merge_list(StrictRedis.keys)
@@ -885,10 +887,8 @@ RedisCluster.slaveof = block_command(StrictRedis.slaveof)  # Cluster management 
 RedisCluster.restore = block_command(StrictRedis.restore)
 RedisCluster.watch = block_command(StrictRedis.watch)
 RedisCluster.unwatch = block_command(StrictRedis.unwatch)
-RedisCluster.eval = block_command(StrictRedis.eval)
 RedisCluster.evalsha = block_command(StrictRedis.evalsha)
 RedisCluster.script_exists = block_command(StrictRedis.script_exists)
-RedisCluster.script_flush = block_command(StrictRedis.script_flush)
 RedisCluster.script_kill = block_command(StrictRedis.script_kill)
 RedisCluster.script_load = block_command(StrictRedis.script_load)
 RedisCluster.register_script = block_command(StrictRedis.register_script)
@@ -899,6 +899,11 @@ RedisCluster.zunionstore = block_command(StrictRedis.zunionstore)  # TODO: Need 
 
 # All commands that can be sent to any node in the cluster and dont care about key routing
 RedisCluster.publish = send_to_random_node(StrictRedis.publish)
+
+# A custom command handler for eval. It's interface is different from most other redis commands.
+# (keys show up after the first 2 args and are variable)
+# Verifies all keys belong to the same hashed key slot and fetches the connection based on that slot.
+RedisCluster.eval = send_eval_to_connection(StrictRedis.eval)
 
 
 class BaseClusterPipeline(object):

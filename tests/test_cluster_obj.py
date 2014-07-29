@@ -14,8 +14,8 @@ pytestmark = skip_if_server_version_lt('2.9.0')
 class TestClusterObj(object):
 
     def test_representation(self, r):
-        assert re.search('^RedisCluster<[0-9\.\:\,]+>$', str(r) )
-    
+        assert re.search('^RedisCluster<[0-9\.\:\,]+>$', str(r))
+
     def test_blocked_strict_redis_args(self):
         """
         Some arguments should explicitly be blocked because they will not work in a cluster setup
