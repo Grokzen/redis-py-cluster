@@ -9,6 +9,7 @@ import string
 from .crc import crc16
 from .exceptions import RedisClusterException
 from .decorators import (send_to_connection_by_key,
+                         send_eval_to_connection,
                          send_to_all_master_nodes,
                          send_to_all_nodes,
                          send_to_all_nodes_merge_list,
@@ -870,6 +871,12 @@ RedisCluster.hscan = send_to_connection_by_key(StrictRedis.hscan)
 RedisCluster.hscan_iter = send_to_connection_by_key(StrictRedis.hscan_iter)
 RedisCluster.zscan = send_to_connection_by_key(StrictRedis.zscan)
 RedisCluster.zscan_iter = send_to_connection_by_key(StrictRedis.zscan_iter)
+
+# A custom command handler for eval. It's interface is different from most other redis commands.
+# (keys show up after the first 2 args and are variable)
+# Verifies all keys belong to the same hashed key slot and fetches the connection based on that slot.
+RedisCluster.eval = send_eval_to_connection(StrictRedis.eval)
+
 
 # All commands that shold be blocked
 RedisCluster.client_setname = block_command(StrictRedis.client_setname)
