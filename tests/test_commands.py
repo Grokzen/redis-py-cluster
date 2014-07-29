@@ -256,16 +256,15 @@ class TestRedisCommands(object):
         assert r.incrbyfloat('a', 1.1) == 2.1
         assert float(r['a']) == float(2.1)
 
-    @pytest.mark.xfail(reason="redis-py returns list, not set from keys")
     def test_keys(self, r):
         keys = r.keys()
-        assert keys == []  # set([]) works
-        keys_with_underscores = set([b('test_a'), b('test_b')])
-        keys = keys_with_underscores.union(set([b('testc')]))
+        assert keys == []
+        keys_with_underscores = set(['test_a', 'test_b'])
+        keys = keys_with_underscores.union(set(['testc']))
         for key in keys:
             r[key] = 1
-        assert set(r.keys(pattern='test_*')) == keys_with_underscores
-        assert set(r.keys(pattern='test*')) == keys
+        assert set(r.keys(pattern='test_*')) == set([b(k) for k in keys_with_underscores])
+        assert set(r.keys(pattern='test*')) == set([b(k) for k in keys])
 
     def test_mget(self, r):
         assert r.mget(['a', 'b']) == [None, None]
