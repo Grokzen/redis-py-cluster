@@ -215,8 +215,6 @@ class TestClusterObj(object):
             "unwatch": r.unwatch,
             "move": r.move,
             "bitop": r.bitop,
-            "zinterstore": r.zinterstore,
-            "zunionstore": r.zunionstore,
         }
 
         for key, method in methods.items():
