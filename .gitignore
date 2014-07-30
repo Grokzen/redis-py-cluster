@@ -4,3 +4,4 @@
 env27*
 .tox
 rediscluster.egg-info
+.coverage
