@@ -505,6 +505,8 @@ class RedisCluster(StrictRedis):
         """
         try:
             value = self.brpop(src, timeout=timeout)
+            if value is None:
+                return None
         except TimeoutError:
             # Timeout was reached
             return None

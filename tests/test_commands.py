@@ -464,7 +464,6 @@ class TestRedisCommands(object):
         r.rpush('c{foo}', '1')
         assert r.brpop('c{foo}', timeout=1) == (b('c{foo}'), b('1'))
 
-    @pytest.mark.xfail(reason="don't know. bug?")
     def test_brpoplpush(self, r):
         r.rpush('a{foo}', '1', '2')
         r.rpush('b{foo}', '3', '4')
