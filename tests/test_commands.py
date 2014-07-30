@@ -145,7 +145,6 @@ class TestRedisCommands(object):
         del r['a']
         assert r.get('a') is None
 
-    @pytest.mark.xfail(reason="restore supported in a future version of the client")
     def test_dump_and_restore(self, r):
         r['a'] = 'foo'
         dumped = r.dump('a')

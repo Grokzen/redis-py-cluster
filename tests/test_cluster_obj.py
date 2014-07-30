@@ -211,7 +211,6 @@ class TestClusterObj(object):
             "sentinel_slaves": r.sentinel_slaves,
             "shutdown": r.shutdown,
             "slaveof": r.slaveof,
-            "restore": r.restore,
             "watch": r.watch,
             "unwatch": r.unwatch,
             "move": r.move,

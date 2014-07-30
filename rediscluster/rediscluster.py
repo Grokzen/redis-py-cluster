@@ -897,7 +897,6 @@ RedisCluster.sentinel_set = block_command(StrictRedis.sentinel_set)
 RedisCluster.sentinel_slaves = block_command(StrictRedis.sentinel_slaves)
 RedisCluster.shutdown = block_command(StrictRedis.shutdown)  # Danger to shutdown entire cluster at same time
 RedisCluster.slaveof = block_command(StrictRedis.slaveof)  # Cluster management should be done via redis-trib.rb manually
-RedisCluster.restore = block_command(StrictRedis.restore)
 RedisCluster.watch = block_command(StrictRedis.watch)
 RedisCluster.unwatch = block_command(StrictRedis.unwatch)
 RedisCluster.evalsha = block_command(StrictRedis.evalsha)
