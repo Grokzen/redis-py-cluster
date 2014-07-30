@@ -163,14 +163,14 @@ class TestRedisCommands(object):
         r['a'] = 'foo'
         assert 'a' in r
 
-    @pytest.mark.xfail(reason="bug ... looks like persist command isn't being handled")
     def test_expire(self, r):
         assert not r.expire('a', 10)
         r['a'] = 'foo'
         assert r.expire('a', 10)
         assert 0 < r.ttl('a') <= 10
         assert r.persist('a')
-        assert not r.ttl('a')
+        # the ttl command changes behavior in redis-2.8+ http://redis.io/commands/ttl
+        assert r.ttl('a') == -1
 
     def test_expireat_datetime(self, r):
         expire_at = redis_server_time(r) + datetime.timedelta(minutes=1)
@@ -303,14 +303,15 @@ class TestRedisCommands(object):
             assert r[k] == v
         assert r.get('d') is None
 
-    @pytest.mark.xfail(reason="bug???")
     def test_pexpire(self, r):
         assert not r.pexpire('a', 60000)
         r['a'] = 'foo'
         assert r.pexpire('a', 60000)
         assert 0 < r.pttl('a') <= 60000
         assert r.persist('a')
-        assert r.pttl('a') is None
+        # redis-py tests seemed to be for older version of redis?
+        # redis-2.8+ returns -1 if key exists but is non-expiring: http://redis.io/commands/pttl
+        assert r.pttl('a') == -1
 
     def test_pexpireat_datetime(self, r):
         expire_at = redis_server_time(r) + datetime.timedelta(minutes=1)
