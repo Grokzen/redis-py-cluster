@@ -6,6 +6,8 @@ This project is a port to python based on the redis-rb-cluster implementation do
 
 The original source can be found at https://github.com/antirez/redis-rb-cluster
 
+[![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen/redis-py-cluster) - [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster)
+
 
 
 ## Dependencies
