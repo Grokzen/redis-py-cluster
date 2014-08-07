@@ -416,51 +416,19 @@ class RedisCluster(StrictRedis):
 
         Cluster impl: This operation is no longer atomic because each key must be querried
                       then set in separate calls because they maybe will change cluster node
-
-        Currently works with
-
-         - Normal keys (GET --> SET)
-         - Hash keys (HGETALL --> HMSET)
-         - Sets (SMEMBERS --> SADD)
-         - Sorted Sets (ZRANGE --> ZADD)
-         - Lists (LRANGE --> RPUSH)
-         - HyperLogLog: (GET --> SET)
         """
         if src == dst:
             raise ResponseError("source and destination objects are the same")
 
-        t = b(self.type(src))
-
-        if t == b("string"):
-            # This will also work with HLL objects
-            v = self.get(src)
-            self.delete(src)
-            self.delete(dst)
-            self.set(dst, v)
-        elif t == b("hash"):
-            values = self.hgetall(src)
-            self.delete(src)
-            self.delete(dst)
-            self.hmset(dst, values)
-        elif t == b("set"):
-            values = self.smembers(src)
-            self.delete(src)
-            self.delete(dst)
-            self.sadd(dst, values)
-        elif t == b("zset"):
-            values = self.zrange("myzset", 0, -1, withscores=True)
-            self.delete(src)
-            self.delete(dst)
-            # Remap values so they can be sent into ZADD
-            self.zadd(dst, *[j for i in values for j in i[::-1]])
-        elif t == b("list"):
-            values = self.lrange(src, 0, -1)
-            self.delete(src)
-            self.delete(dst)
-            self.rpush(dst, *values)
-        else:
+        data = self.dump(src)
+        if data is None:
             raise ResponseError("no such key")
-
+        ttl = self.pttl(src)
+        if ttl is None or ttl < 1:
+            ttl = 0
+        self.delete(dst)
+        self.restore(dst, ttl, data)
+        self.delete(src)
         return True
 
     def delete(self, *names):
