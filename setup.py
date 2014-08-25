@@ -3,13 +3,23 @@ try:
 except ImportError:
     from distutils.core import setup
 
+with open('README.md') as f:
+    readme = f.read()
+with open('CHANGES') as f:
+    history = f.read()
+
 setup(
     name="rediscluster",
     version="0.1.0",
-    description="",
-    author="Johan Grokzen Andersson",
+    description="Cluster library for redis 3.0.0+ built on top of redis-py lib",
+    long_description=readme + '\n\n' + history,
+    author="Johan Andersson",
     author_email="Grokzen@gmail.com",
+    maintainer='Johan Andersson',
+    maintainer_email='Grokzen@gmail.com',
     packages=["rediscluster"],
+    url='http://github.com/grokzen/redis-py-cluster',
+    license='MIT',
     install_requires=[
         'redis>=2.9.1'
     ],
@@ -24,15 +34,11 @@ setup(
         # 'Development Status :: 7 - Inactive',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        # 'Programming Language :: Python :: 3.0',
-        # 'Programming Language :: Python :: 3.1',
         'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
-        # 'Environment :: Console',
         'Environment :: Redis',
         'Environment :: Redis Cluster',
         'Environment :: Web Environment',

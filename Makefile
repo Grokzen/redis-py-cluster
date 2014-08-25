@@ -91,11 +91,17 @@ help:
 	@echo "  install         install package"
 	@echo " *** CI Commands ***"
 	@echo "  start           starts a test redis cluster"
+	@echo "  stop            stop all started redis nodes (Started via 'make start' only affected)"
+	@echo "  cleanup         cleanup files after running a test cluster"
+	@echo "  test            starts/activates the test cluster nodes and runs tox test"
+	@echo "  tox             run all tox environments and combine coverage report after"
+	@echo "  travis-install  checkout latest redis commit --> build --> install ruby dependencies"
 
 clean:
 	-rm -f MANIFEST
 	-rm -rf dist/
 	-rm -rf build/
+	-coverage erase
 
 cleanmeta:
 	-rm -rf rediscluster.egg-info/
@@ -147,9 +153,14 @@ test:
 	sleep 5
 	echo "yes" | ruby redis-git/src/redis-trib.rb create --replicas 1 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005
 	sleep 5
-	coverage erase
-	coverage run --source rediscluster/ -m py.test
+	make tox
 	make stop
+
+tox:
+	coverage erase
+	tox
+	coverage combine
+	coverage report
 
 travis-install:
 	[ ! -e redis-git ] && git clone https://github.com/antirez/redis.git redis-git || true

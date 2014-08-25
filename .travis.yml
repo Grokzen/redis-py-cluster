@@ -1,25 +1,13 @@
 language: python
 python:
   - "3.3"
-  - "3.2"
-  - "2.7"
 services:
   - redis-server
-env:
-  - TEST_HIREDIS=0
-  - TEST_HIREDIS=1
 install:
   - make travis-install
-  - pip install pytest>=2.5.0
-  - pip install coverage python-coveralls
+  - pip install coverage python-coveralls tox
   - pip install -e .
-  - "if [[ $TEST_PEP8 == '1' ]]; then pip install pep8; fi"
-  - "if [[ $TEST_HIREDIS == '1' ]]; then pip install hiredis; fi"
-script: "if [[ $TEST_PEP8 == '1' ]]; then pep8 --repeat --show-source --exclude=.venv,.tox,dist,docs,build,rediscluster.egg-info,.git --ignore=E501 .; else make test; fi"
-after_success: "if [[ $TEST_PEP8 == '1' ]]; then echo 'No coveralls for pep8 tests...'; else coveralls; fi"
-matrix:
-  include:
-    - python: "2.7"
-      env: TEST_PEP8=1
-    - python: "3.4"
-      env: TEST_PEP8=1
+script: 
+  - make test
+after_success: 
+  - coveralls

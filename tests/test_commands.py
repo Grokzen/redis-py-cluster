@@ -114,12 +114,11 @@ class TestRedisCommands(object):
         with pytest.raises(RedisClusterException):
             r.bitop('not', 'r', 'a')
 
-    # TODO: this should raise a command blocked exception.
-    def test_bitpos_unsupported(self, r):
+    @pytest.mark.xfail(reason="older versions of redis-py don't support bitpos but the latest from github does")
+    def test_bitpos(self, r):
         key = 'key:bitpos'
         r.set(key, b('\xff\xf0\x00'))
-        with pytest.raises(AttributeError):
-            r.bitpos(key, 0)
+        assert(r.bitpos(key, 0) == 12)
 
     def test_decr(self, r):
         assert r.decr('a') == -1

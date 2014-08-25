@@ -1,0 +1,6 @@
+exclude *.py
+include LICENSE
+include CHANGES
+include setup.py
+include README.md
+include Authorrs

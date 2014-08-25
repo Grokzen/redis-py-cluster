@@ -61,7 +61,7 @@ def send_to_all_masters_merge_list(func):
             d = func(conn, *args, **kwargs)
             for i in d:
                 res.add(i)
-        return res
+        return list(res)
     return inner
 
 
@@ -101,25 +101,18 @@ def get_connection_from_node_obj(self, node):
     """
     Gets a connection object from a 'node' object
     """
-    try:
-        self.set_node_name(node)
-        conn = self.connections.get(node["name"], None)
+    self.set_node_name(node)
+    conn = self.connections.get(node["name"], None)
 
-        if not conn:
-            conn = self.get_redis_link(node["host"], int(node["port"]))
+    if not conn:
+        conn = self.get_redis_link(node["host"], int(node["port"]))
+        try:
             if conn.ping() is True:
                 self.close_existing_connection()
                 self.connections[node["name"]] = conn
-            else:
-                print(" ERROR: unable to open new connection")
-
-        return conn
-    except RedisClusterException as rce:
-        print(" RedisClusterException: {}".format(rce))
-        raise
-    except Exception as e:
-        print("{}".format(e))
-        raise
+        except Exception:
+            raise RedisClusterException("unable to open new connection to node {0}".format(node))
+    return conn
 
 
 def send_to_random_node(func):
