@@ -92,7 +92,12 @@ def test_get_connection_from_node_obj(s):
     node = {"host": "127.0.0.1", "port": 8000}
     with pytest.raises(RedisClusterException) as ex:
         conn = get_connection_from_node_obj(s, node)
-    compare(str(ex.value), "unable to open new connection to node {'host': '127.0.0.1', 'port': 8000, 'name': '127.0.0.1:8000'}")
+
+    v = str(ex.value)
+    assert v.startswith("unable to open new connection to node")
+    assert "'host': '127.0.0.1" in v
+    assert "'port': 8000" in v
+    assert "'name': '127.0.0.1:8000" in v
 
     # Verify that no additional connections was opened
     assert len(s.connections) == 1, "There should only be 1 connection in the pool"
