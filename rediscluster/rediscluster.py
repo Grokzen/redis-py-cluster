@@ -25,6 +25,15 @@ from redis._compat import iteritems, basestring, b, izip, imap, nativestr, unico
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError
 
 
+from redis.client import PubSub
+
+
+class ClusterPubSub(PubSub):
+
+    def __init__(self, *args, **kwargs):
+        super(ClusterPubSub, self).__init__(*args, **kwargs)
+
+
 class RedisCluster(StrictRedis):
     """
     If a command is implemented over the one in StrictRedis then it requires some changes compared to
@@ -32,7 +41,7 @@ class RedisCluster(StrictRedis):
     """
     RedisClusterHashSlots = 16384
     RedisClusterRequestTTL = 16
-    RedisClusterDefaultTimeout = 1
+    RedisClusterDefaultTimeout = None
 
     def __init__(self, startup_nodes=None, max_connections=32, init_slot_cache=True, **kwargs):
         """
@@ -47,6 +56,7 @@ class RedisCluster(StrictRedis):
         """
         super(RedisCluster, self).__init__(**kwargs)
 
+        self.orig_startup_nodes = [node for node in startup_nodes]
         self.startup_nodes = [] if startup_nodes is None else startup_nodes
         self.max_connections = max_connections
         self.connections = {}
@@ -323,6 +333,11 @@ class RedisCluster(StrictRedis):
                     raise
 
         raise Exception("To many Cluster redirections?")
+
+    def pubsub(self, *args, **kwargs):
+        node = self.orig_startup_nodes[0]
+        connection = self.get_redis_link_from_node(node)
+        return ClusterPubSub(connection.connection_pool, **kwargs)
 
     def pipeline(self, transaction=None, shard_hint=None):
         """
