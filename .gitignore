@@ -4,6 +4,8 @@
 env27*
 .tox
 rediscluster.egg-info
-.coverage
+.coverage*
+dump.rdb
+redis-git/
 htmlcov/
 dist/
