@@ -101,6 +101,7 @@ clean:
 	-rm -f MANIFEST
 	-rm -rf dist/
 	-rm -rf build/
+	-coverage combine
 	-coverage erase
 
 cleanmeta:
