@@ -15,7 +15,8 @@ from .decorators import (send_to_connection_by_key,
                          get_connection_from_node_obj,
                          send_eval_to_connection,
                          send_to_random_node,
-                         block_command)
+                         block_command,
+                         block_pipe_command)
 
 # 3rd party imports
 import redis
@@ -1001,7 +1002,35 @@ class BaseClusterPipeline(object):
     def script_load_for_pipeline(self, script):
         raise RedisClusterException("method script_load_for_pipeline() is not implemented")
 
+    def delete(self, *names):
+        """
+        "Delete a key specified by ``names``"
+        """
+        if len(names) != 1:
+            raise RedisClusterException("deleting multiple keys is not implemented in pipeline command")
+
+        return self.execute_command('DEL', names[0])
+
+
+# Blocked pipeline commands
+BaseClusterPipeline.mget = block_pipe_command(StrictRedis.mget)
+BaseClusterPipeline.mset = block_pipe_command(StrictRedis.mset)
+BaseClusterPipeline.msetnx = block_pipe_command(StrictRedis.msetnx)
+BaseClusterPipeline.rename = block_pipe_command(StrictRedis.rename)
+BaseClusterPipeline.renamenx = block_pipe_command(StrictRedis.renamenx)
+BaseClusterPipeline.brpoplpush = block_pipe_command(StrictRedis.brpoplpush)
+BaseClusterPipeline.rpoplpush = block_pipe_command(StrictRedis.rpoplpush)
+BaseClusterPipeline.sort = block_pipe_command(StrictRedis.sort)
+BaseClusterPipeline.sdiff = block_pipe_command(StrictRedis.sdiff)
+BaseClusterPipeline.sdiffstore = block_pipe_command(StrictRedis.sdiffstore)
+BaseClusterPipeline.sinter = block_pipe_command(StrictRedis.sinter)
+BaseClusterPipeline.sinterstore = block_pipe_command(StrictRedis.sinterstore)
+BaseClusterPipeline.smove = block_pipe_command(StrictRedis.smove)
+BaseClusterPipeline.sunion = block_pipe_command(StrictRedis.sunion)
+BaseClusterPipeline.sunionstore = block_pipe_command(StrictRedis.sunionstore)
+BaseClusterPipeline.pfmerge = block_pipe_command(StrictRedis.pfmerge)
+
 
 class StrictClusterPipeline(BaseClusterPipeline, RedisCluster):
-    "Pipeline for the StrictRedis class"
+    """Pipeline for the StrictRedis class"""
     pass
