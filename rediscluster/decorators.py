@@ -118,6 +118,7 @@ def get_connection_from_node_obj(self, node):
 def send_to_random_node(func):
     def inner(self, *args, **kwargs):
         conn = self.get_random_connection()
+        print(conn)
         return func(conn, *args, **kwargs)
     return inner
 

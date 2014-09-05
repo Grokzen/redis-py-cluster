@@ -859,7 +859,7 @@ RedisCluster.keys = send_to_all_nodes_merge_list(StrictRedis.keys)
 # All commands that should be sent to only master nodes
 RedisCluster.flushall = send_to_all_master_nodes(StrictRedis.flushall)
 RedisCluster.flushdb = send_to_all_master_nodes(StrictRedis.flushdb)
-RedisCluster.scan = send_to_all_master_nodes(StrictRedis.scan)
+RedisCluster.scan = send_to_all_master_nodes(StrictRedis.scan)  # Scan_iter is better to use instead of ths one
 
 # All commands that should fetch the connection object based on a key and then call command in StrictRedis
 RedisCluster.sscan = send_to_connection_by_key(StrictRedis.sscan)
