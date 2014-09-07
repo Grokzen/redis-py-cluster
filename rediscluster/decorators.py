@@ -130,3 +130,12 @@ def block_command(func):
     def inner(*args, **kwargs):
         raise RedisClusterException(" ERROR: Calling function {} is blocked when running redis in cluster mode...".format(func.__name__))
     return inner
+
+
+def block_pipeline_command(func):
+    """
+    Prints error because some pipelined commands should be blocked when running in cluster-mode
+    """
+    def inner(*args, **kwargs):
+        raise RedisClusterException(" ERROR: Calling pipelined function {} is blocked when running redis in cluster mode...".format(func.__name__))
+    return inner

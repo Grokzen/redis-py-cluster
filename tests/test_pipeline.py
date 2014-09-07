@@ -1,8 +1,8 @@
 from __future__ import with_statement
 import pytest
-
 import redis
 from redis._compat import b, u, unichr, unicode
+
 from rediscluster.exceptions import RedisClusterException
 
 
@@ -276,3 +276,91 @@ class TestPipeline(object):
             r.pipeline(shard_hint=True)
 
         assert unicode(ex.value).startswith("shard_hint is deprecated in cluster mode"), True
+
+    def test_mget_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.mget(['a'])
+
+    def test_mset_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.mset({'a': 1, 'b': 2})
+
+    def test_rename_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.rename('a', 'b')
+
+    def test_renamenx_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.renamenx('a', 'b')
+
+    def test_delete_single(self, r):
+        r['a'] = 1
+        with r.pipeline(transaction=False) as pipe:
+            pipe.delete('a')
+            assert pipe.execute(), True
+
+    def test_multi_delete_unsupported(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            r['a'] = 1
+            r['b'] = 2
+            with pytest.raises(RedisClusterException):
+                pipe.delete('a', 'b')
+
+    def test_brpoplpush_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.brpoplpush()
+
+    def test_rpoplpush_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.rpoplpush()
+
+    def test_sort_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sort()
+
+    def test_sdiff_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sdiff()
+
+    def test_sdiffstore_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sdiffstore()
+
+    def test_sinter_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sinter()
+
+    def test_sinterstore_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sinterstore()
+
+    def test_smove_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.smove()
+
+    def test_sunion_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sunion()
+
+    def test_sunionstore_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sunionstore()
+
+    def test_spfmerge_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.pfmerge()
