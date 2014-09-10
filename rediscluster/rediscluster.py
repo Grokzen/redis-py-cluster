@@ -282,11 +282,13 @@ class RedisCluster(StrictRedis):
             self.initialize_slots_cache()
 
         ttl = self.RedisClusterRequestTTL
-        asking = False
         try_random_node = False
+        asking = None
         while ttl > 0:
             ttl -= 1
-            if try_random_node:
+            if asking:
+                r = self.get_redis_link(asking["host"], asking["port"])
+            elif try_random_node:
                 r = self.get_random_connection()
                 try_random_node = False
             else:
@@ -295,10 +297,12 @@ class RedisCluster(StrictRedis):
                     raise Exception("No way to dispatch this command to Redis Cluster.")
                 slot = self.keyslot(key)
                 r = self.get_connection_by_slot(slot)
-
             try:
-                asking = False
-                return r.execute_command(*argv, **kwargs)
+                if asking:
+                    return self.execute_asking_command_via_connection(r, *argv, **kwargs)
+                else:
+                    return self.execute_command_via_connection(r, *argv, **kwargs)
+
             # TODO: Convert this from Ruby
             # rescue Errno::ECONNREFUSED, Redis::TimeoutError, Redis::CannotConnectError, Errno::EACCES
             #     try_random_node = true
@@ -307,32 +311,49 @@ class RedisCluster(StrictRedis):
                 # try_random_node = True
                 # if ttl < self.RedisClusterRequestTTL / 2:
                 #     time.sleep(0.1)
-
-                errv = getattr(e, "args", None)
-                if not errv:
-                    errv = getattr(e, "message", None)
-                    if not errv:
-                        raise RedisClusterException("Missing attribute : 'args' or 'message' in exception : {}".format(e))
-                else:
-                    errv = errv[0]
-
-                errv = errv.split(" ")
-                if errv[0] == "MOVED" or errv[0] == "ASK":
-                    if errv[0] == "ASK":
-                        # TODO: Implement asking, whatever that is Oo
-                        print(" ** ASKING...")
-                        asking = True
-                    else:
-                        # Serve replied with MOVED. It's better for us to
-                        # ask for CLUSTER NODES the next time.
-                        self.refresh_table_asap = True
-
-                    a = errv[2].split(":")
-                    self.slots[int(errv[1])] = {"host": a[0], "port": int(a[1])}
-                else:
-                    raise
+                asking = self.handle_cluster_command_exception(e)
 
         raise Exception("To many Cluster redirections?")
+
+    @staticmethod
+    def execute_asking_command_via_connection(r, *argv, **kwargs):
+        pipe = r.pipeline(transaction=False)
+        pipe.execute_command('ASKING')
+        pipe.execute_command(*argv, **kwargs)
+        _asking_result, result = pipe.execute(raise_on_error=False)
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    @staticmethod
+    def execute_command_via_connection(r, *argv, **kwargs):
+        return r.execute_command(*argv, **kwargs)
+
+    def handle_cluster_command_exception(self, e):
+        errv = getattr(e, "args", None)
+        if not errv:
+            errv = getattr(e, "message", None)
+            if not errv:
+                raise RedisClusterException("Missing attribute : 'args' or 'message' in exception : {}".format(e))
+        else:
+            errv = errv[0]
+
+        errv = errv.split(" ")
+
+        if errv[0] != "MOVED" and errv[0] != "ASK":
+            raise
+
+        a = errv[2].split(":")
+        route_info = {"host": a[0], "port": int(a[1])}
+
+        if errv[0] == "MOVED":
+            self.refresh_table_asap = True
+            self.slots[int(errv[1])] = route_info
+            return None
+        elif errv[0] == "ASK":
+            return route_info
+        else:
+            return None
 
     def pubsub(self, *args, **kwargs):
         node = self.orig_startup_nodes[0]
