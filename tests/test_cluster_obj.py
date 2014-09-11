@@ -20,6 +20,9 @@ class TestClusterObj(object):
         """
         Some arguments should explicitly be blocked because they will not work in a cluster setup
         """
+        c = RedisCluster({'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}]})
+        assert c.opt["socket_timeout"] == RedisCluster.RedisClusterDefaultTimeout
+
         with pytest.raises(RedisClusterException) as ex:
             _get_client(db=1)
         assert unicode(ex.value).startswith("(error) [Remove 'db' from kwargs]"), True
