@@ -24,7 +24,7 @@ from redis import StrictRedis
 from redis.client import list_or_args
 from redis._compat import iteritems, basestring, b, izip, imap, nativestr, unicode
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError
-
+import time
 
 from redis.client import PubSub
 
@@ -304,14 +304,12 @@ class RedisCluster(StrictRedis):
                 else:
                     return self.execute_command_via_connection(r, *argv, **kwargs)
 
-            # TODO: Convert this from Ruby
-            # rescue Errno::ECONNREFUSED, Redis::TimeoutError, Redis::CannotConnectError, Errno::EACCES
-            #     try_random_node = true
-            #     sleep(0.1) if ttl < RedisClusterRequestTTL/2
+            except (redis.ConnectionError, redis.TimeoutError):
+                try_random_node = True
+                if ttl < self.RedisClusterRequestTTL / 2:
+                    time.sleep(0.1)
+
             except Exception as e:
-                # try_random_node = True
-                # if ttl < self.RedisClusterRequestTTL / 2:
-                #     time.sleep(0.1)
                 asking = self.handle_cluster_command_exception(e)
 
         raise Exception("To many Cluster redirections?")
