@@ -260,6 +260,12 @@ class RedisCluster(StrictRedis):
         node = self.slots[slot]
         if not node:
             return self.get_random_connection()
+        return self.set_connection_by_node(node)
+
+    def set_connection_by_node(self, node):
+        """
+        set the connection by node
+        """
         self.set_node_name(node)
         if not self.connections.get(node["name"], None):
             try:
@@ -329,30 +335,35 @@ class RedisCluster(StrictRedis):
         return r.execute_command(*argv, **kwargs)
 
     def handle_cluster_command_exception(self, e):
+        info = self.parse_redirection_exception(e)
+        if not info:
+            raise e
+
+        if info['action'] == "MOVED":
+            self.refresh_table_asap = True
+            self.slots[info['slot']] = {'host': info['host'], 'port': info['port']}
+            return None
+        elif info['action'] == "ASK":
+            return {'host': info['host'], 'port': info['port']}
+        else:
+            return None
+
+    def parse_redirection_exception(self, e):
         errv = getattr(e, "args", None)
         if not errv:
             errv = getattr(e, "message", None)
             if not errv:
-                raise RedisClusterException("Missing attribute : 'args' or 'message' in exception : {}".format(e))
+                return None
         else:
             errv = errv[0]
 
         errv = errv.split(" ")
 
         if errv[0] != "MOVED" and errv[0] != "ASK":
-            raise
+            return None
 
         a = errv[2].split(":")
-        route_info = {"host": a[0], "port": int(a[1])}
-
-        if errv[0] == "MOVED":
-            self.refresh_table_asap = True
-            self.slots[int(errv[1])] = route_info
-            return None
-        elif errv[0] == "ASK":
-            return route_info
-        else:
-            return None
+        return {"action": errv[0], "slot": int(errv[1]), "host": a[0], "port": int(a[1])}
 
     def pubsub(self, *args, **kwargs):
         node = self.orig_startup_nodes[0]
@@ -960,18 +971,6 @@ class BaseClusterPipeline(object):
         self.command_stack.append((args, options))
         return self
 
-    def _execute_pipeline(self, commands, raise_on_error):
-        response = []
-        for args, options in commands:
-            try:
-                response.append(self.send_cluster_command(*args, **options))
-            except ResponseError:
-                response.append(sys.exc_info()[1])
-
-        if raise_on_error:
-            self.raise_first_error(commands, response)
-        return response
-
     def raise_first_error(self, commands, response):
         for i, r in enumerate(response):
             if isinstance(r, ResponseError):
@@ -988,17 +987,91 @@ class BaseClusterPipeline(object):
         stack = self.command_stack
         if not stack:
             return []
-
         try:
-            return self._execute_pipeline(stack, raise_on_error)
-        except (ConnectionError, TimeoutError) as e:
-            print(" EXCEPTION : {}".format(e))
-            raise
+            return self.send_cluster_commands(stack, raise_on_error)
         finally:
             self.reset()
 
     def reset(self):
         self.command_stack = []
+
+    def send_cluster_commands(self, commands, raise_on_error=True):
+        """
+        Send a bunch of cluster commands to the redis cluster.
+        """
+        if self.refresh_table_asap:
+            self.initialize_slots_cache()
+
+        ttl = self.RedisClusterRequestTTL
+        response = {}
+        attempt = range(0, len(commands)) if commands else []
+        ask_slots = {}
+        while attempt and ttl > 0:
+            ttl -= 1
+            node_commands = {}
+            nodes = {}
+            for i in attempt:
+                c = commands[i]
+                slot = self.keyslot(c[0][1])
+                if slot in ask_slots:
+                    node = ask_slots[slot]
+                else:
+                    node = self.slots[slot]
+
+                self.set_node_name(node)
+                node_name = node['name']
+                nodes[node_name] = node
+                if node_name not in node_commands:
+                    node_commands[node_name] = {}
+                node_commands[node_name][i] = c
+
+            attempt = []
+
+            for node_name in node_commands:
+                node = nodes[node_name]
+                cmds = [node_commands[node_name][i] for i in sorted(node_commands[node_name].keys())]
+                r = self.set_connection_by_node(node)
+
+                pipe = r.pipeline(transaction=False)
+                for args, kwargs in cmds:
+                    pipe.execute_command(*args, **kwargs)
+
+                for i, v in zip(sorted(node_commands[node_name].keys()), self.perform_execute_pipeline(pipe)):
+                    response[i] = v
+            ask_slots = {}
+            for i, v in response.items():
+                if isinstance(v, Exception):
+                    if isinstance(v, redis.ConnectionError):
+                        ask_slots[self.keyslot(commands[i][0][1])] = random.choice(self.startup_nodes)
+                        attempt.append(i)
+                        if ttl < self.RedisClusterRequestTTL / 2:
+                            time.sleep(0.1)
+                        continue
+
+                    redir = self.parse_redirection_exception(v)
+                    if not redir:
+                        continue
+
+                    if redir['action'] == "MOVED":
+                        self.refresh_table_asap = True
+                        self.slots[redir['slot']] = {'host': redir['host'], 'port': redir['port']}
+                        attempt.append(i)
+                    elif redir['action'] == "ASK":
+                        attempt.append(i)
+                        ask_slots[redir['slot']] = {
+                            'name': '%s:%s' % (redir['host'], redir['port']),
+                            'host': redir['host'],
+                            'port': redir['port']}
+                        continue
+
+        response = [response[k] for k in sorted(response.keys())]
+        if raise_on_error:
+            self.raise_first_error(commands, response)
+        return response
+
+    @staticmethod
+    def perform_execute_pipeline(pipe):
+        return pipe.execute(raise_on_error=False)
 
     def multi(self):
         raise RedisClusterException("method multi() is not implemented")

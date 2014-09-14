@@ -2,6 +2,7 @@ from __future__ import with_statement
 import pytest
 import redis
 from redis._compat import b, u, unichr, unicode
+import re
 
 from rediscluster.exceptions import RedisClusterException
 
@@ -364,3 +365,49 @@ class TestPipeline(object):
         with r.pipeline(transaction=False) as pipe:
             with pytest.raises(RedisClusterException):
                 pipe.pfmerge()
+
+    def test_multi_key_operation_with_shared_shards(self, r):
+        pipe = r.pipeline(transaction=False)
+        pipe.set('a{foo}', 1)
+        pipe.set('b{foo}', 2)
+        pipe.set('c{foo}', 3)
+        pipe.set('bar', 4)
+        pipe.set('bazz', 5)
+        pipe.get('a{foo}')
+        pipe.get('b{foo}')
+        pipe.get('c{foo}')
+        pipe.get('bar')
+        pipe.get('bazz')
+        res = pipe.execute()
+        assert(res == [True, True, True, True, True, b'1', b'2', b'3', b'4', b'5'])
+
+    def test_connection_error(self, r):
+        test = self
+        test._calls = []
+
+        def perform_execute_pipeline(pipe):
+            if not test._calls:
+                e = redis.ConnectionError('test')
+                test._calls.append({'exception': e})
+                return [e]
+            result = pipe.execute(raise_on_error=False)
+            test._calls.append({'result': result})
+            return result
+
+        pipe = r.pipeline(transaction=False)
+        orig_perform_execute_pipeline = pipe.perform_execute_pipeline
+        pipe.perform_execute_pipeline = perform_execute_pipeline
+
+        try:
+            pipe.set('foo', 1)
+            res = pipe.execute()
+            assert(res, [True])
+            assert(isinstance(test._calls[0]['exception'], redis.ConnectionError))
+            if len(test._calls) == 2:
+                assert(test._calls[1], {'result': [True]})
+            else:
+                assert(isinstance(test._calls[1]['result'][0], redis.ResponseError))
+                assert(test._calls[2], {'result': [True]})
+        finally:
+            pipe.perform_execute_pipeline = orig_perform_execute_pipeline
+            del test._calls
