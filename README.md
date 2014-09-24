@@ -72,6 +72,7 @@ To run a specific python version inside tox, run either `tox -e py27` or `tox -e
 
 More detailed documentation can be found in `docs` folder.
 
+- [Pubsub](docs/Pubsub.md)
 - [Setup a redis cluster. Manually, Docker & Vagrant](docs/Cluster_Setup.md)
 - [Command differences](docs/Commands.md)
 - [Limitations and differences](docs/Limits_and_differences.md)
