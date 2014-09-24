@@ -404,10 +404,42 @@ class TestPipeline(object):
             assert(res, [True])
             assert(isinstance(test._calls[0]['exception'], redis.ConnectionError))
             if len(test._calls) == 2:
-                assert(test._calls[1], {'result': [True]})
+                assert(test._calls[1] == {'result': [True]})
             else:
                 assert(isinstance(test._calls[1]['result'][0], redis.ResponseError))
-                assert(test._calls[2], {'result': [True]})
+                assert(test._calls[2] == {'result': [True]})
+        finally:
+            pipe.perform_execute_pipeline = orig_perform_execute_pipeline
+            del test._calls
+
+    def test_asking_error(self, r):
+        test = self
+        test._calls = []
+
+        def perform_execute_pipeline(pipe):
+            if not test._calls:
+
+                e = redis.ResponseError("ASK %s 127.0.0.1:7003" % (r.keyslot('foo')))
+                test._calls.append({'exception': e})
+                return [e, e]
+            result = pipe.execute(raise_on_error=False)
+            test._calls.append({'result': result})
+            return result
+
+        pipe = r.pipeline(transaction=False)
+        orig_perform_execute_pipeline = pipe.perform_execute_pipeline
+        pipe.perform_execute_pipeline = perform_execute_pipeline
+
+        try:
+            pipe.set('foo', 1)
+            pipe.get('foo')
+            res = pipe.execute()
+            assert(res == [True, b'1'])
+            assert(isinstance(test._calls[0]['exception'], redis.ResponseError))
+            assert(re.match("ASK", str(test._calls[0]['exception'])))
+            assert(isinstance(test._calls[1]['result'][0], redis.ResponseError))
+            assert(re.match("MOVED", str(test._calls[1]['result'][0])))
+            assert(test._calls[2] == {'result': [True, b'1']})
         finally:
             pipe.perform_execute_pipeline = orig_perform_execute_pipeline
             del test._calls
