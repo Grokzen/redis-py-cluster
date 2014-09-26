@@ -10,7 +10,7 @@
 
 A fully functional docker image can be found at [Docker-redis-cluster](https://github.com/Grokzen/docker-redis-cluster).
 
-Please see repo README file for detailed instructions how to setup.
+See repo README for detailed instructions how to setup.
 
 
 
@@ -20,4 +20,12 @@ Alternatively, you can also use vagrant to spin up redis cluster in a vm for tes
 
 A fully functional vagrant machine can be obtained at [Vagrant-redis-cluster](https://github.com/72squared/vagrant-redis-cluster).
 
-Please see repo README file for detailed instructions how to setup.
+See repo README for detailed instructions how to setup.
+
+
+
+# Simple makefile
+
+A simple makefile solution can be found at [travis-redis-cluster](https://github.com/Grokzen/travis-redis-cluster)
+
+See repo README for detailed instructions how to setup.

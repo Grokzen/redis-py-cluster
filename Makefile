@@ -84,6 +84,7 @@ help:
 	@echo "Please use 'make <target>' where <target> is one of"
 	@echo "  clean           remove temporary files created by build tools"
 	@echo "  cleanmeta       removes all META-* and egg-info/ files created by build tools"	
+	@echo "  cleancov        remove all files related to coverage reports"
 	@echo "  cleanall        all the above + tmp files from development tools"
 	@echo "  test            run test suite"
 	@echo "  sdist           make a source distribution"
@@ -101,13 +102,16 @@ clean:
 	-rm -f MANIFEST
 	-rm -rf dist/
 	-rm -rf build/
+
+cleancov:
+	-rm -rf htmlcov/
 	-coverage combine
 	-coverage erase
 
 cleanmeta:
-	-rm -rf rediscluster.egg-info/
+	-rm -rf redis_py_cluster.egg-info/
 
-cleanall: clean cleanmeta
+cleanall: clean cleancov cleanmeta
 	-find . -type f -name "*~" -exec rm -f "{}" \;
 	-find . -type f -name "*.orig" -exec rm -f "{}" \;
 	-find . -type f -name "*.rej" -exec rm -f "{}" \;
