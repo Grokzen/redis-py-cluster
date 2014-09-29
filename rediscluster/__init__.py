@@ -1,5 +1,5 @@
 # Import shortcut
-from .rediscluster import RedisCluster
+from rediscluster.client import RedisCluster
 
 # Monkey patch RedisCluster class into redis for easy access
 import redis

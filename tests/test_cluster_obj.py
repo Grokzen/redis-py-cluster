@@ -1,11 +1,19 @@
+# -*- coding: utf-8 -*-
+
+# python std lib
 from __future__ import with_statement
-from rediscluster import RedisCluster
-import pytest
-import redis
 import re
-from .conftest import _get_client, skip_if_server_version_lt
+
+# rediscluster imports
+from rediscluster import RedisCluster
 from rediscluster.exceptions import RedisClusterException
+from tests.conftest import _get_client, skip_if_server_version_lt
+
+# 3rd party imports
+from redis import StrictRedis
+from redis.exceptions import ConnectionError
 from redis._compat import unicode
+import pytest
 
 
 pytestmark = skip_if_server_version_lt('2.9.0')
@@ -41,7 +49,7 @@ class TestClusterObj(object):
         Test that method returns a StrictRedis object
         """
         link = s.get_redis_link("127.0.0.1", 7000)
-        assert isinstance(link, redis.StrictRedis)
+        assert isinstance(link, StrictRedis)
 
     def test_set_node_name(self, s):
         """
@@ -239,7 +247,7 @@ class TestClusterObj(object):
             # after that behave normally.
             # capture all the requests and responses.
             if not test.execute_command_calls:
-                e = redis.ConnectionError('FAKE: could not connect')
+                e = ConnectionError('FAKE: could not connect')
                 test.execute_command_calls.append({'exception': e})
                 raise e
             try:

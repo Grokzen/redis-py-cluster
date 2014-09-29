@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from .exceptions import RedisClusterException
+
+# rediscluster imports
+from rediscluster.exceptions import RedisClusterException
 
 
 def send_to_connection_by_key(func):

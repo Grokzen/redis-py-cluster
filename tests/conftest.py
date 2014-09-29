@@ -1,16 +1,21 @@
-import pytest
+# -*- coding: utf-8 -*-
+
+# python std lib
 import os
 import sys
+import json
+
+# rediscluster imports
+from rediscluster import RedisCluster
+
+# 3rd party imports
+import pytest
+from redis import StrictRedis
+from distutils.version import StrictVersion
 
 # put our path in front so we can be sure we are testing locally not against the global package
 basepath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, basepath)
-
-from redis import StrictRedis
-from rediscluster import RedisCluster
-
-from distutils.version import StrictVersion
-import json
 
 _REDIS_VERSIONS = {}
 

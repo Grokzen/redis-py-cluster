@@ -1,10 +1,15 @@
-from __future__ import with_statement
-import pytest
+# -*- coding: utf-8 -*-
 
+# python std lib
+from __future__ import with_statement
+
+# rediscluster imports
+from rediscluster.exceptions import RedisClusterException
+
+# 3rd party imports
 from redis import exceptions
 from redis._compat import b
-
-from rediscluster.exceptions import RedisClusterException
+import pytest
 
 
 multiply_script = """

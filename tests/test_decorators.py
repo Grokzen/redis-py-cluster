@@ -1,11 +1,18 @@
-import pytest
+# -*- coding: utf-8 -*-
+
+# rediscluster imports
 from rediscluster import RedisCluster
 from rediscluster.exceptions import RedisClusterException
-from rediscluster.decorators import (send_to_random_node, block_command,
-                                     get_connection_from_node_obj, send_to_all_masters_merge_list)
+from rediscluster.decorators import (send_to_random_node,
+                                     block_command,
+                                     get_connection_from_node_obj,
+                                     send_to_all_masters_merge_list)
 from tests.conftest import skip_if_server_version_lt, _get_client
-from testfixtures import compare
+
+# 3rd party imports
+import pytest
 from redis import StrictRedis
+from testfixtures import compare
 
 
 pytestmark = skip_if_server_version_lt('2.9.0')

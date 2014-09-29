@@ -1,13 +1,19 @@
+# -*- coding: utf-8 -*-
+
+# python std lib
 from __future__ import with_statement
-import pytest
 import time
 
-import redis
-from redis import StrictRedis
+# 3rd party imports
+import pytest
+
+# rediscluster imports
+from tests.conftest import r as _redis_client
+
+# import redis
+from redis import StrictRedis, Redis
 from redis.exceptions import ConnectionError
 from redis._compat import basestring, u, unichr
-
-from .conftest import r as _redis_client
 
 
 def wait_for_message(pubsub, timeout=0.5, ignore_subscribe_messages=False):
@@ -426,7 +432,7 @@ class TestPubSubAutoDecoding(object):
 class TestPubSubRedisDown(object):
 
     def test_channel_subscribe(self, r):
-        r = redis.Redis(host='localhost', port=6390)
+        r = Redis(host='localhost', port=6390)
         p = r.pubsub()
         with pytest.raises(ConnectionError):
             p.subscribe('foo')

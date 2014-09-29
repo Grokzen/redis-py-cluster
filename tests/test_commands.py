@@ -1,20 +1,23 @@
+# -*- coding: utf-8 -*-
+
+# python std lib
 from __future__ import with_statement
 import datetime
-import pytest
-import time
 import re
-import redis
-from . import conftest
+import time
+
+# rediscluster imports
 from rediscluster.exceptions import RedisClusterException
+from tests.conftest import skip_if_server_version_lt
 
-
-pytestmark = conftest.skip_if_server_version_lt('2.9.0')
-
-
-from redis._compat import (unichr, u, b, ascii_letters, iteritems, iterkeys,
-                           itervalues)
+# 3rd party imports
+import pytest
+from redis._compat import (unichr, u, b, ascii_letters, iteritems, iterkeys, itervalues)
 from redis.client import parse_info
-from redis import exceptions
+from redis.exceptions import ResponseError, DataError
+
+
+pytestmark = skip_if_server_version_lt('2.9.0')
 
 
 def redis_server_time(client):
@@ -27,7 +30,7 @@ class TestRedisCommands(object):
 
     def test_command_on_invalid_key_type(self, r):
         r.lpush('a', '1')
-        with pytest.raises(redis.ResponseError):
+        with pytest.raises(ResponseError):
             r['a']
 
     # SERVER INFORMATION
@@ -762,7 +765,7 @@ class TestRedisCommands(object):
         r.zadd('a', a1=1, a2=1, a3=1)
         r.zadd('b', a1=2, a2=2, a3=2)
         r.zadd('c', a1=6, a3=5, a4=4)
-        with pytest.raises(redis.ResponseError) as excinfo:
+        with pytest.raises(ResponseError) as excinfo:
             r.zinterstore('d', ['a', 'b', 'c'])
         assert re.search('CROSSSLOT', str(excinfo))
 
@@ -927,7 +930,7 @@ class TestRedisCommands(object):
         r.zadd('a', a1=1, a2=1, a3=1)
         r.zadd('b', a1=2, a2=2, a3=2)
         r.zadd('c', a1=6, a3=5, a4=4)
-        with pytest.raises(redis.ResponseError) as excinfo:
+        with pytest.raises(ResponseError) as excinfo:
             r.zunionstore('d', ['a', 'b', 'c'])
         assert re.search('CROSSSLOT', str(excinfo))
 
@@ -1110,7 +1113,7 @@ class TestRedisCommands(object):
         r['user:2'] = 'u2'
         r['user:3'] = 'u3'
         r.rpush('a', '2', '3', '1')
-        with pytest.raises(exceptions.DataError):
+        with pytest.raises(DataError):
             r.sort('a', get='user:*', groups=True)
 
     def test_sort_groups_just_one_get(self, r):
@@ -1118,7 +1121,7 @@ class TestRedisCommands(object):
         r['user:2'] = 'u2'
         r['user:3'] = 'u3'
         r.rpush('a', '2', '3', '1')
-        with pytest.raises(exceptions.DataError):
+        with pytest.raises(DataError):
             r.sort('a', get=['user:*'], groups=True)
 
     def test_sort_groups_no_get(self, r):
@@ -1126,7 +1129,7 @@ class TestRedisCommands(object):
         r['user:2'] = 'u2'
         r['user:3'] = 'u3'
         r.rpush('a', '2', '3', '1')
-        with pytest.raises(exceptions.DataError):
+        with pytest.raises(DataError):
             r.sort('a', groups=True)
 
     def test_sort_groups_three_gets(self, r):
@@ -1317,7 +1320,7 @@ class TestBinarySave(object):
             # after that behave normally.
             # capture all the requests and responses.
             if not test.execute_command_calls:
-                e = redis.ResponseError("ASK 1 127.0.0.1:7003")
+                e = ResponseError("ASK 1 127.0.0.1:7003")
                 test.execute_command_calls.append({'exception': e})
                 raise e
             try:

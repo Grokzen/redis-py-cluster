@@ -1,32 +1,28 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
-import sys
 import random
 import string
-
-# rediscluster imports
-from .crc import crc16
-from .exceptions import RedisClusterException
-from .decorators import (send_to_connection_by_key,
-                         send_to_all_master_nodes,
-                         send_to_all_nodes,
-                         send_to_all_nodes_merge_list,
-                         get_connection_from_node_obj,
-                         send_eval_to_connection,
-                         send_to_random_node,
-                         block_command,
-                         block_pipeline_command)
-
-# 3rd party imports
-import redis
-from redis import StrictRedis
-from redis.client import list_or_args
-from redis._compat import iteritems, basestring, b, izip, imap, nativestr, unicode
-from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError
 import time
 
-from redis.client import PubSub
+# rediscluster imports
+from rediscluster.crc import crc16
+from rediscluster.exceptions import RedisClusterException
+from rediscluster.decorators import (block_command,
+                                     block_pipeline_command,
+                                     get_connection_from_node_obj,
+                                     send_eval_to_connection,
+                                     send_to_all_master_nodes,
+                                     send_to_all_nodes,
+                                     send_to_all_nodes_merge_list,
+                                     send_to_connection_by_key,
+                                     send_to_random_node)
+
+# 3rd party imports
+from redis import StrictRedis
+from redis.client import list_or_args, PubSub
+from redis._compat import iteritems, basestring, b, izip, imap, nativestr, unicode
+from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError
 
 
 class ClusterPubSub(PubSub):
@@ -95,7 +91,7 @@ class RedisCluster(StrictRedis):
         Open new connection to a redis server and return the connection object
         """
         try:
-            return redis.StrictRedis(host=host, port=port, **self.opt)
+            return StrictRedis(host=host, port=port, **self.opt)
         except Exception as e:
             raise RedisClusterException(repr(e))
 
@@ -310,7 +306,7 @@ class RedisCluster(StrictRedis):
                 else:
                     return self.execute_command_via_connection(r, *argv, **kwargs)
 
-            except (redis.ConnectionError, redis.TimeoutError):
+            except (ConnectionError, TimeoutError):
                 try_random_node = True
                 if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.1)
@@ -1041,7 +1037,7 @@ class BaseClusterPipeline(object):
             ask_slots = {}
             for i, v in response.items():
                 if isinstance(v, Exception):
-                    if isinstance(v, redis.ConnectionError):
+                    if isinstance(v, ConnectionError):
                         ask_slots[self.keyslot(commands[i][0][1])] = random.choice(self.startup_nodes)
                         attempt.append(i)
                         if ttl < self.RedisClusterRequestTTL / 2:

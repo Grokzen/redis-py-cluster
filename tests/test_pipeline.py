@@ -1,10 +1,16 @@
+# -*- coding: utf-8 -*-
+
+# python std lib
 from __future__ import with_statement
-import pytest
-import redis
-from redis._compat import b, u, unichr, unicode
 import re
 
+# rediscluster imports
 from rediscluster.exceptions import RedisClusterException
+
+# 3rd party imports
+import pytest
+from redis._compat import b, u, unichr, unicode
+from redis.exceptions import WatchError, ResponseError, ConnectionError
 
 
 class TestPipeline(object):
@@ -70,7 +76,7 @@ class TestPipeline(object):
             pipe.multi()
             pipe.set('a', int(a) + 1)
 
-            with pytest.raises(redis.WatchError):
+            with pytest.raises(WatchError):
                 pipe.execute()
 
             assert r['a'] == b('bad')
@@ -92,7 +98,7 @@ class TestPipeline(object):
 
             # we can't lpush to a key that's a string value, so this should
             # be a ResponseError exception
-            assert isinstance(result[2], redis.ResponseError)
+            assert isinstance(result[2], ResponseError)
             assert r['c'] == b('a')
 
             # since this isn't a transaction, the other commands after the
@@ -108,7 +114,7 @@ class TestPipeline(object):
         r['c'] = 'a'
         with r.pipeline() as pipe:
             pipe.set('a', 1).set('b', 2).lpush('c', 3).set('d', 4)
-            with pytest.raises(redis.ResponseError) as ex:
+            with pytest.raises(ResponseError) as ex:
                 pipe.execute()
             assert unicode(ex.value).startswith('Command # 3 (LPUSH c 3) of '
                                                 'pipeline caused error: ')
@@ -121,7 +127,7 @@ class TestPipeline(object):
         with r.pipeline() as pipe:
             # the zrem is invalid because we don't pass any keys to it
             pipe.set('a', 1).zrem('b').set('b', 2)
-            with pytest.raises(redis.ResponseError) as ex:
+            with pytest.raises(ResponseError) as ex:
                 pipe.execute()
 
             assert unicode(ex.value).startswith('Command # 2 (ZREM b) of '
@@ -159,7 +165,7 @@ class TestPipeline(object):
             r['b'] = 3
             pipe.multi()
             pipe.get('a')
-            with pytest.raises(redis.WatchError):
+            with pytest.raises(WatchError):
                 pipe.execute()
 
             assert not pipe.watching
@@ -208,7 +214,7 @@ class TestPipeline(object):
             pipe.llen('a')
             pipe.expire('a', 100)
 
-            with pytest.raises(redis.ResponseError) as ex:
+            with pytest.raises(ResponseError) as ex:
                 pipe.execute()
 
             assert unicode(ex.value).startswith('Command # 1 (LLEN a) of '
@@ -223,7 +229,7 @@ class TestPipeline(object):
             pipe.llen(key)
             pipe.expire(key, 100)
 
-            with pytest.raises(redis.ResponseError) as ex:
+            with pytest.raises(ResponseError) as ex:
                 pipe.execute()
 
             expected = unicode('Command # 1 (LLEN %s) of pipeline caused '
@@ -387,7 +393,7 @@ class TestPipeline(object):
 
         def perform_execute_pipeline(pipe):
             if not test._calls:
-                e = redis.ConnectionError('test')
+                e = ConnectionError('test')
                 test._calls.append({'exception': e})
                 return [e]
             result = pipe.execute(raise_on_error=False)
@@ -402,11 +408,11 @@ class TestPipeline(object):
             pipe.set('foo', 1)
             res = pipe.execute()
             assert(res, [True])
-            assert(isinstance(test._calls[0]['exception'], redis.ConnectionError))
+            assert(isinstance(test._calls[0]['exception'], ConnectionError))
             if len(test._calls) == 2:
                 assert(test._calls[1] == {'result': [True]})
             else:
-                assert(isinstance(test._calls[1]['result'][0], redis.ResponseError))
+                assert(isinstance(test._calls[1]['result'][0], ResponseError))
                 assert(test._calls[2] == {'result': [True]})
         finally:
             pipe.perform_execute_pipeline = orig_perform_execute_pipeline
@@ -419,7 +425,7 @@ class TestPipeline(object):
         def perform_execute_pipeline(pipe):
             if not test._calls:
 
-                e = redis.ResponseError("ASK %s 127.0.0.1:7003" % (r.keyslot('foo')))
+                e = ResponseError("ASK %s 127.0.0.1:7003" % (r.keyslot('foo')))
                 test._calls.append({'exception': e})
                 return [e, e]
             result = pipe.execute(raise_on_error=False)
@@ -435,9 +441,9 @@ class TestPipeline(object):
             pipe.get('foo')
             res = pipe.execute()
             assert(res == [True, b'1'])
-            assert(isinstance(test._calls[0]['exception'], redis.ResponseError))
+            assert(isinstance(test._calls[0]['exception'], ResponseError))
             assert(re.match("ASK", str(test._calls[0]['exception'])))
-            assert(isinstance(test._calls[1]['result'][0], redis.ResponseError))
+            assert(isinstance(test._calls[1]['result'][0], ResponseError))
             assert(re.match("MOVED", str(test._calls[1]['result'][0])))
             assert(test._calls[2] == {'result': [True, b'1']})
         finally:
