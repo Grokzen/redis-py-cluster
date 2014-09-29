@@ -3,16 +3,18 @@ try:
 except ImportError:
     from distutils.core import setup
 
+with open("docs/ALPHA.md") as f:
+    alpha = f.read()
 with open('README.md') as f:
     readme = f.read()
 with open('CHANGES') as f:
     history = f.read()
 
 setup(
-    name="rediscluster",
+    name="redis-py-cluster",
     version="0.1.0",
-    description="Cluster library for redis 3.0.0+ built on top of redis-py lib",
-    long_description=readme + '\n\n' + history,
+    description="Cluster library for redis 3.0.0 built on top of redis-py lib",
+    long_description=alpha + '\n\n' + readme + '\n\n' + history,
     author="Johan Andersson",
     author_email="Grokzen@gmail.com",
     maintainer='Johan Andersson',
@@ -22,6 +24,10 @@ setup(
     license='MIT',
     install_requires=[
         'redis>=2.9.1'
+    ],
+    keywords=[
+        'redis',
+        'redis cluster',
     ],
     classifiers=(
         # As from https://pypi.python.org/pypi?%3Aaction=list_classifiers
@@ -39,11 +45,7 @@ setup(
         'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
-        'Environment :: Redis',
-        'Environment :: Redis Cluster',
         'Environment :: Web Environment',
         'Operating System :: POSIX',
-        'Topic :: Redis',
-        'Topic :: Redis Cluster'
     )
 )

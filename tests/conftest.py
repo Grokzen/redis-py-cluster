@@ -6,6 +6,7 @@ import sys
 basepath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, basepath)
 
+from redis import StrictRedis
 from rediscluster import RedisCluster
 
 from distutils.version import StrictVersion
@@ -49,12 +50,26 @@ def skip_if_server_version_lt(min_version):
 
 @pytest.fixture()
 def r(request, **kwargs):
+    """
+    Create a Rediscluster instance with default settings.
+    """
     return _init_client(request, **kwargs)
 
 
 @pytest.fixture()
 def s(request, **kwargs):
+    """
+    Create a RedisCluster instance with 'init_slot_cache' set to false
+    """
     s = _get_client(init_slot_cache=False, **kwargs)
     assert s.slots == {}
     assert s.nodes == []
     return s
+
+
+@pytest.fixture()
+def t(request, *args, **kwargs):
+    """
+    Create a regular StrictRedis object instance
+    """
+    return StrictRedis(*args, **kwargs)

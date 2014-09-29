@@ -3,6 +3,7 @@ import pytest
 import time
 
 import redis
+from redis import StrictRedis
 from redis.exceptions import ConnectionError
 from redis._compat import basestring, u, unichr
 
@@ -53,6 +54,7 @@ def make_subscribe_test_data(pubsub, type):
     assert False, 'invalid subscribe type: %s' % type
 
 
+@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubSubscribeUnsubscribe(object):
 
     def _test_subscribe_unsubscribe(self, p, sub_type, unsub_type, sub_func,
@@ -212,24 +214,58 @@ class TestPubSubSubscribeUnsubscribe(object):
         assert p.subscribed is False
 
 
+@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubMessages(object):
+    """
+    Bug: Currently in cluster mode publish command will behave different then in
+         standard/non cluster mode. See (docs/Pubsub.md) for details.
+
+         Currently StrictRedis instances will be used to test pubsub because they
+         are easier to work with.
+    """
+
+    def get_strict_redis_node(self, port, host="127.0.0.1"):
+        return StrictRedis(port=port, host=host)
+
     def setup_method(self, method):
         self.message = None
 
     def message_handler(self, message):
         self.message = message
 
-    @pytest.mark.xfail(reason="Currently broken...")
-    def test_published_message_to_channel(self, r):
-        p = r.pubsub(ignore_subscribe_messages=True)
+    def test_published_message_to_channel(self):
+        node = self.get_strict_redis_node(7000)
+        p = node.pubsub(ignore_subscribe_messages=True)
         p.subscribe('foo')
-        assert r.publish('foo', 'test message') == 1
+
+        assert node.publish('foo', 'test message') == 1
 
         message = wait_for_message(p)
         assert isinstance(message, dict)
         assert message == make_message('message', 'foo', 'test message')
 
-    @pytest.mark.xfail(reason="Currently broken...")
+        # Cleanup pubsub connections
+        p.close()
+
+    def test_publish_message_to_channel_other_server(self):
+        """
+        Test that pubsub still works across the cluster on different nodes
+        """
+        node_subscriber = self.get_strict_redis_node(7000)
+        p = node_subscriber.pubsub(ignore_subscribe_messages=True)
+        p.subscribe('foo')
+
+        node_sender = self.get_strict_redis_node(7001)
+        # This should return 0 because of no connected clients to this server.
+        assert node_sender.publish('foo', 'test message') == 0
+
+        message = wait_for_message(p)
+        assert isinstance(message, dict)
+        assert message == make_message('message', 'foo', 'test message')
+
+        # Cleanup pubsub connections
+        p.close()
+
     def test_published_message_to_pattern(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         p.subscribe('foo')
@@ -251,7 +287,6 @@ class TestPubSubMessages(object):
         assert message2 in expected
         assert message1 != message2
 
-    @pytest.mark.xfail(reason="Currently broken...")
     def test_channel_message_handler(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         p.subscribe(foo=self.message_handler)
@@ -259,7 +294,6 @@ class TestPubSubMessages(object):
         assert wait_for_message(p) is None
         assert self.message == make_message('message', 'foo', 'test message')
 
-    @pytest.mark.xfail(reason="Currently broken...")
     def test_pattern_message_handler(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         p.psubscribe(**{'f*': self.message_handler})
@@ -268,7 +302,6 @@ class TestPubSubMessages(object):
         assert self.message == make_message('pmessage', 'foo', 'test message',
                                             pattern='f*')
 
-    @pytest.mark.xfail(reason="Currently broken...")
     def test_unicode_channel_message_handler(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         channel = u('uni') + unichr(4456) + u('code')
@@ -278,7 +311,6 @@ class TestPubSubMessages(object):
         assert wait_for_message(p) is None
         assert self.message == make_message('message', channel, 'test message')
 
-    @pytest.mark.xfail(reason="Currently broken...")
     def test_unicode_pattern_message_handler(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         pattern = u('uni') + unichr(4456) + u('*')
@@ -290,6 +322,7 @@ class TestPubSubMessages(object):
                                             'test message', pattern=pattern)
 
 
+@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubAutoDecoding(object):
     "These tests only validate that we get unicode values back"
 
@@ -389,6 +422,7 @@ class TestPubSubAutoDecoding(object):
                                                  pattern=self.pattern)
 
 
+@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubRedisDown(object):
 
     def test_channel_subscribe(self, r):

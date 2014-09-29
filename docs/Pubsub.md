@@ -17,6 +17,7 @@ Currently the only known workarounds is to:
 Discussion on this topic can be found here: https://groups.google.com/forum/?hl=sv#!topic/redis-db/BlwSOYNBUl8
 
 
+
 ## How this lib handels this problem
 
 Currently there is no special logic running on pubsub commands.
