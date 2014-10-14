@@ -37,7 +37,7 @@ def send_to_all_master_nodes(func):
         res = {}
 
         # TODO: Bug, until startup_nodes is refactored "master" must be default because some nodes do not have "server_type"
-        for node in self.startup_nodes:
+        for node in self.connection_pool.nodes.startup_nodes:
             if node.get("server_type", "master") != "master":
                 continue
 
@@ -74,7 +74,7 @@ def send_to_all_nodes(func):
     """
     def inner(self, *args, **kwargs):
         res = {}
-        for node in self.startup_nodes:
+        for node in self.connection_pool.nodes.startup_nodes:
             conn = get_connection_from_node_obj(self, node)
             res[node["name"]] = func(conn, *args, **kwargs)
         return res
@@ -90,7 +90,7 @@ def send_to_all_nodes_merge_list(func):
         # TODO: Currently there is a bug with startup_nodes that cause one or more nodes to be querried multiple times
         #  and that will corrupt results. Using a set will remove any result duplicates. It should be a list.
         res = set([])
-        for node in self.startup_nodes:
+        for node in self.connection_pool.nodes.startup_nodes:
             conn = get_connection_from_node_obj(self, node)
             d = func(conn, *args, **kwargs)
             for i in d:
@@ -103,7 +103,7 @@ def get_connection_from_node_obj(self, node):
     """
     Gets a connection object from a 'node' object
     """
-    self.set_node_name(node)
+    self.connection_pool.nodes.set_node_name(node)
     conn = self.connections.get(node["name"], None)
 
     if not conn:
@@ -130,7 +130,7 @@ def block_command(func):
     Prints error because some commands should be blocked when running in cluster-mode
     """
     def inner(*args, **kwargs):
-        raise RedisClusterException(" ERROR: Calling function {} is blocked when running redis in cluster mode...".format(func.__name__))
+        raise RedisClusterException("ERROR: Calling function {} is blocked when running redis in cluster mode...".format(func.__name__))
     return inner
 
 
@@ -139,5 +139,5 @@ def block_pipeline_command(func):
     Prints error because some pipelined commands should be blocked when running in cluster-mode
     """
     def inner(*args, **kwargs):
-        raise RedisClusterException(" ERROR: Calling pipelined function {} is blocked when running redis in cluster mode...".format(func.__name__))
+        raise RedisClusterException("ERROR: Calling pipelined function {} is blocked when running redis in cluster mode...".format(func.__name__))
     return inner

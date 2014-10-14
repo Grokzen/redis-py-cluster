@@ -18,6 +18,7 @@ value = tonumber(value)
 return value * ARGV[1]"""
 
 
+@pytest.mark.xfail(reason="scripting is not yet supported")
 class TestScripting(object):
     @pytest.fixture(autouse=True)
     def reset_scripts(self, r):

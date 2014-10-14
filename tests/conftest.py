@@ -67,8 +67,8 @@ def s(request, **kwargs):
     Create a RedisCluster instance with 'init_slot_cache' set to false
     """
     s = _get_client(init_slot_cache=False, **kwargs)
-    assert s.slots == {}
-    assert s.nodes == []
+    assert s.connection_pool.nodes.slots == {}
+    assert s.connection_pool.nodes.nodes == []
     return s
 
 

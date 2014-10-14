@@ -13,6 +13,7 @@ from redis._compat import b, u, unichr, unicode
 from redis.exceptions import WatchError, ResponseError, ConnectionError
 
 
+@pytest.mark.xfail(reason="Pipelines is not converted yet")
 class TestPipeline(object):
     def test_pipeline(self, r):
         with r.pipeline() as pipe:

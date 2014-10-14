@@ -60,7 +60,7 @@ def make_subscribe_test_data(pubsub, type):
     assert False, 'invalid subscribe type: %s' % type
 
 
-@pytest.mark.xfail(reason="Currently broken...")
+# @pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubSubscribeUnsubscribe(object):
 
     def _test_subscribe_unsubscribe(self, p, sub_type, unsub_type, sub_func,
@@ -428,7 +428,6 @@ class TestPubSubAutoDecoding(object):
                                                  pattern=self.pattern)
 
 
-@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubRedisDown(object):
 
     def test_channel_subscribe(self, r):

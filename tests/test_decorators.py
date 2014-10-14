@@ -46,6 +46,7 @@ class B(object):
         return A()
 
 
+@pytest.mark.xfail(reason="not used any longer")
 def test_send_to_random_node():
     """
     Test that when using 'send_to_random_node' decorator that
@@ -61,6 +62,7 @@ def test_send_to_random_node():
     assert a.a_called
 
 
+@pytest.mark.xfail(reason="not used any longer")
 def test_block_command():
     """
     Test that when wrapping a method with 'block_command' a exception
@@ -72,9 +74,10 @@ def test_block_command():
     with pytest.raises(RedisClusterException) as ex:
         b.test_block_command()
     compare(str(ex.value),
-            " ERROR: Calling function {} is blocked when running redis in cluster mode...".format("foo"))
+            "ERROR: Calling function {} is blocked when running redis in cluster mode...".format("foo"))
 
 
+@pytest.mark.xfail(reason="not used any longer")
 def test_get_connection_from_node_obj(s):
     """
     Test that a new connection is created from a node dict and is returned to clients.
@@ -110,6 +113,7 @@ def test_get_connection_from_node_obj(s):
     assert len(s.connections) == 1, "There should only be 1 connection in the pool"
 
 
+@pytest.mark.xfail(reason="not used any longer")
 def test_send_to_all_nodes_merge_list():
     """
     Test that when sending to all nodes the the result from that operation
@@ -119,6 +123,7 @@ def test_send_to_all_nodes_merge_list():
     pass
 
 
+@pytest.mark.xfail(reason="not used any longer")
 def test_send_to_all_nodes():
     """
     Test that when sending to all nodes that the result from that operation
@@ -127,6 +132,7 @@ def test_send_to_all_nodes():
     pass
 
 
+@pytest.mark.xfail(reason="not used any longer")
 def test_send_to_all_masters_merge_list(r):
     """
     Test to send command to only master nodes and merge result into a dict
@@ -147,6 +153,7 @@ def test_send_to_all_masters_merge_list(r):
     assert b"bar" in s
 
 
+@pytest.mark.xfail(reason="not used any longer")
 def test_send_to_all_master_nodes():
     """
     """
@@ -154,6 +161,7 @@ def test_send_to_all_master_nodes():
     pass
 
 
+@pytest.mark.xfail(reason="not used any longer")
 def test_send_eval_to_connection():
     """
     """
@@ -161,6 +169,7 @@ def test_send_eval_to_connection():
     pass
 
 
+@pytest.mark.xfail(reason="not used any longer")
 def test_send_connection_by_key():
     """
     """
