@@ -58,7 +58,7 @@ def merge_result(command, res):
 def first_key(command, res):
     if len(res.keys()) != 1:
         raise RedisClusterException("More then 1 result from command: {0}".format(command))
-    return res.values()[0]
+    return list(res.values())[0]
 
 
 class RedisCluster(StrictRedis):
