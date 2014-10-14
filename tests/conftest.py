@@ -34,13 +34,13 @@ def _get_client(**kwargs):
     return RedisCluster(**params)
 
 
-def _init_client(cls, request=None, **kwargs):
+def _init_client(request, **kwargs):
     client = _get_client(**kwargs)
     client.flushdb()
     if request:
         def teardown():
             client.flushdb()
-            # client.connection_pool.disconnect()
+            client.connection_pool.disconnect()
         request.addfinalizer(teardown)
     return client
 
@@ -50,6 +50,14 @@ def skip_if_server_version_lt(min_version):
     for version in versions.values():
         if StrictVersion(version) < StrictVersion(min_version):
             return pytest.mark.skipif(True, reason="")
+    return pytest.mark.skipif(False, reason="")
+
+
+def skip_if_redis_py_version_lt(min_version):
+    import redis
+    version = redis.__version__
+    if StrictVersion(version) < StrictVersion(min_version):
+        return pytest.mark.skipif(True, reason="")
     return pytest.mark.skipif(False, reason="")
 
 
@@ -67,8 +75,8 @@ def s(request, **kwargs):
     Create a RedisCluster instance with 'init_slot_cache' set to false
     """
     s = _get_client(init_slot_cache=False, **kwargs)
-    assert s.slots == {}
-    assert s.nodes == []
+    assert s.connection_pool.nodes.slots == {}
+    assert s.connection_pool.nodes.nodes == []
     return s
 
 

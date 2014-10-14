@@ -8,13 +8,13 @@ import time
 
 # rediscluster imports
 from rediscluster.exceptions import RedisClusterException
-from tests.conftest import skip_if_server_version_lt
+from tests.conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt
 
 # 3rd party imports
 import pytest
 from redis._compat import (unichr, u, b, ascii_letters, iteritems, iterkeys, itervalues)
 from redis.client import parse_info
-from redis.exceptions import ResponseError, DataError
+from redis.exceptions import ResponseError, DataError, RedisError
 
 
 pytestmark = skip_if_server_version_lt('2.9.0')
@@ -48,6 +48,7 @@ class TestRedisCommands(object):
             assert r.client_setname('redis_py_test')
 
     def test_config_get(self, r):
+        print(r.config_get())
         for server, data in r.config_get().items():
             assert 'maxmemory' in data
             assert data['maxmemory'].isdigit()
@@ -117,11 +118,38 @@ class TestRedisCommands(object):
         with pytest.raises(RedisClusterException):
             r.bitop('not', 'r', 'a')
 
-    @pytest.mark.xfail(reason="older versions of redis-py don't support bitpos but the latest from github does")
+    @skip_if_server_version_lt('2.8.7')
+    @skip_if_redis_py_version_lt("2.10.2")
     def test_bitpos(self, r):
+        """
+        Bitpos was added in redis-py in version 2.10.2
+
+        # TODO: Added b() around keys but i think they should not have to be
+                there for this command to work properly.
+        """
         key = 'key:bitpos'
         r.set(key, b('\xff\xf0\x00'))
-        assert(r.bitpos(key, 0) == 12)
+        assert r.bitpos(key, 0) == 12
+        assert r.bitpos(key, 0, 2, -1) == 16
+        assert r.bitpos(key, 0, -2, -1) == 12
+        r.set(key, b('\x00\xff\xf0'))
+        assert r.bitpos(key, 1, 0) == 8
+        assert r.bitpos(key, 1, 1) == 8
+        r.set(key, '\x00\x00\x00')
+        assert r.bitpos(key, 1) == -1
+
+    @skip_if_server_version_lt('2.8.7')
+    @skip_if_redis_py_version_lt("2.10.2")
+    def test_bitpos_wrong_arguments(self, r):
+        """
+        Bitpos was added in redis-py in version 2.10.2
+        """
+        key = 'key:bitpos:wrong:args'
+        r.set(key, b('\xff\xf0\x00'))
+        with pytest.raises(RedisError):
+            r.bitpos(key, 0, end=1) == 12
+        with pytest.raises(RedisError):
+            r.bitpos(key, 7) == 12
 
     def test_decr(self, r):
         assert r.decr('a') == -1
@@ -588,7 +616,7 @@ class TestRedisCommands(object):
             keys += partial_keys
         assert set(keys) == set([b('a')])
 
-    def test_scan_iter(self, r):
+    def test_iter_scan(self, r):
         r.set('a', 1)
         r.set('b', 2)
         r.set('c', 3)
@@ -1240,7 +1268,6 @@ class TestBinarySave(object):
         assert r.delete(' foo\r\nbar\r\n ')
         assert r.delete(' \r\n\t\x07\x13 ')
 
-    @pytest.mark.xfail(reason='Test not working in python 3')
     def test_binary_lists(self, r):
         mapping = {
             b('foo bar'): [b('1'), b('2'), b('3')],
@@ -1308,6 +1335,7 @@ class TestBinarySave(object):
         r.zadd('a', timestamp, 'a1')
         assert r.zscore('a', 'a1') == timestamp
 
+    @pytest.mark.xfail(reason="TODO: Test needs to be reimplemented")
     def test_asking_and_moved_redirection(self, r):
         execute_command_via_connection_original = r.execute_command_via_connection
         execute_asking_command_via_connection_original = r.execute_asking_command_via_connection

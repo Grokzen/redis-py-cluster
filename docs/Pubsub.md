@@ -10,16 +10,20 @@ Because of this, if there is some functionality that relies on an exact and corr
 
 Currently the only known workarounds is to:
 
-- Ignore the returned value or t
-- All clients talk to the same server in pubsub mode
+- Ignore the returned value
+- All clients talk to the same server
 - Use a non clustered redis server for pubsub operations
 
 Discussion on this topic can be found here: https://groups.google.com/forum/?hl=sv#!topic/redis-db/BlwSOYNBUl8
 
 
 
-## How this lib handels this problem
+# How pubsub works in RedisCluster
 
-Currently there is no special logic running on pubsub commands.
+In 0.2.0 a first solution to pubsub problem was implemented, but it contains some limitations.
 
-All tests have been adapted to run on just 1 server to verify that the pubsub functionality still works. In some situations like `PUBLISH` command, tests will be done to verify it works across the cluster but it will ignore returned value because of reasons described in this document.
+When a new RedisCluster instance is created it will now just after all slots is initialized determine what one node will be the pubsub node. Currently it will use the node with the highest port number.
+
+With this solution, pubsub will work in a cluster without any other major workarounds.
+
+All pubsub tests pass with this setup.

@@ -1,7 +1,17 @@
+# -*- coding: utf-8 -*-
+
+# python std lib
+import os
+
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
+
+# if you are using vagrant, just delete os.link directly,
+# The hard link only saves a little disk space, so you should not care
+if os.getenv('USER', '').lower() == 'vagrant':
+    del os.link
 
 with open("docs/ALPHA.md") as f:
     alpha = f.read()
@@ -23,7 +33,7 @@ setup(
     url='http://github.com/grokzen/redis-py-cluster',
     license='MIT',
     install_requires=[
-        'redis>=2.9.1'
+        'redis==2.10.3'
     ],
     keywords=[
         'redis',
