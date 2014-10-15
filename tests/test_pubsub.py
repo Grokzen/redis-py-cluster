@@ -60,7 +60,6 @@ def make_subscribe_test_data(pubsub, type):
     assert False, 'invalid subscribe type: %s' % type
 
 
-# @pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubSubscribeUnsubscribe(object):
 
     def _test_subscribe_unsubscribe(self, p, sub_type, unsub_type, sub_func,
@@ -220,7 +219,6 @@ class TestPubSubSubscribeUnsubscribe(object):
         assert p.subscribed is False
 
 
-@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubMessages(object):
     """
     Bug: Currently in cluster mode publish command will behave different then in
@@ -328,7 +326,6 @@ class TestPubSubMessages(object):
                                             'test message', pattern=pattern)
 
 
-@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubAutoDecoding(object):
     "These tests only validate that we get unicode values back"
 
@@ -352,6 +349,7 @@ class TestPubSubAutoDecoding(object):
 
     @pytest.fixture()
     def r(self, request):
+        # TODO: Should be possible to move to conftests.py
         return _redis_client(request=request, decode_responses=True)
 
     def test_channel_subscribe_unsubscribe(self, r):

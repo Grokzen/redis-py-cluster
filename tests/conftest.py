@@ -34,13 +34,13 @@ def _get_client(**kwargs):
     return RedisCluster(**params)
 
 
-def _init_client(cls, request=None, **kwargs):
+def _init_client(request, **kwargs):
     client = _get_client(**kwargs)
     client.flushdb()
     if request:
         def teardown():
             client.flushdb()
-            # client.connection_pool.disconnect()
+            client.connection_pool.disconnect()
         request.addfinalizer(teardown)
     return client
 

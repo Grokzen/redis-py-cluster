@@ -137,15 +137,13 @@ class NodeManager(object):
 
         Allways use the server with highest port number
         """
-        print(" * Determining pubsub node")
         highest = -1
         node = None
         for n in self.nodes:
             if n["port"] > highest:
                 highest = n["port"]
                 node = n
-        self.pubsub_node = node
-        print(self.pubsub_node)
+        self.pubsub_node = {"host": node["host"], "port": node["port"], "server_type": node["server_type"], "pubsub": True}
 
     def set_node_name(self, n):
         """

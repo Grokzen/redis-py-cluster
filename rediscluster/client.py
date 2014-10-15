@@ -87,6 +87,9 @@ class RedisCluster(StrictRedis):
             "KEYS",
         ], lambda self, command: self.connection_pool.nodes.all_nodes()),
         string_keys_to_dict([
+            "PUBLISH", "SUBSCRIBE",
+        ], lambda self, command: [self.connection_pool.nodes.pubsub_node]),
+        string_keys_to_dict([
             "RANDOMKEY",
         ], lambda self, command: [self.connection_pool.nodes.random_node()]),
     )
@@ -730,10 +733,6 @@ class RedisCluster(StrictRedis):
 RedisCluster.watch = block_command(StrictRedis.watch)
 RedisCluster.unwatch = block_command(StrictRedis.unwatch)
 RedisCluster.register_script = block_command(StrictRedis.register_script)
-
-
-# All commands that can be sent to any node in the cluster and dont care about key routing
-RedisCluster.publish = send_to_random_node(StrictRedis.publish)
 
 # A custom command handler for eval. It's interface is different from most other redis commands.
 # (keys show up after the first 2 args and are variable)

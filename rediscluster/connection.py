@@ -11,7 +11,6 @@ from rediscluster.exceptions import RedisClusterException
 
 # 3rd party imports
 from redis.connection import ConnectionPool, Connection
-from redis.exceptions import ConnectionError
 
 
 class ClusterConnectionPool(ConnectionPool):
@@ -114,12 +113,23 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Nothing that requires any overwrite.
         """
-        all_conns = chain(self._available_connections,
-                          self._in_use_connections)
+        all_conns = chain(
+            self._available_connections.values(),
+            self._in_use_connections.values(),
+        )
 
         for node_connections in all_conns:
             for connection in node_connections:
                 connection.disconnect()
+
+        all_pubsub_conns = chain(
+            self._available_pubsub_connections,
+            self._in_use_pubsub_connections,
+        )
+
+        for connection in all_pubsub_conns:
+            print("Disconnecting pubsub {0}".format(connection))
+            connection.disconnect()
 
     def close_existing_connection(self):
         """
@@ -142,7 +152,6 @@ class ClusterConnectionPool(ConnectionPool):
         i = 0
         for node, connections in self._in_use_connections.items():
             i += len(connections)
-        print(" ? Num connections: {0}".format(i))
         return i
 
     def get_random_connection(self):
@@ -201,6 +210,10 @@ class ClusterConnectionPool(ConnectionPool):
         self.nodes.set_node_name(node)
 
         try:
+            # Special case for pubsub node
+            if node == self.nodes.pubsub_node:
+                return self.get_connection("pubsub")
+
             # Try to get connection from existing pool
             connection = self._available_connections.get(node["name"], []).pop()
             print(" # Reusing connection: {0}".format(connection))
