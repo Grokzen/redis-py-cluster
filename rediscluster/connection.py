@@ -13,13 +13,22 @@ from rediscluster.exceptions import RedisClusterException
 from redis.connection import ConnectionPool, Connection
 
 
+class ClusterConnection(Connection):
+    "Manages TCP communication to and from a Redis server"
+    description_format = "ClusterConnection<host=%(host)s,port=%(port)s>"
+
+
+class UnixDomainSocketConnection(Connection):
+    description_format = "ClusterUnixDomainSocketConnection<path=%(path)s>"
+
+
 class ClusterConnectionPool(ConnectionPool):
     """
     Custom connection pool for rediscluster
     """
     RedisClusterDefaultTimeout = None
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=Connection, max_connections=None, **connection_kwargs):
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection, max_connections=None, **connection_kwargs):
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
         self.nodes = NodeManager(startup_nodes)
@@ -34,10 +43,10 @@ class ClusterConnectionPool(ConnectionPool):
             self.connection_kwargs["socket_timeout"] = ClusterConnectionPool.RedisClusterDefaultTimeout
 
     def __repr__(self):
-        """
-        TODO: Overwrite default implementation with something that prints how many cluster connections exists
-        """
-        return super(ClusterConnectionPool, self).__repr__()
+        return "%s<%s>" % (
+            type(self).__name__,
+            self.connection_class.description_format % self.connection_kwargs,
+        )
 
     def reset(self):
         """
@@ -82,7 +91,7 @@ class ClusterConnectionPool(ConnectionPool):
         Create a new connection
         """
         if self.count_num_connections() >= self.max_connections:
-            self.close_existing_connection()
+            raise RedisClusterException("Too many connections")
         self._created_connections += 1
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
 
@@ -100,11 +109,9 @@ class ClusterConnectionPool(ConnectionPool):
             return
 
         if connection in self._in_use_pubsub_connections:
-            print(" ? Releasing pubsub back to pool: {0}".format(connection))
             self._in_use_pubsub_connections.remove(connection)
             self._available_pubsub_connections.append(connection)
         else:
-            print(" ? Releasing back to pool: {0}".format(connection))
             # Remove the current connection from _in_use_connection and add it back to the available pool
             self._in_use_connections.get(connection._node["name"], set()).remove(connection)
             self._available_connections.setdefault(connection._node["name"], []).append(connection)
@@ -128,7 +135,6 @@ class ClusterConnectionPool(ConnectionPool):
         )
 
         for connection in all_pubsub_conns:
-            print("Disconnecting pubsub {0}".format(connection))
             connection.disconnect()
 
     def close_existing_connection(self):
@@ -165,34 +171,12 @@ class ClusterConnectionPool(ConnectionPool):
             if connection:
                 return connection
 
-        # for node in self.nodes.random_startup_node_ittr():
-        #     self.nodes.set_node_name(node)
-
-        #     try:
-        #         conn = self.connections.get(node["name"], None)
-
-        #         if not conn:
-        #             conn = self.get_connection_by_node(node)
-        #             if conn.send_command("PING") is True:
-        #                 self.connections[node["name"]] = conn
-        #                 return conn
-        #             else:
-        #                 # TODO: This do not work proper yet
-        #                 # conn.connection.disconnect()
-        #                 pass
-        #         else:
-        #             # if conn.ping() is True:
-        #             if conn.send_command("PING") is True:
-        #                 return conn
-        #     except RedisClusterException:
-        #         raise
-
         raise Exception("Cant reach a single startup node.")
 
     def get_connection_by_key(self, key):
         if not key:
             raise RedisClusterException("No way to dispatch this command to Redis Cluster.")
-        return self.get_connection_by_slot(self.keyslot(key))
+        return self.get_connection_by_slot(self.nodes.keyslot(key))
 
     def get_connection_by_slot(self, slot):
         """
@@ -216,9 +200,7 @@ class ClusterConnectionPool(ConnectionPool):
 
             # Try to get connection from existing pool
             connection = self._available_connections.get(node["name"], []).pop()
-            print(" # Reusing connection: {0}".format(connection))
         except IndexError:
-            print(" # Making Brand new connection")
             connection = self.make_connection(node)
 
         self._in_use_connections.setdefault(node["name"], set()).add(connection)
@@ -227,6 +209,8 @@ class ClusterConnectionPool(ConnectionPool):
 
     @staticmethod
     def execute_asking_command_via_connection(r, *argv, **kwargs):
+        raise Exception("FOO")
+
         pipe = r.pipeline(transaction=False)
         pipe.execute_command('ASKING')
         pipe.execute_command(*argv, **kwargs)
@@ -237,6 +221,8 @@ class ClusterConnectionPool(ConnectionPool):
 
     @staticmethod
     def execute_command_via_connection(r, *argv, **kwargs):
+        raise Exception("FOO")
+
         return r.execute_command(*argv, **kwargs)
 
     def get_node_by_slot(self, slot):

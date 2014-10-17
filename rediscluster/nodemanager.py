@@ -17,8 +17,8 @@ class NodeManager(object):
     def __init__(self, startup_nodes=None):
         self.nodes = []
         self.slots = {}
-        self.orig_startup_nodes = [node for node in startup_nodes]
         self.startup_nodes = [] if startup_nodes is None else startup_nodes
+        self.orig_startup_nodes = [node for node in self.startup_nodes]
         self.pubsub_node = None
 
         if len(self.startup_nodes) == 0:
@@ -26,14 +26,17 @@ class NodeManager(object):
 
     def keyslot(self, key):
         """
-        Calculate keyslot for a given key
+        Calculate keyslot for a given key.
+
+        This also works for binary keys that is used in python 3.
         """
-        start = key.find("{")
+        k = str(key)
+        start = k.find("{")
         if start > -1:
-            end = key.find("}", start + 1)
+            end = k.find("}", start + 1)
             if end > -1 and end != start + 1:
-                key = key[start + 1:end]
-        return crc16(key) % self.RedisClusterHashSlots
+                k = k[start + 1:end]
+        return crc16(k) % self.RedisClusterHashSlots
 
     def all_nodes(self):
         for node in self.nodes:
@@ -59,9 +62,7 @@ class NodeManager(object):
             yield self.startup_nodes[0]
 
     def random_node(self):
-        # random.shuffle(self.startup_nodes)
         # TODO: Make this get a random node
-        # return self.startup_nodes[0]
         return self.nodes[0]
 
     def get_redis_link(self, host="127.0.0.1", port=7000):
