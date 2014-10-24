@@ -9,3 +9,5 @@ dump.rdb
 redis-git/
 htmlcov/
 dist/
+build/
+*.egg-info/

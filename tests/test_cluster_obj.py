@@ -3,6 +3,7 @@
 # python std lib
 from __future__ import with_statement
 import re
+import time
 
 # rediscluster imports
 from rediscluster import RedisCluster
@@ -10,7 +11,7 @@ from rediscluster.exceptions import RedisClusterException
 from tests.conftest import _get_client, skip_if_server_version_lt
 
 # 3rd party imports
-from redis import StrictRedis
+from redis import StrictRedis, Connection
 from redis.exceptions import ConnectionError
 from redis._compat import unicode
 import pytest
@@ -275,3 +276,13 @@ class TestClusterObj(object):
         finally:
             r.execute_command_via_connection = execute_command_via_connection_original
         assert r.get('foo'), 'bar'
+
+    def test_cluster_of_one_instance(self):
+        conn = Connection('127.0.0.1', 7006)
+        conn.send_command('cluster', 'addslots', *range(16384))
+        # starting a cluster may take several seconds
+        time.sleep(8)
+
+        rc = RedisCluster([{'host': '127.0.0.1', 'port': 7006}])
+        rc.set('foo', 'bar')
+        assert b'bar' == rc.get('foo')

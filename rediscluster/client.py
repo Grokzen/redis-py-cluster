@@ -124,6 +124,12 @@ class RedisCluster(StrictRedis):
 
             all_slots_covered = True
 
+            # If there's only one server in the cluster, its ``host`` is ''
+            # Fix it to the host in startup_nodes
+            if (len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0
+                    and len(self.startup_nodes) == 1):
+                cluster_slots[0][2][0] = self.startup_nodes[0]['host']
+
             # No need to decode response because StrictRedis should handle that for us...
             for slot in cluster_slots:
                 master_node = slot[2]
