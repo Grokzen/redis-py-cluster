@@ -5,8 +5,8 @@ import random
 import time
 
 # rediscluster imports
-from rediscluster.decorators import block_pipeline_command
-from rediscluster.exceptions import RedisClusterException
+from .decorators import block_pipeline_command
+from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import StrictRedis

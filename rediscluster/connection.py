@@ -6,8 +6,8 @@ import threading
 from itertools import chain
 
 # rediscluster imports
-from rediscluster.nodemanager import NodeManager
-from rediscluster.exceptions import RedisClusterException
+from .nodemanager import NodeManager
+from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis.connection import ConnectionPool, Connection

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # rediscluster imports
-from rediscluster.exceptions import RedisClusterException
+from .exceptions import RedisClusterException
 
 
 def send_eval_to_connection(func):
