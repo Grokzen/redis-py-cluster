@@ -6,10 +6,10 @@ import string
 import time
 
 # rediscluster imports
-from rediscluster.connection import ClusterConnectionPool
-from rediscluster.exceptions import RedisClusterException
-from rediscluster.decorators import block_command, send_eval_to_connection
-from rediscluster.pipeline import BaseClusterPipeline
+from .connection import ClusterConnectionPool
+from .exceptions import RedisClusterException
+from .decorators import block_command, send_eval_to_connection
+from .pipeline import BaseClusterPipeline
 
 # 3rd party imports
 from redis import StrictRedis

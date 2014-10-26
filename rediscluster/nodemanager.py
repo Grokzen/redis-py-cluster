@@ -4,8 +4,8 @@
 import random
 
 # rediscluster imports
-from rediscluster.crc import crc16
-from rediscluster.exceptions import RedisClusterException
+from .crc import crc16
+from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import StrictRedis

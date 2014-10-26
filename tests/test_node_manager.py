@@ -218,7 +218,8 @@ def test_determine_pubsub_node():
     """
     n = NodeManager(startup_nodes=[{}])
 
-    n.nodes = [{"host": "127.0.0.1", "port": 7001, "server_type": "master"},
+    n.nodes = [
+        {"host": "127.0.0.1", "port": 7001, "server_type": "master"},
         {"host": "127.0.0.1", "port": 7005, "server_type": "master"},
         {"host": "127.0.0.1", "port": 7000, "server_type": "master"},
         {"host": "127.0.0.1", "port": 7002, "server_type": "master"},
