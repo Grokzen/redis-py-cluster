@@ -7,6 +7,7 @@ import time
 # rediscluster imports
 from rediscluster.decorators import block_pipeline_command
 from rediscluster.exceptions import RedisClusterException
+from rediscluster.client import RedisCluster
 
 # 3rd party imports
 from redis import StrictRedis
@@ -25,7 +26,7 @@ class BaseClusterPipeline(object):
         self.command_stack = []
 
     def __repr__(self):
-        return "%s".format(type(self).__name__)
+        return "{}".format(type(self).__name__)
 
     def __enter__(self):
         return self
@@ -73,7 +74,7 @@ class BaseClusterPipeline(object):
     def reset(self):
         self.command_stack = []
 
-    def send_cluster_commands(self, commands, raise_on_error=True):
+    def send_cluster_commands(self, stack, raise_on_error=True):
         """
         Send a bunch of cluster commands to the redis cluster.
         """
@@ -82,14 +83,14 @@ class BaseClusterPipeline(object):
 
         ttl = self.RedisClusterRequestTTL
         response = {}
-        attempt = range(0, len(commands)) if commands else []
+        attempt = range(0, len(stack)) if stack else []
         ask_slots = {}
         while attempt and ttl > 0:
             ttl -= 1
             node_commands = {}
             nodes = {}
             for i in attempt:
-                c = commands[i]
+                c = stack[i]
                 slot = self.connection_pool.nodes.keyslot(c[0][1])
                 if slot in ask_slots:
                     node = ask_slots[slot]
@@ -120,7 +121,7 @@ class BaseClusterPipeline(object):
             for i, v in response.items():
                 if isinstance(v, Exception):
                     if isinstance(v, ConnectionError):
-                        ask_slots[self.connection_pool.nodes.keyslot(commands[i][0][1])] = random.choice(self.startup_nodes)
+                        ask_slots[self.connection_pool.nodes.keyslot(stack[i][0][1])] = random.choice(self.startup_nodes)
                         attempt.append(i)
                         if ttl < self.RedisClusterRequestTTL / 2:
                             time.sleep(0.1)
@@ -144,7 +145,7 @@ class BaseClusterPipeline(object):
 
         response = [response[k] for k in sorted(response.keys())]
         if raise_on_error:
-            self.raise_first_error(commands, response)
+            self.raise_first_error(stack, response)
         return response
 
     @staticmethod

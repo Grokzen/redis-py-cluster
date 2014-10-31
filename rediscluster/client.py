@@ -9,7 +9,6 @@ import time
 from rediscluster.connection import ClusterConnectionPool
 from rediscluster.exceptions import RedisClusterException
 from rediscluster.decorators import block_command, send_eval_to_connection
-from rediscluster.pipeline import BaseClusterPipeline
 
 # 3rd party imports
 from redis import StrictRedis
@@ -146,7 +145,7 @@ class RedisCluster(StrictRedis):
     def __repr__(self):
         servers = list(set(['{}:{}'.format(nativestr(info['host']), info['port']) for info in self.connection_pool.nodes.startup_nodes]))
         servers.sort()
-        return "{}<{}>".format(type(self).__name__, ','.join(servers))
+        return "{}<{}>".format(type(self).__name__, ', '.join(servers))
 
     def handle_cluster_command_exception(self, e):
         info = self.parse_redirection_exception(e)
@@ -754,9 +753,14 @@ RedisCluster.register_script = block_command(StrictRedis.register_script)
 RedisCluster.eval = send_eval_to_connection(StrictRedis.eval)
 
 
+from rediscluster.pipeline import BaseClusterPipeline
+
+
 class StrictClusterPipeline(BaseClusterPipeline, RedisCluster):
     """Pipeline for the StrictRedis class"""
-    pass
+
+    def __init__(self, *args, **kwargs):
+        super(StrictClusterPipeline, self).__init__(*args, **kwargs)
 
 
 class ClusterPubSub(PubSub):
