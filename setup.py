@@ -3,6 +3,13 @@ try:
 except ImportError:
     from distutils.core import setup
 
+import os
+
+# if you are using vagrant, just delete os.link directly,
+# The hard link only saves a little disk space, so you should not care
+if os.getenv('USER', '').lower() == 'vagrant':
+    del os.link
+
 with open("docs/ALPHA.md") as f:
     alpha = f.read()
 with open('README.md') as f:
