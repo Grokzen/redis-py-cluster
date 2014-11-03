@@ -13,7 +13,7 @@ from tests.conftest import _get_client, skip_if_server_version_lt
 # 3rd party imports
 from redis import StrictRedis, Connection
 from redis.exceptions import ConnectionError
-from redis._compat import unicode
+from redis._compat import unicode, nativestr
 import pytest
 
 
@@ -278,11 +278,65 @@ class TestClusterObj(object):
         assert r.get('foo'), 'bar'
 
     def test_cluster_of_one_instance(self):
-        conn = Connection('127.0.0.1', 7006)
-        conn.send_command('cluster', 'addslots', *range(16384))
+        """
+        Test a cluster that starts with only one redis server and ends up with
+        one server.
+
+        There is another redis server joining the cluster, hold slot 0, and
+        eventually quit the cluster. The RedisCluster instance may get confused
+        when slots mapping and nodes change during the test.
+        """
+        conn_a = Connection('127.0.0.1', 7006)
+        conn_a.send_command('cluster', 'addslots', *range(16384))
         # starting a cluster may take several seconds
         time.sleep(8)
 
         rc = RedisCluster([{'host': '127.0.0.1', 'port': 7006}])
         rc.set('foo', 'bar')
         assert b'bar' == rc.get('foo')
+
+        # add another node :7007 to the cluster
+        conn_b = Connection('127.0.0.1', 7007)
+        conn_b.send_command('cluster', 'meet', '127.0.0.1', 7006)
+        time.sleep(1)
+
+        m = nativestr(rc.send_cluster_command('cluster', 'nodes'))
+        nodes_info = list(filter(None, m.split('\n')))
+        assert 2 == len(nodes_info)
+
+        node_7006_id = None
+        node_7007_id = None
+        if '127.0.0.1:7006' in nodes_info[0]:
+            node_7006_id = nodes_info[0].split(' ')[0]
+            node_7007_id = nodes_info[1].split(' ')[0]
+        else:
+            node_7006_id = nodes_info[1].split(' ')[0]
+            node_7007_id = nodes_info[0].split(' ')[0]
+
+        # migrate slot #0 to :7007
+        conn_b.send_command('cluster', 'setslot', 0, 'importing', node_7006_id)
+        conn_a.send_command('cluster', 'setslot', 0, 'migrating', node_7007_id)
+        conn_a.send_command('cluster', 'setslot', 0, 'node', node_7007_id)
+        conn_b.send_command('cluster', 'setslot', 0, 'node', node_7007_id)
+        time.sleep(6)
+
+        m = rc.send_cluster_command('cluster', 'keyslot', 'h-893')
+        assert 0 == m
+
+        conn_b.send_command('set', 'h-893', 'I am in slot 0')
+        assert b'I am in slot 0' == rc.get('h-893')
+        assert b'bar' == rc.get('foo')
+
+        # migrate slot #0 back to :7006
+        conn_a.send_command('cluster', 'setslot', 0, 'importing', node_7007_id)
+        conn_b.send_command('cluster', 'setslot', 0, 'migrating', node_7006_id)
+        conn_b.send_command('migrate', '127.0.0.1', 7006, 'h-893', 0, 15000)
+        conn_a.send_command('cluster', 'setslot', 0, 'node', node_7006_id)
+        conn_b.send_command('cluster', 'setslot', 0, 'node', node_7006_id)
+
+        # remove :7007 from the cluster
+        conn_a.send_command('cluster', 'forget', node_7007_id)
+        conn_b.send_command('cluster', 'forget', node_7006_id)
+        time.sleep(6)
+
+        assert b'I am in slot 0' == rc.get('h-893')

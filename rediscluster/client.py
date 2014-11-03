@@ -317,7 +317,7 @@ class RedisCluster(StrictRedis):
                 if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.1)
 
-            except Exception as e:
+            except ResponseError as e:
                 asking = self.handle_cluster_command_exception(e)
 
         raise Exception("To many Cluster redirections?")
@@ -337,7 +337,15 @@ class RedisCluster(StrictRedis):
         return r.execute_command(*argv, **kwargs)
 
     def handle_cluster_command_exception(self, e):
-        info = self.parse_redirection_exception(e)
+        errv = RedisCluster._exception_message(e)
+        if errv is None:
+            raise e
+        if errv.startswith('CLUSTERDOWN'):
+            if self._try_recover_cluster_down():
+                return
+            raise e
+
+        info = self.parse_redirection_exception_msg(errv)
         if not info:
             raise e
 
@@ -350,15 +358,33 @@ class RedisCluster(StrictRedis):
         else:
             return None
 
-    def parse_redirection_exception(self, e):
+    @staticmethod
+    def _exception_message(e):
         errv = getattr(e, "args", None)
         if not errv:
-            errv = getattr(e, "message", None)
-            if not errv:
-                return None
-        else:
-            errv = errv[0]
+            return getattr(e, "message", None)
+        return errv[0]
 
+    def _try_recover_cluster_down(self):
+        ok_nodes = []
+        ok_conns = {}
+        for node in self.startup_nodes:
+            name = node['name']
+            if name not in self.connections:
+                continue
+            conn = self.connections[name]
+            if 'cluster_state:ok' in nativestr(
+                    conn.execute_command('cluster', 'info')):
+                ok_nodes.append(node)
+                ok_conns[name] = conn
+        if len(ok_nodes) == 0 or self.startup_nodes == ok_nodes:
+            return False
+        self.startup_nodes = ok_nodes
+        self.connections = ok_conns
+        self.initialize_slots_cache()
+        return True
+
+    def parse_redirection_exception_msg(self, errv):
         errv = errv.split(" ")
 
         if errv[0] != "MOVED" and errv[0] != "ASK":
@@ -1050,7 +1076,16 @@ class BaseClusterPipeline(object):
                             time.sleep(0.1)
                         continue
 
-                    redir = self.parse_redirection_exception(v)
+                    errv = RedisCluster._exception_message(v)
+                    if errv is None:
+                        continue
+
+                    if errv.startswith('CLUSTERDOWN'):
+                        if self._try_recover_cluster_down():
+                            return
+                        raise e
+
+                    redir = self.parse_redirection_exception_msg(errv)
                     if not redir:
                         continue
 
