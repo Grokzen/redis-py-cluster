@@ -8,6 +8,7 @@ import time
 # rediscluster imports
 from .connection import ClusterConnectionPool
 from .exceptions import RedisClusterException
+from .pubsub import ClusterPubSub
 from .utils import string_keys_to_dict, dict_merge, blocked_command, merge_result, first_key
 
 # 3rd party imports
