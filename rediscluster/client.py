@@ -12,7 +12,7 @@ from .utils import string_keys_to_dict, dict_merge, blocked_command, merge_resul
 
 # 3rd party imports
 from redis import StrictRedis
-from redis.client import list_or_args, PubSub
+from redis.client import list_or_args
 from redis._compat import iteritems, basestring, b, izip, nativestr
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
 
@@ -781,10 +781,3 @@ from rediscluster.pipeline import StrictClusterPipeline
 RedisCluster.eval = send_eval_to_connection(StrictRedis.eval)
 
 
-class ClusterPubSub(PubSub):
-    """
-    # TODO: Write
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(ClusterPubSub, self).__init__(*args, **kwargs)

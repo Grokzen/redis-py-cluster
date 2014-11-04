@@ -52,6 +52,12 @@ True
 'bar'
 ```
 
+The following imports can be imported from `redis` package. 
+
+- `RedisCluster` 
+- `StrictClusterPipeline` 
+- `ClusterPubSub` 
+
 
 
 ## Testing
