@@ -1,3 +1,13 @@
+* 0.2.0
+    * Moved pipeline code into new file.
+    * Code now uses with a cluster connection pool class that handles all nodes and connections.
+    * Better support for pubsub. All clients will now talk to the same server because pubsub commands 
+      do not work reliably if it talks to a random server in the cluster
+    * Better result callbacks and node routing support. No more ugly decorators.
+    * Fix keyslot command when using non ascii characters.
+    * Add bitpos support (redis-py 2.10.2 or higher required)
+    * Fixed a bug where vagrant users could not build the package via shared folder.
+
 * 0.1.0
     * Initial release
     * First release uploaded to pypi
