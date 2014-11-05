@@ -4,7 +4,7 @@ Redis cluster client in python for the official cluster support targeted for red
 
 This project is a port of `redis-rb-cluster` by antirez, with alot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster
 
-[![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen+/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![Latest Version](https://pypip.in/version/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Downloads](https://pypip.in/download/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Supported Python versions](https://pypip.in/py_versions/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![License](https://pypip.in/license/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/)
+[![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen+/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![Latest Version](https://pypip.in/version/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Downloads](https://pypip.in/download/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Supported Python versions](https://pypip.in/py_versions/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![License](https://pypip.in/license/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
 
@@ -56,7 +56,7 @@ True
 
 ## Testing
 
-All tests are currently built around a 6 redis server cluster setup (3 masters + 3 slaves). One server must be using port 7000 for redis cluster discovery.
+All tests are currently built around a 8 redis server cluster setup (5 masters + 3 slaves). One server must be using port 7000 for redis cluster discovery, and 2 other masters must be using 7006, 7007 for testing single-server cluster.
 
 The easiest way to setup a cluster is to use either a Docker or Vagrant. They are both described in [Setup a redis cluster. Manually, Docker & Vagrant](docs/Cluster_Setup.md).
 
