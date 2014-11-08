@@ -145,7 +145,7 @@ class RedisCluster(StrictRedis):
 
         if info['action'] == "MOVED":
             self.refresh_table_asap = True
-            self.connection_pool.nodes.set_node(
+            self.connection_pool.nodes.set_slot(
                 slot=info['slot'],
                 host=info['host'],
                 port=info['port'],

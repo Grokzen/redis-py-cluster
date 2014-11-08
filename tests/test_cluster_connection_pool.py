@@ -8,7 +8,6 @@ import time
 from threading import Thread
 
 # rediscluster imports
-from rediscluster import RedisCluster
 from rediscluster.connection import ClusterConnectionPool, ClusterConnection, UnixDomainSocketConnection
 from rediscluster.exceptions import RedisClusterException
 from tests.conftest import skip_if_server_version_lt
@@ -16,31 +15,9 @@ from tests.conftest import skip_if_server_version_lt
 # 3rd party imports
 import pytest
 import redis
+from mock import Mock
 from redis.connection import ssl_available
 from redis._compat import unicode
-
-
-@pytest.mark.xfail(reason="TODO: needs fixing")
-def test_close_existing_connection():
-    """
-    We cannot use 'r' or 's' object because they have called flushdb() and connected to
-    any number of redis servers. Creating it manually will not do that.
-
-    close_existing_connection() is called inside get_connection_by_slot() and will limit
-    the number of connections stored to 1
-    """
-    params = {'startup_nodes': [{"host": "127.0.0.1", "port": "7000"}],
-              'max_connections': 1,
-              'socket_timeout': 0.1,
-              'decode_responses': False}
-
-    client = RedisCluster(**params)
-    assert len(client.connections) == 0
-    c1 = client.get_connection_by_slot(0)
-    assert len(client.connections) == 1
-    c2 = client.get_connection_by_slot(16000)
-    assert len(client.connections) == 1
-    assert c1 != c2  # This shold not return different connections
 
 
 # @pytest.mark.xfail(reason="TODO: needs fixing")
@@ -152,8 +129,7 @@ class TestConnectionPool(object):
         """
         This test assumes that when hashing key 'foo' will be sent to server with port 7002
         """
-        connection_kwargs = {}
-        pool = self.get_pool(connection_kwargs=connection_kwargs)
+        pool = self.get_pool(connection_kwargs={})
 
         connection = pool.get_connection_by_key("foo")
         assert connection.port == 7002
@@ -166,15 +142,28 @@ class TestConnectionPool(object):
         """
         This test assumes that when doing keyslot operation on "foo" it will return 12182
         """
-        connection_kwargs = {}
-        pool = self.get_pool(connection_kwargs=connection_kwargs)
+        pool = self.get_pool(connection_kwargs={})
 
         connection = pool.get_connection_by_slot(12182)
         assert connection.port == 7002
 
+        m = Mock()
+        pool.get_random_connection = m
+
+        # If None value is provided then a random node should be tried/returned
+        pool.get_connection_by_slot(None)
+        m.assert_called_once_with()
+
+    def test_get_connection_blocked(self):
+        """
+        Currently get_connection() should only be used by pubsub command.
+        All other commands should be blocked and exception raised.
+        """
+        pool = self.get_pool()
+
         with pytest.raises(RedisClusterException) as ex:
-            pool.get_connection_by_key(None)
-        assert unicode(ex.value).startswith("No way to dispatch this command to Redis Cluster."), True
+            pool.get_connection("GET")
+        assert unicode(ex.value).startswith("Only 'pubsub' commands can be used by get_connection()")
 
 
 class TestBlockingConnectionPool(object):

@@ -80,7 +80,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         # Only pubsub command/connection should be allowed here
         if command_name != "pubsub":
-            raise Exception("get_connection should not be in use...")
+            raise RedisClusterException("Only 'pubsub' commands can be used by get_connection()")
 
         # TOOD: Pop existing connection if it exists
         connection = self.make_connection(self.nodes.pubsub_node)
@@ -138,23 +138,6 @@ class ClusterConnectionPool(ConnectionPool):
         for connection in all_pubsub_conns:
             connection.disconnect()
 
-    def close_existing_connection(self):
-        """
-        Close random connections until open connections >= max_connections
-        """
-        # TODO: It could be possible that this code will get stuck in a infinite loop. It must be fixed
-        # while len(self.connections) >= self.max_connections:
-        while self.count_num_connections() >= self.max_connections:
-            # Shuffle all connections and close the first one in the list.
-            # random.shuffle(self.startup_nodes)
-            node = self.nodes.random_startup_node()
-            # connection = self.connections.get(self.startup_nodes[0]["name"], None)
-            connection = self.connections.get(node["name"], None)
-            if connection:
-                self.release(connection)
-                # self.close_redis_connection(connection)
-                # del self.connections[self.startup_nodes[0]["name"]]
-
     def count_num_connections(self):
         i = 0
         for node, connections in self._in_use_connections.items():
@@ -183,7 +166,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Determine what server a specific slot belongs to and return a redis object that is connected
         """
-        node = self.nodes.slots[slot]
+        node = self.nodes.slots.get(slot, None)
         if not node:
             return self.get_random_connection()
         return self.get_connection_by_node(node)

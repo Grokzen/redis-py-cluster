@@ -18,5 +18,4 @@ setattr(redis, "StrictClusterPipeline", StrictClusterPipeline)
 __version__ = (0, 2, 0)
 
 if sys.version_info[0:3] == (3, 4, 0):
-    print("CRITICAL: rediscluster do not work with python 3.4.0")
-    sys.exit(1)
+    raise RuntimeError("CRITICAL: rediscluster do not work with python 3.4.0. Please use 3.4.1 or higher.")

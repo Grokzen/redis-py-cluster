@@ -38,10 +38,7 @@ class StrictClusterPipeline(RedisCluster):
         self.reset()
 
     def __del__(self):
-        try:
-            self.reset()
-        except Exception:
-            pass
+        self.reset()
 
     def __len__(self):
         return len(self.command_stack)

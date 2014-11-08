@@ -78,8 +78,8 @@ class NodeManager(object):
          and it could execute CLUSTER SLOTS command.
         """
         # Reset variables
-        self.slots = {}
-        self.nodes = []
+        self.flush_nodes_cache()
+        self.flush_slots_cache
 
         for node in self.startup_nodes:
             try:
@@ -171,9 +171,9 @@ class NodeManager(object):
         if "name" not in n:
             n["name"] = "{0}:{1}".format(n["host"], n["port"])
 
-    def set_node(self, slot, host=None, port=None, server_type=None):
+    def set_slot(self, slot, host=None, port=None, server_type=None):
         """
-        Update data for a node.
+        Update data for a node on a slot.
         """
         # In case the slot do not exists yet
         self.slots.setdefault(slot, {})
@@ -221,4 +221,4 @@ class NodeManager(object):
         """
         Reset nodes cache back to empty dict
         """
-        self.nodes = {}
+        self.nodes = []

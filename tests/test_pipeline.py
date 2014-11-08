@@ -451,3 +451,12 @@ class TestPipeline(object):
         finally:
             pipe.perform_execute_pipeline = orig_perform_execute_pipeline
             del test._calls
+
+    def test_empty_stack(self, r):
+        """
+        If pipeline is executed with no commands it should
+        return a empty list.
+        """
+        p = r.pipeline()
+        result = p.execute()
+        assert result == []

@@ -11,6 +11,7 @@ from rediscluster.nodemanager import NodeManager
 
 # 3rd party imports
 import pytest
+from mock import patch, Mock
 from redis import StrictRedis
 from redis._compat import unicode
 
@@ -227,3 +228,49 @@ def test_determine_pubsub_node():
 
     n.determine_pubsub_node()
     assert n.pubsub_node == {"host": "127.0.0.1", "port": 7005, "server_type": "master", "pubsub": True}
+
+
+def test_cluster_slots_error():
+    """
+    Check that exception is raised if initialize can't execute
+    'CLUSTER SLOTS' command.
+    """
+    with patch.object(RedisCluster, 'execute_command') as execute_command_mock:
+        execute_command_mock.side_effect = Exception("foobar")
+
+        n = NodeManager(startup_nodes=[{}])
+
+        with pytest.raises(RedisClusterException):
+            n.initialize()
+
+
+def test_set_slot():
+    """
+    Test to update data in a slot.
+    """
+    expected = {
+        "host": "127.0.0.1",
+        "name": "127.0.0.1:7000",
+        "port": 7000,
+        "server_type": "master",
+    }
+
+    n = NodeManager(startup_nodes=[{}])
+    assert len(n.slots) == 0, "no slots should exist"
+    r = n.set_slot(0, host="127.0.0.1", port=7000, server_type="master")
+    assert r == expected
+    assert n.slots == {0: expected}
+
+
+def test_reset():
+    """
+    Test that reset method resets variables back to correct default values.
+    """
+    n = NodeManager(startup_nodes=[{}])
+    n.initialize = Mock()
+    n.slots = {"foo": "bar"}
+    n.nodes = ["foo", "bar"]
+    n.reset()
+
+    assert n.slots == {}
+    assert n.nodes == []
