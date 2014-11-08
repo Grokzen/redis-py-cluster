@@ -7,9 +7,9 @@ import time
 
 # rediscluster imports
 from .connection import ClusterConnectionPool
-from .exceptions import RedisClusterException
+from .exceptions import RedisClusterException, ClusterDownException
 from .pubsub import ClusterPubSub
-from .utils import string_keys_to_dict, dict_merge, blocked_command, merge_result, first_key
+from .utils import string_keys_to_dict, dict_merge, blocked_command, merge_result, first_key, clusterdown_wrapper
 
 # 3rd party imports
 from redis import StrictRedis
@@ -80,7 +80,8 @@ class RedisCluster(StrictRedis):
         port             --> Can be used to point to a startup node
         max_connections  --> Maximum number of connections that should be kept open at one time
         **kwargs         --> Extra arguments that will be sent into StrictRedis instance when created
-                             (See Official redis-py doc for supported kwargs [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
+                             (See Official redis-py doc for supported kwargs
+                             [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
                              Some kwargs is not supported and will raise RedisClusterException
                               - db (Redis do not support database SELECT in cluster mode)
         """
@@ -107,7 +108,6 @@ class RedisCluster(StrictRedis):
 
         self.nodes_callbacks = self.__class__.NODES_CALLBACKS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
-
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
 
     def __repr__(self):
@@ -117,20 +117,56 @@ class RedisCluster(StrictRedis):
 
     def handle_cluster_command_exception(self, e):
         """
-        # TODO: Write
+        Given a exception object this method will look at the exception
+        message/args and determine what error was returned from redis.
+
+        Handles:
+         - CLUSTERDOWN: Disconnects the connection_pool and sets
+                        refresh_table_asap to True.
+         - MOVED: Updates the slots cache with the new ip:port
+         - ASK: Returns a dict with ip:port where to connect to try again
         """
-        info = self.parse_redirection_exception(e)
+        errv = RedisCluster._exception_message(e)
+        if errv is None:
+            raise e
+
+        if errv.startswith('CLUSTERDOWN'):
+            # Drop all connection and reset the cluster slots/nodes
+            # on next attempt/command.
+            self.connection_pool.disconnect()
+            self.connection_pool.reset()
+            self.refresh_table_asap = True
+            return {'method': 'clusterdown'}
+
+        info = self.parse_redirection_exception_msg(errv)
+
         if not info:
             raise e
 
         if info['action'] == "MOVED":
             self.refresh_table_asap = True
-            self.slots[info['slot']] = {'host': info['host'], 'port': info['port']}
-            return None
+            self.connection_pool.nodes.set_node(
+                slot=info['slot'],
+                host=info['host'],
+                port=info['port'],
+            )
         elif info['action'] == "ASK":
-            return {'host': info['host'], 'port': info['port']}
-        else:
-            return None
+            return {'host': info['host'], 'port': info['port'], 'method': 'ask'}
+
+        return {}
+
+    @staticmethod
+    def _exception_message(e):
+        """
+        Returns the exception message from a exception object.
+
+        They are stored in different attributes depending on what
+        python version is used.
+        """
+        errv = getattr(e, "args", None)
+        if not errv:
+            return getattr(e, "message", None)
+        return errv[0]
 
     def parse_redirection_exception(self, e):
         """
@@ -144,6 +180,10 @@ class RedisCluster(StrictRedis):
         else:
             errv = errv[0]
 
+    def parse_redirection_exception_msg(self, errv):
+        """
+        # TODO: write
+        """
         errv = errv.split(" ")
 
         if errv[0] != "MOVED" and errv[0] != "ASK":
@@ -177,7 +217,7 @@ class RedisCluster(StrictRedis):
 
     def transaction(self, func, *watches, **kwargs):
         """
-        # TODO: Write
+        Transaction is not implemented in cluster mode yet.
         """
         raise RedisClusterException("method RedisCluster.transaction() is not implemented")
 
@@ -212,29 +252,38 @@ class RedisCluster(StrictRedis):
         # Default way to handle result
         return first_key(command, res)
 
+    @clusterdown_wrapper
     def execute_command(self, *args, **kwargs):
         """
         Send a command to a node in the cluster
         """
+        # If set externally we must update it before calling any commands
         if self.refresh_table_asap:
-            self.initialize_slots_cache()
+            self.connection_pool.nodes.initialize()
+            self.refresh_table_asap = False
 
-        try_random_node = False
-        asking = None
-
-        res = {}
+        action = {}
         command = args[0]
         nodes = self._determine_nodes(*args, **kwargs)
+        res = {}
+        try_random_node = False
 
         for node in nodes:
             # Reset ttl for each node
             ttl = self.RedisClusterRequestTTL
 
             while ttl > 0:
+                # Must check this on each try in case we need to rebuild the entire
+                # cluster slots/node cache.
+                if self.refresh_table_asap:
+                    self.connection_pool.nodes.initialize()
+                    self.refresh_table_asap = False
+
                 ttl -= 1
-                if asking:
+
+                if action.get("method", "") == "ask":
                     # TODO: Currently broken
-                    r = self.get_redis_link(asking["host"], asking["port"])
+                    r = self.get_redis_link(action["host"], action["port"])
                 elif try_random_node:
                     # TODO: Untested
                     r = self.connection_pool.get_random_connection()
@@ -243,7 +292,7 @@ class RedisCluster(StrictRedis):
                     r = self.connection_pool.get_connection_by_node(node)
 
                 try:
-                    if asking:
+                    if action.get("method", "") == "ask":
                         # TODO: Currently broken as hell
                         return self.connection_pool.execute_asking_command_via_connection(r, *args, **kwargs)
                     else:
@@ -252,22 +301,22 @@ class RedisCluster(StrictRedis):
 
                         # If command was successfully sent then we can break out from this while
                         # and continue with next node
+                        # i += 1
                         break
-                except RedisClusterException:
-                    raise
-                except BusyLoadingError:
+                except (RedisClusterException, BusyLoadingError):
                     raise
                 except (ConnectionError, TimeoutError):
-                    print(" *** Connection error")
                     try_random_node = True
                     if ttl < self.RedisClusterRequestTTL / 2:
                         time.sleep(0.1)
-                except Exception:
-                    raise
-                    # TODO: Currently broken
-                    # asking = self.handle_cluster_command_exception(e)
+                except ResponseError as e:
+                    action = self.handle_cluster_command_exception(e)
+
+                    if action.get("method", "") == "clusterdown":
+                        raise ClusterDownException()
                 finally:
-                    self.connection_pool.release(r)
+                    if action.get('method', "") != "clusterdown":
+                        self.connection_pool.release(r)
 
             if ttl == 0:
                 raise Exception("To many Cluster redirections?")
@@ -780,5 +829,3 @@ from rediscluster.pipeline import StrictClusterPipeline
 # (keys show up after the first 2 args and are variable)
 # Verifies all keys belong to the same hashed key slot and fetches the connection based on that slot.
 RedisCluster.eval = send_eval_to_connection(StrictRedis.eval)
-
-

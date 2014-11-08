@@ -7,3 +7,7 @@ class RedisClusterException(Exception):
 
 class RedisClusterError(Exception):
     pass
+
+
+class ClusterDownException(Exception):
+    pass

@@ -12,7 +12,7 @@ from tests.conftest import skip_if_server_version_lt, skip_if_redis_py_version_l
 
 # 3rd party imports
 import pytest
-from redis._compat import (unichr, u, b, ascii_letters, iteritems, iterkeys, itervalues)
+from redis._compat import unichr, u, b, ascii_letters, iteritems, iterkeys, itervalues
 from redis.client import parse_info
 from redis.exceptions import ResponseError, DataError, RedisError
 
@@ -48,7 +48,6 @@ class TestRedisCommands(object):
             assert r.client_setname('redis_py_test')
 
     def test_config_get(self, r):
-        print(r.config_get())
         for server, data in r.config_get().items():
             assert 'maxmemory' in data
             assert data['maxmemory'].isdigit()

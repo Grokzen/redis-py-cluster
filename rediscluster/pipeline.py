@@ -2,13 +2,14 @@
 
 # python std lib
 import random
-import time
 import sys
+import time
 
 # rediscluster imports
-from .exceptions import RedisClusterException
 from .client import RedisCluster
 from .connection import by_node_context
+from .exceptions import RedisClusterException, ClusterDownException
+from .utils import clusterdown_wrapper
 
 # 3rd party imports
 from redis import StrictRedis
@@ -106,6 +107,7 @@ class StrictClusterPipeline(RedisCluster):
         #     self.connection_pool.release(self.connection)
         #     self.connection = None
 
+    @clusterdown_wrapper
     def send_cluster_commands(self, stack, raise_on_error=True, allow_redirections=True):
         """
         Send a bunch of cluster commands to the redis cluster.
@@ -114,12 +116,14 @@ class StrictClusterPipeline(RedisCluster):
         automatically. If set to false it will raise RedisClusterException.
         """
         if self.refresh_table_asap:
-            self.initialize_slots_cache()
+            self.connection_pool.nodes.initialize()
+            self.refresh_table_asap = False
 
         ttl = self.RedisClusterRequestTTL
         response = {}
         attempt = range(0, len(stack)) if stack else []
         ask_slots = {}
+
         while attempt and ttl > 0:
             ttl -= 1
             node_commands = {}
@@ -151,7 +155,8 @@ class StrictClusterPipeline(RedisCluster):
                 cmds = [node_commands[node_name][i] for i in sorted(node_commands[node_name].keys())]
 
                 with by_node_context(self.connection_pool, node) as connection:
-                    for i, v in zip(sorted(node_commands[node_name].keys()), self._execute_pipeline(connection, cmds, False)):
+                    result = zip(sorted(node_commands[node_name].keys()), self._execute_pipeline(connection, cmds, False))
+                    for i, v in result:
                         response[i] = v
 
             ask_slots = {}
@@ -166,7 +171,18 @@ class StrictClusterPipeline(RedisCluster):
                         time.sleep(0.1)
                     continue
 
-                redir = self.parse_redirection_exception(v)
+                errv = RedisCluster._exception_message(v)
+                if errv is None:
+                    continue
+
+                if errv.startswith('CLUSTERDOWN'):
+                    self.connection_pool.disconnect()
+                    self.connection_pool.reset()
+                    self.refresh_table_asap = True
+                    raise ClusterDownException()
+
+                redir = self.parse_redirection_exception_msg(errv)
+
                 if not redir:
                     continue
 
@@ -210,8 +226,7 @@ class StrictClusterPipeline(RedisCluster):
         response = []
         for args, options in commands:
             try:
-                response.append(
-                    self.parse_response(connection, args[0], **options))
+                response.append(self.parse_response(connection, args[0], **options))
             except ResponseError:
                 response.append(sys.exc_info()[1])
 

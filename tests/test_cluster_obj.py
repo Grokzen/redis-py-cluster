@@ -5,12 +5,15 @@ from __future__ import with_statement
 import re
 
 # rediscluster imports
-from rediscluster.connection import ClusterConnectionPool
 from rediscluster import RedisCluster
+from rediscluster.connection import ClusterConnectionPool
 from rediscluster.exceptions import RedisClusterException
+from rediscluster.nodemanager import NodeManager
 from tests.conftest import _get_client, skip_if_server_version_lt
 
 # 3rd party imports
+from mock import patch
+from redis.exceptions import ResponseError
 from redis._compat import unicode
 import pytest
 
@@ -83,3 +86,72 @@ def test_blocked_transaction(r):
     with pytest.raises(RedisClusterException) as ex:
         r.transaction(None)
     assert unicode(ex.value).startswith("method RedisCluster.transaction() is not implemented"), unicode(ex.value)
+
+
+def test_cluster_of_one_instance():
+    """
+    Test a cluster that starts with only one redis server and ends up with
+    one server.
+
+    There is another redis server joining the cluster, hold slot 0, and
+    eventually quit the cluster. The RedisCluster instance may get confused
+    when slots mapping and nodes change during the test.
+    """
+    with patch.object(RedisCluster, 'parse_response') as parse_response_mock:
+        with patch.object(NodeManager, 'initialize', autospec=True) as init_mock:
+            def side_effect(self, *args, **kwargs):
+                def ok_call(self, *args, **kwargs):
+                    assert self.port == 7007
+                    return "OK"
+                parse_response_mock.side_effect = ok_call
+
+                resp = ResponseError()
+                resp.args = ('CLUSTERDOWN The cluster is down. Use CLUSTER INFO for more information',)
+                resp.message = 'CLUSTERDOWN The cluster is down. Use CLUSTER INFO for more information'
+                raise resp
+
+            def side_effect_rebuild_slots_cache(self):
+                # make new node cache that points to 7007 instead of 7006
+                self.nodes = [{'host': '127.0.0.1', 'server_type': 'master', 'port': 7006, 'name': '127.0.0.1:7006'}]
+                self.slots = {}
+
+                for i in range(0, 16383):
+                    self.slots[i] = {
+                        'host': '127.0.0.1',
+                        'server_type': 'master',
+                        'port': 7006,
+                        'name': '127.0.0.1:7006',
+                    }
+
+                # Second call should map all to 7007
+                def map_7007(self):
+                    self.nodes = [{'host': '127.0.0.1', 'server_type': 'master', 'port': 7007, 'name': '127.0.0.1:7007'}]
+                    self.slots = {}
+
+                    for i in range(0, 16383):
+                        self.slots[i] = {
+                            'host': '127.0.0.1',
+                            'server_type': 'master',
+                            'port': 7007,
+                            'name': '127.0.0.1:7007',
+                        }
+
+                # First call should map all to 7006
+                init_mock.side_effect = map_7007
+
+            parse_response_mock.side_effect = side_effect
+            init_mock.side_effect = side_effect_rebuild_slots_cache
+
+            rc = RedisCluster(host='127.0.0.1', port=7006)
+            rc.set("foo", "bar")
+
+            #####
+            # Test that CLUSTERDOWN is handled the same way when used via pipeline
+
+            parse_response_mock.side_effect = side_effect
+            init_mock.side_effect = side_effect_rebuild_slots_cache
+
+            rc = RedisCluster(host='127.0.0.1', port=7006)
+            p = rc.pipeline()
+            p.set("bar", "foo")
+            p.execute()

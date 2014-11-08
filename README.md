@@ -4,7 +4,7 @@ Redis cluster client in python for the official cluster support targeted for red
 
 This project is a port of `redis-rb-cluster` by antirez, with alot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster
 
-[![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen+/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![Latest Version](https://pypip.in/version/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Downloads](https://pypip.in/download/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Supported Python versions](https://pypip.in/py_versions/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![License](https://pypip.in/license/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/)
+[![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen+/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![Latest Version](https://pypip.in/version/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Downloads](https://pypip.in/download/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Supported Python versions](https://pypip.in/py_versions/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![License](https://pypip.in/license/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
 
@@ -18,7 +18,9 @@ Current python support is
 - 2.7 + hiredis
 - 3.2 + hiredis
 - 3.3 + hiredis
-- 3.4 + hiredis
+- 3.4.1 and higher + hiredis
+
+Python 3.4.0 do not not work with pubsub because of cause segfault issues. If rediscluster is runned on 3.4.0 it will write a error message and exit out.
 
 
 

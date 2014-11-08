@@ -73,6 +73,10 @@ cluster-enabled yes
 cluster-config-file /tmp/redis_cluster_node6.conf
 endef
 
+ifndef REDIS_TRIB_RB
+	REDIS_TRIB_RB=redis-git/src/redis-trib.rb
+endif
+
 export REDIS_CLUSTER_NODE1_CONF
 export REDIS_CLUSTER_NODE2_CONF
 export REDIS_CLUSTER_NODE3_CONF
@@ -156,7 +160,7 @@ stop:
 test:
 	make start
 	sleep 5
-	echo "yes" | ruby redis-git/src/redis-trib.rb create --replicas 1 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005
+	echo "yes" | ruby $(REDIS_TRIB_RB) create --replicas 1 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005
 	sleep 5
 	make tox
 	make stop

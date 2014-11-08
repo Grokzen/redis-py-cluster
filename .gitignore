@@ -3,9 +3,10 @@
 *.swp
 env27*
 .tox
-rediscluster.egg-info
 .coverage*
 dump.rdb
-redis-git/
-htmlcov/
-dist/
+redis-git
+htmlcov
+dist
+build
+*.egg-info

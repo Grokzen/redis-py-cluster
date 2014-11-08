@@ -66,7 +66,7 @@ class NodeManager(object):
         # TODO: Make this get a random node
         return self.nodes[0]
 
-    def get_redis_link(self, host="127.0.0.1", port=7000):
+    def get_redis_link(self, host, port):
         return StrictRedis(host=host, port=port)
 
     def initialize(self):
@@ -85,11 +85,16 @@ class NodeManager(object):
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"])
                 cluster_slots = r.execute_command("cluster", "slots")
-            except Exception as e:
-                print("ERROR sending 'cluster slots' command to redis server: {}".format(node))
-                raise e
+            except Exception:
+                raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {}".format(node))
 
             all_slots_covered = True
+
+            # If there's only one server in the cluster, its ``host`` is ''
+            # Fix it to the host in startup_nodes
+            if (len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0
+                    and len(self.startup_nodes) == 1):
+                cluster_slots[0][2][0] = self.startup_nodes[0]['host']
 
             # No need to decode response because StrictRedis should handle that for us...
             for slot in cluster_slots:
@@ -97,7 +102,13 @@ class NodeManager(object):
 
                 # Only store the master node as address for each slot.
                 # TODO: Slave nodes have to be fixed/patched in later...
-                master_addr = {"host": master_node[0], "port": master_node[1], "name": "{}:{}".format(master_node[0], master_node[1]), "server_type": "master"}
+                master_addr = {
+                    "host": master_node[0],
+                    "port": master_node[1],
+                    "name": "{0}:{1}".format(master_node[0], master_node[1]),
+                    "server_type": "master",
+                }
+
                 self.nodes.append(master_addr)
                 for i in range(int(slot[0]), int(slot[1]) + 1):
                     if i not in self.slots:
@@ -109,7 +120,12 @@ class NodeManager(object):
 
                 slave_nodes = [slot[i] for i in range(3, len(slot))]
                 for slave_node in slave_nodes:
-                    slave_addr = {"host": slave_node[0], "port": slave_node[1], "name": "{}:{}".format(slave_node[0], slave_node[1]), "server_type": "slave"}
+                    slave_addr = {
+                        "host": slave_node[0],
+                        "port": slave_node[1],
+                        "name": "{0}:{1}".format(slave_node[0], slave_node[1]),
+                        "server_type": "slave",
+                    }
                     self.nodes.append(slave_addr)
 
                 self.populate_startup_nodes()
@@ -122,7 +138,6 @@ class NodeManager(object):
 
             if all_slots_covered:
                 # All slots are covered and application can continue to execute
-
                 # Parse and determine what node will be pubsub node
                 self.determine_pubsub_node()
                 return
@@ -155,6 +170,24 @@ class NodeManager(object):
         """
         if "name" not in n:
             n["name"] = "{0}:{1}".format(n["host"], n["port"])
+
+    def set_node(self, slot, host=None, port=None, server_type=None):
+        """
+        Update data for a node.
+        """
+        # In case the slot do not exists yet
+        self.slots.setdefault(slot, {})
+
+        if host:
+            self.slots[slot]['host'] = host
+        if port:
+            self.slots[slot]['port'] = port
+        if host and port:
+            self.slots[slot]['name'] = "{0}:{1}".format(host, port)
+        if server_type:
+            self.slots[slot]['server_type'] = server_type
+
+        return self.slots[slot]
 
     def populate_startup_nodes(self):
         """
