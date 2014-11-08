@@ -73,6 +73,30 @@ cluster-enabled yes
 cluster-config-file /tmp/redis_cluster_node6.conf
 endef
 
+define REDIS_CLUSTER_NODE7_CONF
+daemonize yes
+port 7006
+cluster-node-timeout 5000
+pidfile /tmp/redis_cluster_node7.pid
+logfile /tmp/redis_cluster_node7.log
+save ""
+appendonly no
+cluster-enabled yes
+cluster-config-file /tmp/redis_cluster_node7.conf
+endef
+
+define REDIS_CLUSTER_NODE8_CONF
+daemonize yes
+port 7007
+cluster-node-timeout 5000
+pidfile /tmp/redis_cluster_node8.pid
+logfile /tmp/redis_cluster_node8.log
+save ""
+appendonly no
+cluster-enabled yes
+cluster-config-file /tmp/redis_cluster_node8.conf
+endef
+
 ifndef REDIS_TRIB_RB
 	REDIS_TRIB_RB=redis-git/src/redis-trib.rb
 endif
@@ -83,6 +107,8 @@ export REDIS_CLUSTER_NODE3_CONF
 export REDIS_CLUSTER_NODE4_CONF
 export REDIS_CLUSTER_NODE5_CONF
 export REDIS_CLUSTER_NODE6_CONF
+export REDIS_CLUSTER_NODE7_CONF
+export REDIS_CLUSTER_NODE8_CONF
 
 help:
 	@echo "Please use 'make <target>' where <target> is one of"
@@ -138,6 +164,8 @@ start: cleanup
 	echo "$$REDIS_CLUSTER_NODE4_CONF" | redis-server -
 	echo "$$REDIS_CLUSTER_NODE5_CONF" | redis-server -
 	echo "$$REDIS_CLUSTER_NODE6_CONF" | redis-server -
+	echo "$$REDIS_CLUSTER_NODE7_CONF" | redis-server -
+	echo "$$REDIS_CLUSTER_NODE8_CONF" | redis-server -
 
 cleanup:
 	- rm -vf /tmp/redis_cluster_node*.conf 2>/dev/null
@@ -150,12 +178,16 @@ stop:
 	kill `cat /tmp/redis_cluster_node4.pid` || true
 	kill `cat /tmp/redis_cluster_node5.pid` || true
 	kill `cat /tmp/redis_cluster_node6.pid` || true
+	kill `cat /tmp/redis_cluster_node7.pid` || true
+	kill `cat /tmp/redis_cluster_node8.pid` || true
 	rm -f /tmp/redis_cluster_node1.conf
 	rm -f /tmp/redis_cluster_node2.conf
 	rm -f /tmp/redis_cluster_node3.conf
 	rm -f /tmp/redis_cluster_node4.conf
 	rm -f /tmp/redis_cluster_node5.conf
 	rm -f /tmp/redis_cluster_node6.conf
+	rm -f /tmp/redis_cluster_node7.conf
+	rm -f /tmp/redis_cluster_node8.conf
 
 test:
 	make start
