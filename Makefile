@@ -166,6 +166,9 @@ start: cleanup
 	echo "$$REDIS_CLUSTER_NODE6_CONF" | redis-server -
 	echo "$$REDIS_CLUSTER_NODE7_CONF" | redis-server -
 	echo "$$REDIS_CLUSTER_NODE8_CONF" | redis-server -
+	sleep 5
+	echo "yes" | ruby $(REDIS_TRIB_RB) create --replicas 1 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005
+	sleep 5
 
 cleanup:
 	- rm -vf /tmp/redis_cluster_node*.conf 2>/dev/null
@@ -191,9 +194,6 @@ stop:
 
 test:
 	make start
-	sleep 5
-	echo "yes" | ruby $(REDIS_TRIB_RB) create --replicas 1 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005
-	sleep 5
 	make tox
 	make stop
 
