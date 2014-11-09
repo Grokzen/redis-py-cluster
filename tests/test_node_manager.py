@@ -48,8 +48,8 @@ def test_init_slots_cache_not_all_slots(s):
     Test that if not all slots are covered it should raise an exception
     """
     # Create wrapper function so we can inject custom 'CLUSTER SLOTS' command result
-    def get_redis_link_wrapper(host, port):
-        link = StrictRedis(host="127.0.0.1", port=7000)
+    def get_redis_link_wrapper(host, port, decode_responses=False):
+        link = StrictRedis(host="127.0.0.1", port=7000, decode_responses=True)
 
         # Missing slot 5460
         bad_slots_resp = [
@@ -68,7 +68,7 @@ def test_init_slots_cache_not_all_slots(s):
     with pytest.raises(RedisClusterException) as ex:
         s.connection_pool.nodes.initialize()
 
-    assert unicode(ex.value).startswith("All slots are not covered after querry all startup_nodes."), True
+    assert unicode(ex.value).startswith("All slots are not covered after querry all startup_nodes.")
 
 
 def test_init_slots_cache(s):
@@ -133,19 +133,19 @@ def test_init_slots_cache_slots_collision():
         {"host": "127.0.0.1", "port": 7001},
     ])
 
-    def monkey_link(host=None, port=None):
+    def monkey_link(host=None, port=None, decode_responses=False):
         """
         Helper function to return custom slots cache data from different redis nodes
         """
         if port == 7000:
-            r = RedisCluster(host="127.0.0.1", port=7000)
+            r = RedisCluster(host="127.0.0.1", port=7000, decode_responses=True)
             r.result_callbacks["cluster"] = lambda command, res: [
                 [0, 5460, [b'127.0.0.1', 7000], [b'127.0.0.1', 7003]],
                 [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.1', 7004]],
             ]
             return r
         elif port == 7001:
-            r = RedisCluster(host="127.0.0.1", port=7000)
+            r = RedisCluster(host="127.0.0.1", port=7000, decode_responses=True)
             r.result_callbacks["cluster"] = lambda command, res: [
                 [0, 5460, [b'127.0.0.1', 7001], [b'127.0.0.1', 7003]],
                 [5461, 10922, [b'127.0.0.1', 7000], [b'127.0.0.1', 7004]],

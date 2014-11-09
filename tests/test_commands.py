@@ -12,7 +12,7 @@ from tests.conftest import skip_if_server_version_lt, skip_if_redis_py_version_l
 
 # 3rd party imports
 import pytest
-from redis._compat import unichr, u, b, ascii_letters, iteritems, iterkeys, itervalues
+from redis._compat import unichr, u, b, ascii_letters, iteritems, iterkeys, itervalues, unicode
 from redis.client import parse_info
 from redis.exceptions import ResponseError, DataError, RedisError
 
@@ -399,7 +399,7 @@ class TestRedisCommands(object):
         assert r['b'] == b('2')
 
         assert r.renamenx('a', 'c')
-        assert r['c'] == '1'
+        assert r['c'] == b('1')
 
     def test_set_nx(self, r):
         assert r.set('a', '1', nx=True)

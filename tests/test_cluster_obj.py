@@ -14,7 +14,7 @@ from tests.conftest import _get_client, skip_if_server_version_lt
 # 3rd party imports
 from mock import patch, Mock
 from redis.exceptions import ResponseError
-from redis._compat import unicode
+from redis._compat import unicode, b
 import pytest
 
 

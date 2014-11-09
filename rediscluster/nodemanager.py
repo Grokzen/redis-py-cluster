@@ -9,7 +9,7 @@ from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import StrictRedis
-from redis._compat import unicode
+from redis._compat import unicode, nativestr
 
 
 class NodeManager(object):
@@ -66,8 +66,8 @@ class NodeManager(object):
         # TODO: Make this get a random node
         return self.nodes[0]
 
-    def get_redis_link(self, host, port):
-        return StrictRedis(host=host, port=port)
+    def get_redis_link(self, host, port, decode_responses=False):
+        return StrictRedis(host=host, port=port, decode_responses=decode_responses)
 
     def initialize(self):
         """
@@ -83,7 +83,7 @@ class NodeManager(object):
 
         for node in self.startup_nodes:
             try:
-                r = self.get_redis_link(host=node["host"], port=node["port"])
+                r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")
             except Exception:
                 raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {}".format(node))
