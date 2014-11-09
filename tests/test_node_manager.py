@@ -274,3 +274,31 @@ def test_reset():
 
     assert n.slots == {}
     assert n.nodes == []
+
+
+def test_cluster_one_instance():
+    """
+    If the cluster exists of only 1 node then there is some hacks that must
+    be validated they work.
+    """
+    with patch.object(StrictRedis, 'execute_command') as mock_execute_command:
+        return_data = [[0L, 16383, ['', 7006L]]]
+        mock_execute_command.return_value = return_data
+
+        n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7006}])
+        n.initialize()
+
+        assert n.nodes == [{
+            'host': '127.0.0.1',
+            'name': '127.0.0.1:7006',
+            'port': 7006,
+            'server_type': 'master',
+        }]
+
+        assert len(n.slots) == 16384
+        assert n.slots[0] == {
+            "host": "127.0.0.1",
+            "name": "127.0.0.1:7006",
+            "port": 7006,
+            "server_type": "master",
+        }

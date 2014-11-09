@@ -116,7 +116,7 @@ class NodeManager(object):
                     else:
                         # Validate that 2 nodes want to use the same slot cache setup
                         if self.slots[i] != master_addr:
-                            raise RedisClusterException("startup_nodes could not agree on a valid slots cache. {} vs {}".format(self.slots[i], master_addr))
+                            raise RedisClusterException("startup_nodes could not agree on a valid slots cache. {} vs {} on slo: {}".format(self.slots[i], master_addr, i))
 
                 slave_nodes = [slot[i] for i in range(3, len(slot))]
                 for slave_node in slave_nodes:
