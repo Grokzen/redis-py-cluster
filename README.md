@@ -83,7 +83,6 @@ To run all environments you need all supported python versions installed on your
 To run a specific python version use either `tox -e py27` or `tox -e py34`
 
 
-
 ## More documentation
 
 More detailed documentation can be found in `docs` folder.
@@ -93,6 +92,7 @@ More detailed documentation can be found in `docs` folder.
 - [Command differences](docs/Commands.md)
 - [Limitations and differences](docs/Limits_and_differences.md)
 - [Redisco support (Django ORM)](docs/Redisco.md)
+- [Gevent support](docs/Gevent.md)
 - [Authors](docs/Authors)
 
 

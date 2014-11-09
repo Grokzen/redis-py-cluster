@@ -35,6 +35,9 @@ setup(
     install_requires=[
         'redis>=2.10.2'
     ],
+    extras_require={
+        'gevent': ["gevent>=1.0.1"]
+    },
     keywords=[
         'redis',
         'redis cluster',
