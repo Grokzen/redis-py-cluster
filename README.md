@@ -20,7 +20,7 @@ Current python support is
 - 3.3 + hiredis
 - 3.4.1 and higher + hiredis
 
-Python 3.4.0 do not not work with pubsub because of cause segfault issues. If rediscluster is runned on 3.4.0 it will write a error message and exit out.
+Python 3.4.0 do not not work with pubsub because of segfault issues (Same as redis-py has). If rediscluster is runned on 3.4.0 it will raise RuntimeError exception and exit.
 
 
 

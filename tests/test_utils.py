@@ -16,7 +16,6 @@ from rediscluster.utils import (
 
 # 3rd party imports
 import pytest
-from mock import Mock
 from redis._compat import unicode
 
 

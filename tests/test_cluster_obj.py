@@ -12,7 +12,7 @@ from rediscluster.nodemanager import NodeManager
 from tests.conftest import _get_client, skip_if_server_version_lt
 
 # 3rd party imports
-from mock import patch
+from mock import patch, Mock
 from redis.exceptions import ResponseError
 from redis._compat import unicode
 import pytest
@@ -154,3 +154,114 @@ def test_cluster_of_one_instance():
             p = rc.pipeline()
             p.set("bar", "foo")
             p.execute()
+
+
+def test_moved_exception_handling(r):
+    """
+    Test that `handle_cluster_command_exception` deals with MOVED
+    error correctly.
+    """
+    resp = ResponseError()
+    resp.message = "MOVED 1337 127.0.0.1:7000"
+    r.handle_cluster_command_exception(resp)
+    assert r.refresh_table_asap is True
+    assert r.connection_pool.nodes.slots[1337] == {
+        "host": "127.0.0.1",
+        "port": 7000,
+        "name": "127.0.0.1:7000",
+        "server_type": "master",
+    }
+
+
+def test_ask_exception_handling(r):
+    """
+    Test that `handle_cluster_command_exception` deals with ASK
+    error correctly.
+    """
+    resp = ResponseError()
+    resp.message = "ASK 1337 127.0.0.1:7000"
+    assert r.handle_cluster_command_exception(resp) == {
+        "host": "127.0.0.1",
+        "port": 7000,
+        "method": "ask",
+    }
+
+
+def test_raise_regular_exception(r):
+    """
+    If a non redis server exception is passed in it shold be
+    raised again.
+    """
+    e = Exception("foobar")
+    with pytest.raises(Exception) as ex:
+        r.handle_cluster_command_exception(e)
+    assert unicode(ex.value).startswith("foobar")
+
+
+def test_clusterdown_exception_handling():
+    """
+    Test that if exception message starts with CLUSTERDOWN it should
+    disconnect the connection pool and set refresh_table_asap to True.
+    """
+    with patch.object(ClusterConnectionPool, 'disconnect') as mock_disconnect:
+        with patch.object(ClusterConnectionPool, 'reset') as mock_reset:
+            r = RedisCluster(host="127.0.0.1", port=7000)
+            i = len(mock_reset.mock_calls)
+
+            assert r.handle_cluster_command_exception(Exception("CLUSTERDOWN")) == {"method": "clusterdown"}
+            assert r.refresh_table_asap is True
+
+            mock_disconnect.assert_called_once_with()
+
+            # reset() should only be called once inside `handle_cluster_command_exception`
+            assert len(mock_reset.mock_calls) - i == 1
+
+
+def test_determine_nodes_errors(r):
+    """
+    If no command is given to `_determine_nodes` then exception
+    should be raised.
+
+    Test that if no key is provided then exception should be raised.
+    """
+    with pytest.raises(RedisClusterException) as ex:
+        r._determine_nodes()
+    assert unicode(ex.value).startswith("Unable to determine command to use")
+
+    with pytest.raises(RedisClusterException) as ex:
+        r._determine_nodes("GET")
+    assert unicode(ex.value).startswith("No way to dispatch this command to Redis Cluster. Missing key.")
+
+
+def test_determine_nodes(r):
+    """
+    Test that correct callback methods is used.
+    """
+    r.nodes_callbacks["FOO"] = Mock(return_value=[1, 2, 3])
+    assert r._determine_nodes("FOO") == [1, 2, 3]
+
+    # Key 1337 will point to slot 4314
+    r.connection_pool.nodes.slots[4314] = {"foo": "bar"}
+    assert r._determine_nodes("BAR", 1337) == [{"foo": "bar"}]
+
+
+def test_refresh_table_asap():
+    """
+    If this variable is set externally, initialize() should be called.
+    """
+    with patch.object(NodeManager, 'initialize') as mock_initialize:
+        mock_initialize.return_value = None
+
+        r = RedisCluster(host="127.0.0.1", port=7000)
+        r.connection_pool.nodes.slots[12182] = {
+            "host": "127.0.0.1",
+            "port": 7002,
+            "name": "127.0.0.1:7002",
+            "server_type": "master",
+        }
+        r.refresh_table_asap = True
+
+        i = len(mock_initialize.mock_calls)
+        r.execute_command("SET", "foo", "bar")
+        assert len(mock_initialize.mock_calls) - i == 1
+        assert r.refresh_table_asap is False

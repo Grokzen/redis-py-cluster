@@ -214,19 +214,20 @@ class RedisCluster(StrictRedis):
         """
         Determine what nodes to talk to for a specific command
         """
-        command = args[0]
-
-        if not command:
+        if len(args) == 0:
             raise RedisClusterException("Unable to determine command to use")
+
+        command = args[0]
 
         if command in self.nodes_callbacks:
             return self.nodes_callbacks[command](self, command)
 
         # Default way to determine node
-        key = args[1]
 
-        if not key:
-            raise RedisClusterException("No way to dispatch this command to Redis Cluster")
+        if len(args) <= 1:
+            raise RedisClusterException("No way to dispatch this command to Redis Cluster. Missing key.")
+
+        key = args[1]
 
         slot = self.connection_pool.nodes.keyslot(key)
         return [self.connection_pool.get_node_by_slot(slot)]
@@ -308,7 +309,7 @@ class RedisCluster(StrictRedis):
                         self.connection_pool.release(r)
 
             if ttl == 0:
-                raise Exception("To many Cluster redirections?")
+                raise RedisClusterException("To many Cluster redirections")
 
         return self._merge_result(command, res)
 
@@ -432,7 +433,7 @@ class RedisCluster(StrictRedis):
             Operation is no longer atomic.
         """
         if not self.exists(dst):
-            self.rename(src, dst)
+            return self.rename(src, dst)
         else:
             return False
 

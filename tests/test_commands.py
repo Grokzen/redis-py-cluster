@@ -382,12 +382,24 @@ class TestRedisCommands(object):
         assert r.get('a') is None
         assert r['b'] == b('1')
 
+        with pytest.raises(ResponseError) as ex:
+            r.rename("foo", "foo")
+        assert unicode(ex.value).startswith("source and destination objects are the same")
+
+        assert r.get("foo") is None
+        with pytest.raises(ResponseError) as ex:
+            r.rename("foo", "bar")
+        assert unicode(ex.value).startswith("no such key")
+
     def test_renamenx(self, r):
         r['a'] = '1'
         r['b'] = '2'
         assert not r.renamenx('a', 'b')
         assert r['a'] == b('1')
         assert r['b'] == b('2')
+
+        assert r.renamenx('a', 'c')
+        assert r['c'] == '1'
 
     def test_set_nx(self, r):
         assert r.set('a', '1', nx=True)
