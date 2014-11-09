@@ -62,7 +62,6 @@ def test_blocked_commands(r):
     """
     These commands should be blocked and raise RedisClusterException
     """
-    # TODO: This list should be gathered from RedisCluster class when it is moved
     blocked_commands = [
         "CLIENT SETNAME", "SENTINEL GET-MASTER-ADDR-BY-NAME", 'SENTINEL MASTER', 'SENTINEL MASTERS',
         'SENTINEL MONITOR', 'SENTINEL REMOVE', 'SENTINEL SENTINELS', 'SENTINEL SET',

@@ -51,17 +51,15 @@ class ClusterConnectionPool(ConnectionPool):
 
     def reset(self):
         """
-        # TODO: Should handle new cluster connections, maybe no additions is required.
+        Resets the connection pool back to a clean state.
         """
-        # TODO: When resetting, all old connections should be closed and cleaned up
         self.pid = os.getpid()
         self._created_connections = 0
         self._available_connections = {}  # Dict(Node, List)
         self._in_use_connections = {}  # Dict(Node, Set)
-        self._check_lock = threading.Lock()
-
         self._available_pubsub_connections = []
         self._in_use_pubsub_connections = set([])
+        self._check_lock = threading.Lock()
 
     def _checkpid(self):
         if self.pid != os.getpid():

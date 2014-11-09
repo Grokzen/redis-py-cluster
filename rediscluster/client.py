@@ -168,21 +168,10 @@ class RedisCluster(StrictRedis):
             return getattr(e, "message", None)
         return errv[0]
 
-    def parse_redirection_exception(self, e):
-        """
-        # TODO: write
-        """
-        errv = getattr(e, "args", None)
-        if not errv:
-            errv = getattr(e, "message", None)
-            if not errv:
-                return None
-        else:
-            errv = errv[0]
-
     def parse_redirection_exception_msg(self, errv):
         """
-        # TODO: write
+        Parse `errv` exception object for MOVED or ASK error and returns
+        a dict with host, port and slot data about what node to talk to.
         """
         errv = errv.split(" ")
 
@@ -794,13 +783,16 @@ class RedisCluster(StrictRedis):
 
     def _random_id(self, size=16, chars=string.ascii_uppercase + string.digits):
         """
-        # TODO: Write
+        Generates a random id based on `size` and `chars` variable.
+
+        By default it will generate a 16 character long string based on
+        ascii uppercase letters and digits.
         """
         return ''.join(random.choice(chars) for _ in range(size))
 
     def register_script(self, script):
         """
-        # TODO: Write
+        Scripts is not yet supported by rediscluster.
         """
         raise RedisClusterException("Method register_script is not possible to use in a redis cluster")
 

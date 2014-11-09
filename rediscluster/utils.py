@@ -6,14 +6,15 @@ from .exceptions import RedisClusterException, ClusterDownException
 
 def string_keys_to_dict(key_strings, callback):
     """
-    # TODO: Write
+    Maps each string in `key_strings` to `callback` function
+    and return as a dict.
     """
     return dict.fromkeys(key_strings, callback)
 
 
 def dict_merge(*dicts):
     """
-    # TODO: Write
+    Merge all provided dicts into 1 dict.
     """
     merged = {}
     [merged.update(d) for d in dicts]
@@ -22,16 +23,18 @@ def dict_merge(*dicts):
 
 def blocked_command(self, command):
     """
-    # TODO: Write
+    Raises a `RedisClusterException` mentioning the command is blocked.
     """
     raise RedisClusterException("Command: {} is blocked in redis cluster mode".format(command))
 
 
 def merge_result(command, res):
     """
-    # TODO: Write
+    Merge all items in `res` into a list.
+
+    This command is used when sending a command to multiple nodes
+    and they result from each node should be merged into a single list.
     """
-    # TODO: Simplify/optimize
     result = set([])
     for k, v in res.items():
         for value in v:
@@ -41,7 +44,9 @@ def merge_result(command, res):
 
 def first_key(command, res):
     """
-    # TODO: Write
+    Returns the first result for the given command.
+
+    If more then 1 result is returned then a `RedisClusterException` is raised.
     """
     if len(res.keys()) != 1:
         raise RedisClusterException("More then 1 result from command: {0}".format(command))
