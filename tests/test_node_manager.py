@@ -282,7 +282,7 @@ def test_cluster_one_instance():
     be validated they work.
     """
     with patch.object(StrictRedis, 'execute_command') as mock_execute_command:
-        return_data = [[0L, 16383, ['', 7006L]]]
+        return_data = [[0, 16383, ['', 7006]]]
         mock_execute_command.return_value = return_data
 
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7006}])
