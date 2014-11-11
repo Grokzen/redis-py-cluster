@@ -40,8 +40,6 @@ def test_keyslot():
     assert n.keyslot("{foo}") == 12182
     assert n.keyslot(1337) == 4314
 
-    # with pytest.raises(AttributeError):
-
 
 def test_init_slots_cache_not_all_slots(s):
     """

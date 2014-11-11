@@ -14,7 +14,7 @@ from tests.conftest import _get_client, skip_if_server_version_lt
 # 3rd party imports
 from mock import patch, Mock
 from redis.exceptions import ResponseError
-from redis._compat import unicode, b
+from redis._compat import unicode
 import pytest
 
 
@@ -265,3 +265,65 @@ def test_refresh_table_asap():
         r.execute_command("SET", "foo", "bar")
         assert len(mock_initialize.mock_calls) - i == 1
         assert r.refresh_table_asap is False
+
+
+def test_ask_redirection():
+    """
+    Test that the server handles ASK response.
+
+    At first call it should return a ASK ResponseError that will point
+    the client to the next server it should talk to.
+
+    Important thing to verify is that it tries to talk to the second node.
+    """
+    r = RedisCluster(host="127.0.0.1", port=7000)
+
+    m = Mock(autospec=True)
+
+    def ask_redirect_effect(connection, command_name, **options):
+        def ok_response(connection, command_name, **options):
+            assert connection.host == "127.0.0.1"
+            assert connection.port == 7001
+
+            return "MOCK_OK"
+        m.side_effect = ok_response
+        resp = ResponseError()
+        resp.message = "ASK 1337 127.0.0.1:7001"
+        raise resp
+
+    m.side_effect = ask_redirect_effect
+
+    r.parse_response = m
+    assert r.execute_command("SET", "foo", "bar") == "MOCK_OK"
+
+
+def test_ask_redirection_pipeline():
+    """
+    Test that the server handles ASK response when used in pipeline.
+
+    At first call it should return a ASK ResponseError that will point
+    the client to the next server it should talk to.
+
+    Important thing to verify is that it tries to talk to the second node.
+    """
+    r = RedisCluster(host="127.0.0.1", port=7000)
+    p = r.pipeline()
+
+    m = Mock(autospec=True)
+
+    def ask_redirect_effect(connection, command_name, **options):
+        def ok_response(connection, command_name, **options):
+            assert connection.host == "127.0.0.1"
+            assert connection.port == 7001
+
+            return "MOCK_OK"
+        m.side_effect = ok_response
+        resp = ResponseError()
+        resp.message = "ASK 12182 127.0.0.1:7001"
+        raise resp
+
+    m.side_effect = ask_redirect_effect
+
+    p.parse_response = m
+    p.set("foo", "bar")
+    assert p.execute() == ["MOCK_OK"]

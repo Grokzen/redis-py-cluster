@@ -272,8 +272,9 @@ class RedisCluster(StrictRedis):
                 ttl -= 1
 
                 if action.get("method", "") == "ask":
-                    # TODO: Currently broken
-                    r = self.get_redis_link(action["host"], action["port"])
+                    r = self.connection_pool.get_connection_by_node(
+                        {"host": action["host"], "port": action["port"]}
+                    )
                 elif try_random_node:
                     # TODO: Untested
                     r = self.connection_pool.get_random_connection()
@@ -284,14 +285,17 @@ class RedisCluster(StrictRedis):
                 try:
                     if action.get("method", "") == "ask":
                         # TODO: Currently broken as hell
-                        return self.connection_pool.execute_asking_command_via_connection(r, *args, **kwargs)
+                        # return self.connection_pool.execute_asking_command_via_connection(r, *args, **kwargs)
+                        r.send_command(*args)
+                        res[node["name"]] = self.parse_response(r, command, **kwargs)
+
+                        # continue with next node
+                        break
                     else:
                         r.send_command(*args)
                         res[node["name"]] = self.parse_response(r, command, **kwargs)
 
-                        # If command was successfully sent then we can break out from this while
-                        # and continue with next node
-                        # i += 1
+                        # Continue with next node.
                         break
                 except (RedisClusterException, BusyLoadingError):
                     raise
@@ -301,12 +305,11 @@ class RedisCluster(StrictRedis):
                         time.sleep(0.1)
                 except ResponseError as e:
                     action = self.handle_cluster_command_exception(e)
-
+                finally:
                     if action.get("method", "") == "clusterdown":
                         raise ClusterDownException()
-                finally:
-                    if action.get('method', "") != "clusterdown":
-                        self.connection_pool.release(r)
+
+                    self.connection_pool.release(r)
 
             if ttl == 0:
                 raise RedisClusterException("To many Cluster redirections")
