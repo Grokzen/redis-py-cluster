@@ -9,7 +9,15 @@ import time
 from .connection import ClusterConnectionPool
 from .exceptions import RedisClusterException, ClusterDownException
 from .pubsub import ClusterPubSub
-from .utils import string_keys_to_dict, dict_merge, blocked_command, merge_result, first_key, clusterdown_wrapper
+from .utils import (
+    string_keys_to_dict,
+    dict_merge,
+    blocked_command,
+    determine_node_for_eval,
+    merge_result,
+    first_key,
+    clusterdown_wrapper,
+)
 
 # 3rd party imports
 from redis import StrictRedis
@@ -33,23 +41,26 @@ class RedisCluster(StrictRedis):
             'SCRIPT LOAD', 'MOVE', 'BITOP',
         ], blocked_command),
         string_keys_to_dict([
+            "EVAL",
+        ], determine_node_for_eval),
+        string_keys_to_dict([
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
             "TIME", "SCRIPT FLUSH", "SCAN",
-        ], lambda self, command: self.connection_pool.nodes.all_nodes()),
+        ], lambda self, *args, **kwargs: self.connection_pool.nodes.all_nodes()),
         string_keys_to_dict([
             "FLUSHALL", "FLUSHDB",
-        ], lambda self, command: self.connection_pool.nodes.all_masters()),
+        ], lambda self, *args, **kwargs: self.connection_pool.nodes.all_masters()),
         string_keys_to_dict([
             "KEYS",
-        ], lambda self, command: self.connection_pool.nodes.all_nodes()),
+        ], lambda self, *args, **kwargs: self.connection_pool.nodes.all_nodes()),
         string_keys_to_dict([
             "PUBLISH", "SUBSCRIBE",
-        ], lambda self, command: [self.connection_pool.nodes.pubsub_node]),
+        ], lambda self, *args, **kwargs: [self.connection_pool.nodes.pubsub_node]),
         string_keys_to_dict([
             "RANDOMKEY",
-        ], lambda self, command: [self.connection_pool.nodes.random_node()]),
+        ], lambda self, *args, **kwargs: [self.connection_pool.nodes.random_node()]),
     )
 
     RESULT_CALLBACKS = dict_merge(
@@ -220,7 +231,7 @@ class RedisCluster(StrictRedis):
         command = args[0]
 
         if command in self.nodes_callbacks:
-            return self.nodes_callbacks[command](self, command)
+            return self.nodes_callbacks[command](self, *args, **kwargs)
 
         # Default way to determine node
 
@@ -801,27 +812,4 @@ class RedisCluster(StrictRedis):
         raise RedisClusterException("Method register_script is not possible to use in a redis cluster")
 
 
-def send_eval_to_connection(func):
-    """
-    If all the keys route to the same slot we can safely route the script to a node in the cluster.
-    """
-    def inner(self, script, numkeys, *keys_and_args):
-        if numkeys < 1:
-            raise RedisClusterException(" ERROR: eval only works with 1 or more keys when running redis in cluster mode...")
-
-        # verify that the keys all map to the same key hash slot.
-        # this will be true if there is only one key, or if all the keys are in the form:
-        # A{foo} B{foo} C{foo}
-        if len(set([self.keyslot(key) for key in keys_and_args[0:numkeys]])) != 1:
-            raise RedisClusterException(" ERROR: eval only works if all keys map to the same key slot when running redis in cluster mode...")
-        conn = self.get_connection_by_key(keys_and_args[0])
-        return func(conn, script, numkeys, *keys_and_args)
-    return inner
-
-
 from rediscluster.pipeline import StrictClusterPipeline
-
-# A custom command handler for eval. It's interface is different from most other redis commands.
-# (keys show up after the first 2 args and are variable)
-# Verifies all keys belong to the same hashed key slot and fetches the connection based on that slot.
-RedisCluster.eval = send_eval_to_connection(StrictRedis.eval)
