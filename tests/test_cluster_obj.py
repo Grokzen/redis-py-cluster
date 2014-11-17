@@ -327,3 +327,64 @@ def test_ask_redirection_pipeline():
     p.parse_response = m
     p.set("foo", "bar")
     assert p.execute() == ["MOCK_OK"]
+
+
+def test_moved_redirection():
+    """
+    Test that the client handles MOVED response.
+
+    At first call it should return a MOVED ResponseError that will point
+    the client to the next server it should talk to.
+
+    Important thing to verify is that it tries to talk to the second node.
+    """
+    r = RedisCluster(host="127.0.0.1", port=7000)
+    m = Mock(autospec=True)
+
+    def ask_redirect_effect(connection, command_name, **options):
+        def ok_response(connection, command_name, **options):
+            assert connection.host == "127.0.0.1"
+            assert connection.port == 7001
+
+            return "MOCK_OK"
+        m.side_effect = ok_response
+        resp = ResponseError()
+        resp.message = "MOVED 12182 127.0.0.1:7001"
+        raise resp
+
+    m.side_effect = ask_redirect_effect
+
+    r.parse_response = m
+    assert r.set("foo", "bar") == "MOCK_OK"
+
+
+def test_moved_redirection_pipeline():
+    """
+    Test that the server handles MOVED response when used in pipeline.
+
+    At first call it should return a MOVED ResponseError that will point
+    the client to the next server it should talk to.
+
+    Important thing to verify is that it tries to talk to the second node.
+    """
+    r = RedisCluster(host="127.0.0.1", port=7000)
+    p = r.pipeline()
+
+    m = Mock(autospec=True)
+
+    def moved_redirect_effect(connection, command_name, **options):
+        def ok_response(connection, command_name, **options):
+            assert connection.host == "127.0.0.1"
+            assert connection.port == 7001
+
+            return "MOCK_OK"
+        m.side_effect = ok_response
+        resp = ResponseError()
+        resp.message = "MOVED 12182 127.0.0.1:7001"
+        raise resp
+
+    m.side_effect = moved_redirect_effect
+
+    p.parse_response = m
+    p.set("foo", "bar")
+    assert p.execute() == ["MOCK_OK"]
