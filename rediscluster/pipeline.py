@@ -5,6 +5,15 @@ import random
 import sys
 import time
 
+try:
+    import os
+    os.environ["GEVENT_RESOLVER"] = "ares"
+    import gevent
+    import gevent.monkey
+    gevent.monkey.patch_socket()
+except ImportError:
+    gevent = False
+
 # rediscluster imports
 from .client import RedisCluster
 from .connection import by_node_context
@@ -146,15 +155,33 @@ class StrictClusterPipeline(RedisCluster):
             #  _execute_pipeline() below and do what a normal pipeline does.
 
             attempt = []
+            if gevent:
+                jobs = dict()
+                for node_name in node_commands:
+                    node = nodes[node_name]
+                    cmds = [node_commands[node_name][i] for i in sorted(node_commands[node_name].keys())]
+                    with by_node_context(self.connection_pool, node) as connection:
+                        jobs[node_name] = gevent.spawn(self._execute_pipeline, connection, cmds, False)
 
-            for node_name in node_commands:
-                node = nodes[node_name]
-                cmds = [node_commands[node_name][i] for i in sorted(node_commands[node_name].keys())]
-
-                with by_node_context(self.connection_pool, node) as connection:
-                    result = zip(sorted(node_commands[node_name].keys()), self._execute_pipeline(connection, cmds, False))
-                    for i, v in result:
-                        response[i] = v
+                gevent.joinall(jobs.values(), timeout=10)
+                for node_name in jobs:
+                    job = jobs[node_name]
+                    if job.exception:
+                        for i in sorted(node_commands[node_name].keys()):
+                            response[i] = job.exception
+                    else:
+                        for i, v in zip(sorted(node_commands[node_name].keys()), job.value):
+                            response[i] = v
+            else:
+                for node_name in node_commands:
+                    node = nodes[node_name]
+                    cmds = [node_commands[node_name][i] for i in sorted(node_commands[node_name].keys())]
+                    with by_node_context(self.connection_pool, node) as connection:
+                        result = zip(
+                            sorted(node_commands[node_name].keys()),
+                            self._execute_pipeline(connection, cmds, False))
+                        for i, v in result:
+                            response[i] = v
 
             ask_slots = {}
             for i, v in response.items():
