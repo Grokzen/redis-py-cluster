@@ -344,12 +344,12 @@ def test_moved_redirection():
     def ask_redirect_effect(connection, command_name, **options):
         def ok_response(connection, command_name, **options):
             assert connection.host == "127.0.0.1"
-            assert connection.port == 7001
+            assert connection.port == 7002
 
             return "MOCK_OK"
         m.side_effect = ok_response
         resp = ResponseError()
-        resp.message = "MOVED 12182 127.0.0.1:7001"
+        resp.message = "MOVED 12182 127.0.0.1:7002"
         raise resp
 
     m.side_effect = ask_redirect_effect
@@ -375,12 +375,12 @@ def test_moved_redirection_pipeline():
     def moved_redirect_effect(connection, command_name, **options):
         def ok_response(connection, command_name, **options):
             assert connection.host == "127.0.0.1"
-            assert connection.port == 7001
+            assert connection.port == 7002
 
             return "MOCK_OK"
         m.side_effect = ok_response
         resp = ResponseError()
-        resp.message = "MOVED 12182 127.0.0.1:7001"
+        resp.message = "MOVED 12182 127.0.0.1:7002"
         raise resp
 
     m.side_effect = moved_redirect_effect
