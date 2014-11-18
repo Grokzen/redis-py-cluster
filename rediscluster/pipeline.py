@@ -245,7 +245,10 @@ class StrictClusterPipeline(RedisCluster):
         """
         # build up all commands into a single request to increase network perf
         all_cmds = connection.pack_commands([args for args, _ in commands])
-        connection.send_packed_command(all_cmds)
+        try:
+            connection.send_packed_command(all_cmds)
+        except ConnectionError as e:
+            return [e for _ in xrange(len(commands))]
 
         response = []
         for args, options in commands:
