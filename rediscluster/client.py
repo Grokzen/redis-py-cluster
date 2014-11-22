@@ -304,8 +304,6 @@ class RedisCluster(StrictRedis):
 
                 try:
                     if action.get("method", "") == "ask":
-                        # TODO: Currently broken as hell
-                        # return self.connection_pool.execute_asking_command_via_connection(r, *args, **kwargs)
                         r.send_command(*args)
                         res[node["name"]] = self.parse_response(r, command, **kwargs)
 

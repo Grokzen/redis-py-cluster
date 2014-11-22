@@ -138,7 +138,7 @@ class ClusterConnectionPool(ConnectionPool):
 
     def count_num_connections(self):
         i = 0
-        for node, connections in self._in_use_connections.items():
+        for _, connections in self._in_use_connections.items():
             i += len(connections)
         return i
 
@@ -188,24 +188,6 @@ class ClusterConnectionPool(ConnectionPool):
         self._in_use_connections.setdefault(node["name"], set()).add(connection)
 
         return connection
-
-    @staticmethod
-    def execute_asking_command_via_connection(r, *argv, **kwargs):
-        raise Exception("FOO")
-
-        pipe = r.pipeline(transaction=False)
-        pipe.execute_command('ASKING')
-        pipe.execute_command(*argv, **kwargs)
-        _asking_result, result = pipe.execute(raise_on_error=False)
-        if isinstance(result, Exception):
-            raise result
-        return result
-
-    @staticmethod
-    def execute_command_via_connection(r, *argv, **kwargs):
-        raise Exception("FOO")
-
-        return r.execute_command(*argv, **kwargs)
 
     def get_node_by_slot(self, slot):
         return self.nodes.slots[slot]

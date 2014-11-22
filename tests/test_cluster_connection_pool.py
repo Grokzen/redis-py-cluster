@@ -20,50 +20,6 @@ from redis.connection import ssl_available
 from redis._compat import unicode
 
 
-# @pytest.mark.xfail(reason="TODO: needs fixing")
-# def test_connection_error(r):
-#     """
-#     Test that lib handles connection error properly
-#     """
-#     execute_command_via_connection_original = r.execute_command_via_connection
-#     test = self
-#     test.execute_command_calls = []
-
-#     def execute_command_via_connection(r, *argv, **kwargs):
-#         # the first time this is called, simulate an ASK exception.
-#         # after that behave normally.
-#         # capture all the requests and responses.
-#         if not test.execute_command_calls:
-#             e = ConnectionError('FAKE: could not connect')
-#             test.execute_command_calls.append({'exception': e})
-#             raise e
-#         try:
-#             result = execute_command_via_connection_original(r, *argv, **kwargs)
-#             test.execute_command_calls.append({'argv': argv, 'kwargs': kwargs, 'result': result})
-#             return result
-#         except Exception as e:
-#             test.execute_command_calls.append({'argv': argv, 'kwargs': kwargs, 'exception': e})
-#             raise e
-
-#     try:
-#         r.execute_command_via_connection = execute_command_via_connection
-#         r.set('foo', 'bar')
-#         # print test.execute_command_calls
-#         assert re.match('FAKE', str(test.execute_command_calls[0]['exception'])) is not None
-#         # we might actually try a random node that is the correct one.
-#         # in which case we won't get a moved exception.
-#         if len(test.execute_command_calls) == 3:
-#             assert re.match('MOVED', str(test.execute_command_calls[1]['exception'])) is not None
-#             assert test.execute_command_calls[2]['argv'], ['SET', 'foo', 'bar']
-#             assert test.execute_command_calls[2]['result'], True
-#         else:
-#             assert test.execute_command_calls[1]['argv'], ['SET', 'foo', 'bar']
-#             assert test.execute_command_calls[1]['result'], True
-#     finally:
-#         r.execute_command_via_connection = execute_command_via_connection_original
-#     assert r.get('foo'), 'bar'
-
-
 class DummyConnection(object):
     description_format = "DummyConnection<>"
 
