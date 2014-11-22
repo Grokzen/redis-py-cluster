@@ -208,6 +208,8 @@ class RedisCluster(StrictRedis):
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
             refresh_table_asap=self.refresh_table_asap,
+            nodes_callbacks=self.nodes_callbacks,
+            result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
         )
 

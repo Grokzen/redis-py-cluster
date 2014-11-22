@@ -30,11 +30,14 @@ class StrictClusterPipeline(RedisCluster):
     """
     """
 
-    def __init__(self, connection_pool, response_callbacks=None, startup_nodes=[], connections=[], opt={}, refresh_table_asap=False, slots={}, nodes=[]):
+    def __init__(self, connection_pool, nodes_callbacks=None, result_callbacks=None, response_callbacks=None, startup_nodes=[], connections=[], opt={}, refresh_table_asap=False, slots={}, nodes=[]):
         self.connection_pool = connection_pool
         self.startup_nodes = startup_nodes
         self.refresh_table_asap = refresh_table_asap
         self.command_stack = []
+
+        self.nodes_callbacks = nodes_callbacks
+        self.result_callbacks = result_callbacks
         self.response_callbacks = response_callbacks
 
     def __repr__(self):
@@ -147,8 +150,7 @@ class StrictClusterPipeline(RedisCluster):
                 self.connection_pool.nodes.set_node_name(node)
                 node_name = node['name']
                 nodes[node_name] = node
-                if node_name not in node_commands:
-                    node_commands[node_name] = {}
+                node_commands.setdefault(node_name, {})
                 node_commands[node_name][i] = c
 
             # Get one connection at a time from the pool and basiccly copy the logic from
@@ -231,6 +233,7 @@ class StrictClusterPipeline(RedisCluster):
         response = [response[k] for k in sorted(response.keys())]
         if raise_on_error:
             self.raise_first_error(stack, response)
+
         return response
 
     def _fail_on_redirect(self, allow_redirections):
