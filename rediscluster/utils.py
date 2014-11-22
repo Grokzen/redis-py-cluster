@@ -29,21 +29,11 @@ def dict_merge(*dicts):
     return merged
 
 
-def blocked_command(self, command, *args, **_):
+def blocked_command(self, command):
     """
     Raises a `RedisClusterException` mentioning the command is blocked.
     """
     raise RedisClusterException("Command: {} is blocked in redis cluster mode".format(command))
-
-
-def determine_node_for_eval(self, _command, _script, numkeys, *keys_and_args, **_):
-    """
-    If all the keys route to the same slot we can safely route the eval script to a node in the cluster.
-    """
-    if len(set([self.connection_pool.nodes.keyslot(key) for key in keys_and_args[0:numkeys]])) != 1:
-        raise RedisClusterException("EVAL - all keys must map to the same key slot")
-    slot = self.connection_pool.nodes.keyslot(keys_and_args[0])
-    return [self.connection_pool.get_node_by_slot(slot)]
 
 
 def merge_result(command, res):

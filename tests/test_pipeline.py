@@ -51,6 +51,15 @@ class TestPipeline(object):
             assert r['b'] == b('b1')
             assert r['c'] == b('c1')
 
+    def test_pipeline_eval(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            pipe.eval("return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}", 2, "A{foo}", "B{foo}", "first", "second")
+            res = pipe.execute()[0]
+            assert(res[0] == b('A{foo}'))
+            assert(res[1] == b('B{foo}'))
+            assert(res[2] == b('first'))
+            assert(res[3] == b('second'))
+
     @pytest.mark.xfail(reason="unsupported command: watch")
     def test_pipeline_no_transaction_watch(self, r):
         r['a'] = 0

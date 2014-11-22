@@ -138,7 +138,7 @@ class StrictClusterPipeline(RedisCluster):
             # Keep this section so that we can determine what nodes to contact
             for i in attempt:
                 c = stack[i]
-                slot = self.connection_pool.nodes.keyslot(c[0][1])
+                slot = self._determine_slot(*c[0], **c[1])
                 if slot in ask_slots:
                     node = ask_slots[slot]
                 else:

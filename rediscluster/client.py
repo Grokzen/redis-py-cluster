@@ -13,7 +13,6 @@ from .utils import (
     string_keys_to_dict,
     dict_merge,
     blocked_command,
-    determine_node_for_eval,
     merge_result,
     first_key,
     clusterdown_wrapper,
@@ -41,26 +40,23 @@ class RedisCluster(StrictRedis):
             'SCRIPT LOAD', 'MOVE', 'BITOP',
         ], blocked_command),
         string_keys_to_dict([
-            "EVAL",
-        ], determine_node_for_eval),
-        string_keys_to_dict([
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
             "TIME", "SCRIPT FLUSH", "SCAN",
-        ], lambda self, *args, **kwargs: self.connection_pool.nodes.all_nodes()),
+        ], lambda self, command: self.connection_pool.nodes.all_nodes()),
         string_keys_to_dict([
             "FLUSHALL", "FLUSHDB",
-        ], lambda self, *args, **kwargs: self.connection_pool.nodes.all_masters()),
+        ], lambda self, command: self.connection_pool.nodes.all_masters()),
         string_keys_to_dict([
             "KEYS",
-        ], lambda self, *args, **kwargs: self.connection_pool.nodes.all_nodes()),
+        ], lambda self, command: self.connection_pool.nodes.all_nodes()),
         string_keys_to_dict([
             "PUBLISH", "SUBSCRIBE",
-        ], lambda self, *args, **kwargs: [self.connection_pool.nodes.pubsub_node]),
+        ], lambda self, command: [self.connection_pool.nodes.pubsub_node]),
         string_keys_to_dict([
             "RANDOMKEY",
-        ], lambda self, *args, **kwargs: [self.connection_pool.nodes.random_node()]),
+        ], lambda self, command: [self.connection_pool.nodes.random_node()]),
     )
 
     RESULT_CALLBACKS = dict_merge(
@@ -222,26 +218,37 @@ class RedisCluster(StrictRedis):
         raise RedisClusterException("method RedisCluster.transaction() is not implemented")
 
     def _determine_nodes(self, *args, **kwargs):
-        """
-        Determine what nodes to talk to for a specific command
-        """
         if len(args) == 0:
             raise RedisClusterException("Unable to determine command to use")
 
         command = args[0]
 
         if command in self.nodes_callbacks:
-            return self.nodes_callbacks[command](self, *args, **kwargs)
+            return self.nodes_callbacks[command](self, command)
 
         # Default way to determine node
+        slot = self._determine_slot(*args, **kwargs)
+        return [self.connection_pool.get_node_by_slot(slot)]
 
+    def _determine_slot(self, *args, **kwargs):
+        """
+        figure out what slot based on command and args
+        """
         if len(args) <= 1:
             raise RedisClusterException("No way to dispatch this command to Redis Cluster. Missing key.")
+        command = args[0]
+
+        if command == 'EVAL':
+            numkeys = args[2]
+            keys = args[3: 3 + numkeys]
+            slots = set([self.connection_pool.nodes.keyslot(key) for key in keys])
+            if len(slots) != 1:
+                raise RedisClusterException("EVAL - all keys must map to the same key slot")
+            return slots.pop()
 
         key = args[1]
 
-        slot = self.connection_pool.nodes.keyslot(key)
-        return [self.connection_pool.get_node_by_slot(slot)]
+        return self.connection_pool.nodes.keyslot(key)
 
     def _merge_result(self, command, res):
         """
