@@ -4,7 +4,7 @@ python:
 services:
   - redis-server
 install:
-  - make travis-install
+  - make redis-install
   - pip install coverage python-coveralls tox
   - pip install -e .
 script: 

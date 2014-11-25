@@ -9,7 +9,8 @@
     * Add bitpos support, redis-py 2.10.2 or higher required.
     * Fixed a bug where vagrant users could not build the package via shared folder.
     * Better support for CLUSTERDOWN error. (Neuront)
-    * Parallel pipeline execution using threads (72squared)
+    * Parallel pipeline execution using threads. (72squared)
+    * Added vagrant support for testing and development. (72squared)
 
 * 0.1.0
     * Initial release
