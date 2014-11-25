@@ -14,7 +14,7 @@ import pytest
 from mock import patch, Mock
 from redis import StrictRedis
 from redis._compat import unicode
-
+from redis import ConnectionError
 
 pytestmark = skip_if_server_version_lt('2.9.0')
 
@@ -300,3 +300,24 @@ def test_cluster_one_instance():
             "port": 7006,
             "server_type": "master",
         }
+
+
+def test_init_with_down_node():
+    """
+    If I can't connect to one of the nodes, everything should still work.
+    """
+    def get_redis_link(host, port, decode_responses=False):
+        if port == 7000:
+            raise ConnectionError('mock connection error for 7000')
+        return StrictRedis(host=host, port=port, decode_responses=decode_responses)
+
+    with patch.object(NodeManager, 'get_redis_link', side_effect=get_redis_link) as mock:
+        n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}, {"host": "127.0.0.1", "port": 7001}])
+        n.initialize()
+        assert len(n.slots) == NodeManager.RedisClusterHashSlots
+        assert len(n.nodes) == 6
+
+        n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+        with pytest.raises(RedisClusterException) as e:
+            n.initialize()
+        assert 'All slots are not covered' in unicode(e.value)
