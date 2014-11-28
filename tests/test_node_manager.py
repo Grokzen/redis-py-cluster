@@ -66,7 +66,7 @@ def test_init_slots_cache_not_all_slots(s):
     with pytest.raises(RedisClusterException) as ex:
         s.connection_pool.nodes.initialize()
 
-    assert unicode(ex.value).startswith("All slots are not covered after querry all startup_nodes.")
+    assert unicode(ex.value).startswith("All slots are not covered after query all startup_nodes.")
 
 
 def test_init_slots_cache(s):

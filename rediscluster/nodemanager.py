@@ -146,7 +146,7 @@ class NodeManager(object):
                 return
 
         if not all_slots_covered:
-            raise RedisClusterException("All slots are not covered after querry all startup_nodes. {} of {} covered...".format(len(self.slots), self.RedisClusterHashSlots))
+            raise RedisClusterException("All slots are not covered after query all startup_nodes. {} of {} covered...".format(len(self.slots), self.RedisClusterHashSlots))
 
     def determine_pubsub_node(self):
         """
