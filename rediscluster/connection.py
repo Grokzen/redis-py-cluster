@@ -112,7 +112,15 @@ class ClusterConnectionPool(ConnectionPool):
             self._available_pubsub_connections.append(connection)
         else:
             # Remove the current connection from _in_use_connection and add it back to the available pool
-            self._in_use_connections.get(connection._node["name"], set()).remove(connection)
+            # There is cases where the connection is to be removed but it will not exist and there
+            # must be a safe way to remove
+            i_c = self._in_use_connections.get(connection._node["name"], set())
+            if connection in i_c:
+                i_c.remove(connection)
+            else:
+                pass
+                # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
+
             self._available_connections.setdefault(connection._node["name"], []).append(connection)
 
     def disconnect(self):
