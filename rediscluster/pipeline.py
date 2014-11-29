@@ -4,15 +4,7 @@
 import random
 import sys
 import time
-
-try:
-    import os
-    os.environ["GEVENT_RESOLVER"] = "ares"
-    import gevent
-    import gevent.monkey
-    gevent.monkey.patch_socket()
-except ImportError:
-    gevent = False
+import threading
 
 # rediscluster imports
 from .client import RedisCluster
@@ -30,7 +22,7 @@ class StrictClusterPipeline(RedisCluster):
     """
     """
 
-    def __init__(self, connection_pool, nodes_callbacks=None, result_callbacks=None, response_callbacks=None, startup_nodes=[], connections=[], opt={}, refresh_table_asap=False, slots={}, nodes=[]):
+    def __init__(self, connection_pool, nodes_callbacks=None, result_callbacks=None, response_callbacks=None, startup_nodes=[], connections=[], opt={}, refresh_table_asap=False, slots={}, nodes=[], use_threads=True):
         self.connection_pool = connection_pool
         self.startup_nodes = startup_nodes
         self.refresh_table_asap = refresh_table_asap
@@ -39,6 +31,7 @@ class StrictClusterPipeline(RedisCluster):
         self.nodes_callbacks = nodes_callbacks
         self.result_callbacks = result_callbacks
         self.response_callbacks = response_callbacks
+        self.use_threads = use_threads
 
     def __repr__(self):
         return "{}".format(type(self).__name__)
@@ -157,23 +150,24 @@ class StrictClusterPipeline(RedisCluster):
             #  _execute_pipeline() below and do what a normal pipeline does.
 
             attempt = []
-            if gevent:
-                jobs = dict()
+            if self.use_threads and len(node_commands) > 1:
+                workers = dict()
                 for node_name in node_commands:
                     node = nodes[node_name]
                     cmds = [node_commands[node_name][i] for i in sorted(node_commands[node_name].keys())]
                     with by_node_context(self.connection_pool, node) as connection:
-                        jobs[node_name] = gevent.spawn(self._execute_pipeline, connection, cmds, False)
+                        workers[node_name] = Worker(self._execute_pipeline, connection, cmds, False)
+                        workers[node_name].start()
 
-                gevent.joinall(jobs.values(), timeout=10)
-                for node_name in jobs:
-                    job = jobs[node_name]
-                    if job.exception:
+                for node_name, worker in workers.items():
+                    worker.join()
+                    if worker.exception:
                         for i in sorted(node_commands[node_name].keys()):
-                            response[i] = job.exception
+                            response[i] = worker.exception
                     else:
-                        for i, v in zip(sorted(node_commands[node_name].keys()), job.value):
+                        for i, v in zip(sorted(node_commands[node_name].keys()), worker.value):
                             response[i] = v
+                del workers
             else:
                 for node_name in node_commands:
                     node = nodes[node_name]
@@ -364,3 +358,25 @@ StrictClusterPipeline.sort = block_pipeline_command(StrictRedis.sort)
 StrictClusterPipeline.sunion = block_pipeline_command(StrictRedis.sunion)
 StrictClusterPipeline.sunionstore = block_pipeline_command(StrictRedis.sunionstore)
 StrictClusterPipeline.time = block_pipeline_command(StrictRedis.time)
+
+
+class Worker(threading.Thread):
+    """
+    A simple thread wrapper class to perform an arbitrary function and store the result.
+    Used to parallelize network i/o when issuing many pipelined commands to multiple nodes in the cluster.
+    Later on we may need to convert this to a thread pool, although if you use gevent the current implementation
+    is not too bad.
+    """
+    def __init__(self, func, *args, **kwargs):
+        threading.Thread.__init__(self)
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+        self.exception = None
+        self.value = None
+
+    def run(self):
+        try:
+            self.value = self.func(*self.args, **self.kwargs)
+        except Exception as e:
+            self.exception = e

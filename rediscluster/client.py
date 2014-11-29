@@ -80,12 +80,14 @@ class RedisCluster(StrictRedis):
         ], first_key),
     )
 
-    def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, init_slot_cache=True, **kwargs):
+    def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, init_slot_cache=True,
+                 pipeline_use_threads=True, **kwargs):
         """
         startup_nodes    --> List of nodes that initial bootstrapping can be done from
         host             --> Can be used to point to a startup node
         port             --> Can be used to point to a startup node
         max_connections  --> Maximum number of connections that should be kept open at one time
+        pipeline_use_threads  ->  By default, use threads in pipeline if this flag is set to True
         **kwargs         --> Extra arguments that will be sent into StrictRedis instance when created
                              (See Official redis-py doc for supported kwargs
                              [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
@@ -116,6 +118,7 @@ class RedisCluster(StrictRedis):
         self.nodes_callbacks = self.__class__.NODES_CALLBACKS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
+        self.pipeline_use_threads = pipeline_use_threads
 
     def __repr__(self):
         servers = list(set(['{}:{}'.format(nativestr(info['host']), info['port']) for info in self.connection_pool.nodes.startup_nodes]))
@@ -191,7 +194,7 @@ class RedisCluster(StrictRedis):
     def pubsub(self, *args, **kwargs):
         return ClusterPubSub(self.connection_pool, **kwargs)
 
-    def pipeline(self, transaction=None, shard_hint=None):
+    def pipeline(self, transaction=None, shard_hint=None, use_threads=None):
         """
         Cluster impl:
             Pipelines do not work in cluster mode the same way they do in normal mode.
@@ -211,6 +214,7 @@ class RedisCluster(StrictRedis):
             nodes_callbacks=self.nodes_callbacks,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
+            use_threads=self.pipeline_use_threads if use_threads is None else use_threads
         )
 
     def transaction(self, func, *watches, **kwargs):

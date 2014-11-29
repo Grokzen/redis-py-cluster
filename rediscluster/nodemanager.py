@@ -10,6 +10,7 @@ from .exceptions import RedisClusterException
 # 3rd party imports
 from redis import StrictRedis
 from redis._compat import unicode, nativestr
+from redis import ConnectionError
 
 
 class NodeManager(object):
@@ -80,12 +81,14 @@ class NodeManager(object):
         # Reset variables
         self.flush_nodes_cache()
         self.flush_slots_cache
-
+        all_slots_covered = False
         for node in self.startup_nodes:
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")
-            except Exception:
+            except ConnectionError:
+                continue
+            except Exception as e:
                 raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {}".format(node))
 
             all_slots_covered = True
@@ -143,7 +146,7 @@ class NodeManager(object):
                 return
 
         if not all_slots_covered:
-            raise RedisClusterException("All slots are not covered after querry all startup_nodes. {} of {} covered...".format(len(self.slots), self.RedisClusterHashSlots))
+            raise RedisClusterException("All slots are not covered after query all startup_nodes. {} of {} covered...".format(len(self.slots), self.RedisClusterHashSlots))
 
     def determine_pubsub_node(self):
         """
