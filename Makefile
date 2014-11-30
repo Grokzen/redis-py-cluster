@@ -126,7 +126,7 @@ help:
 	@echo "  cleanup         cleanup files after running a test cluster"
 	@echo "  test            starts/activates the test cluster nodes and runs tox test"
 	@echo "  tox             run all tox environments and combine coverage report after"
-	@echo "  travis-install  checkout latest redis commit --> build --> install ruby dependencies"
+	@echo "  redis-install  checkout latest redis commit --> build --> install ruby dependencies"
 
 clean:
 	-rm -f MANIFEST
@@ -203,8 +203,8 @@ tox:
 	coverage combine
 	coverage report
 
-travis-install:
-	[ ! -e redis-git ] && git clone https://github.com/antirez/redis.git redis-git || true
+redis-install:
+	[ ! -e redis-git ] && git clone --depth 1 https://github.com/antirez/redis.git redis-git || true
 	make -C redis-git -j4
 	gem install redis
 	sleep 3
