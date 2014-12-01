@@ -80,7 +80,7 @@ class NodeManager(object):
         """
         # Reset variables
         self.flush_nodes_cache()
-        self.flush_slots_cache
+        self.flush_slots_cache()
         all_slots_covered = False
         for node in self.startup_nodes:
             try:
