@@ -84,7 +84,7 @@ def s(request, **kwargs):
     """
     s = _get_client(init_slot_cache=False, **kwargs)
     assert s.connection_pool.nodes.slots == {}
-    assert s.connection_pool.nodes.nodes == []
+    assert s.connection_pool.nodes.nodes == {}
     return s
 
 

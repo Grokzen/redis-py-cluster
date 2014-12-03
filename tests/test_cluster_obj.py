@@ -181,8 +181,7 @@ def test_ask_exception_handling(r):
     resp = ResponseError()
     resp.message = "ASK 1337 127.0.0.1:7000"
     assert r.handle_cluster_command_exception(resp) == {
-        "host": "127.0.0.1",
-        "port": 7000,
+        "name": "127.0.0.1:7000",
         "method": "ask",
     }
 
@@ -217,7 +216,7 @@ def test_clusterdown_exception_handling():
             assert len(mock_reset.mock_calls) - i == 1
 
 
-def test_determine_nodes_errors(r):
+def test_execute_command_errors(r):
     """
     If no command is given to `_determine_nodes` then exception
     should be raised.
@@ -225,24 +224,12 @@ def test_determine_nodes_errors(r):
     Test that if no key is provided then exception should be raised.
     """
     with pytest.raises(RedisClusterException) as ex:
-        r._determine_nodes()
+        r.execute_command()
     assert unicode(ex.value).startswith("Unable to determine command to use")
 
     with pytest.raises(RedisClusterException) as ex:
-        r._determine_nodes("GET")
+        r.execute_command("GET")
     assert unicode(ex.value).startswith("No way to dispatch this command to Redis Cluster. Missing key.")
-
-
-def test_determine_nodes(r):
-    """
-    Test that correct callback methods is used.
-    """
-    r.nodes_callbacks["FOO"] = Mock(return_value=[1, 2, 3])
-    assert r._determine_nodes("FOO") == [1, 2, 3]
-
-    # Key 1337 will point to slot 4314
-    r.connection_pool.nodes.slots[4314] = {"foo": "bar"}
-    assert r._determine_nodes("BAR", 1337) == [{"foo": "bar"}]
 
 
 def test_refresh_table_asap():
