@@ -245,7 +245,7 @@ class StrictClusterPipeline(RedisCluster):
         for args, options in commands:
             try:
                 response.append(self.parse_response(connection, args[0], **options))
-            except ResponseError:
+            except (ConnectionError, ResponseError):
                 response.append(sys.exc_info()[1])
 
         if raise_on_error:
