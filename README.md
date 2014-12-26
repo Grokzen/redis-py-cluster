@@ -10,17 +10,20 @@ This project is a port of `redis-rb-cluster` by antirez, with alot of added func
 
 ## Dependencies & supported python versions
 
-- redis >= 2.9.1
+- redis >= 2.10.2
 - Cluster enabled redis servers. Only Redis 3.0 beta.7 and above is supported because of CLUSTER SLOTS command was introduced in that release.
+- Optional: hiredis >= 0.1.3
 
-Current python support is
+Hiredis is tested and supported on all supported python versions.
 
-- 2.7 + hiredis
-- 3.2 + hiredis
-- 3.3 + hiredis
-- 3.4.1 and higher + hiredis
+Supported python versions:
 
-Python 3.4.0 do not not work with pubsub because of segfault issues (Same as redis-py has). If rediscluster is runned on 3.4.0 it will raise RuntimeError exception and exit.
+- 2.7.x
+- 3.2.x
+- 3.3.x
+- 3.4.1+
+
+Python 3.4.0 do not not work with pubsub because of segfault issues (Same as redis-py has). If rediscluster is runned on 3.4.0 it will raise RuntimeError exception and exit. If you get this error locally when running tox, consider using `pyenv` to fix this problem.
 
 
 
