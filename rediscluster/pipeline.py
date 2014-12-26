@@ -15,7 +15,7 @@ from .utils import clusterdown_wrapper
 # 3rd party imports
 from redis import StrictRedis
 from redis.exceptions import ResponseError, ConnectionError
-from redis._compat import imap, unicode
+from redis._compat import imap, unicode, xrange
 
 
 class StrictClusterPipeline(RedisCluster):
