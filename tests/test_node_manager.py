@@ -317,7 +317,7 @@ def test_init_with_down_node():
             raise ConnectionError('mock connection error for 7000')
         return StrictRedis(host=host, port=port, decode_responses=decode_responses)
 
-    with patch.object(NodeManager, 'get_redis_link', side_effect=get_redis_link) as mock:
+    with patch.object(NodeManager, 'get_redis_link', side_effect=get_redis_link):
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}, {"host": "127.0.0.1", "port": 7001}])
         n.initialize()
         assert len(n.slots) == NodeManager.RedisClusterHashSlots

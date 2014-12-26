@@ -9,7 +9,7 @@ from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import StrictRedis
-from redis._compat import unicode, nativestr
+from redis._compat import unicode
 from redis import ConnectionError
 
 
@@ -86,7 +86,7 @@ class NodeManager(object):
                 cluster_slots = r.execute_command("cluster", "slots")
             except ConnectionError:
                 continue
-            except Exception as e:
+            except Exception:
                 raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {}".format(node))
 
             all_slots_covered = True
