@@ -208,19 +208,13 @@ class StrictClusterPipeline(RedisCluster):
 
                 if redir['action'] == "MOVED":
                     self.refresh_table_asap = True
-                    self.connection_pool.nodes.set_slot(
-                        slot=redir['slot'],
-                        host=redir['host'],
-                        port=redir['port'],
-                    )
+                    node = self.connection_pool.nodes.set_node(redir['host'], redir['port'], server_type='master')
+                    self.connection_pool.nodes.slots[redir['slot']] = node
                     attempt.append(i)
                     self._fail_on_redirect(allow_redirections)
                 elif redir['action'] == "ASK":
-                    ask_slots[redir['slot']] = {
-                        'name': '{0}:{1}'.format(redir['host'], redir['port']),
-                        'host': redir['host'],
-                        'port': redir['port'],
-                    }
+                    node = self.connection_pool.nodes.set_node(redir['host'], redir['port'], server_type='master')
+                    ask_slots[redir['slot']] = node
                     attempt.append(i)
                     self._fail_on_redirect(allow_redirections)
 
@@ -251,7 +245,7 @@ class StrictClusterPipeline(RedisCluster):
         for args, options in commands:
             try:
                 response.append(self.parse_response(connection, args[0], **options))
-            except ResponseError:
+            except (ConnectionError, ResponseError):
                 response.append(sys.exc_info()[1])
 
         if raise_on_error:

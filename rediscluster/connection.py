@@ -172,10 +172,10 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Determine what server a specific slot belongs to and return a redis object that is connected
         """
-        node = self.nodes.slots.get(slot, None)
-        if not node:
+        try:
+            return self.get_connection_by_node(self.get_node_by_slot(slot))
+        except KeyError:
             return self.get_random_connection()
-        return self.get_connection_by_node(node)
 
     def get_connection_by_node(self, node):
         """

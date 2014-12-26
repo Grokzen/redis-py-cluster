@@ -155,13 +155,11 @@ class RedisCluster(StrictRedis):
 
         if info['action'] == "MOVED":
             self.refresh_table_asap = True
-            self.connection_pool.nodes.set_slot(
-                slot=info['slot'],
-                host=info['host'],
-                port=info['port'],
-            )
+            node = self.connection_pool.nodes.set_node(info['host'], info['port'], server_type='master')
+            self.connection_pool.nodes.slots[info['slot']] = node
         elif info['action'] == "ASK":
-            return {'host': info['host'], 'port': info['port'], 'method': 'ask'}
+            node = self.connection_pool.nodes.set_node(info['host'], info['port'], server_type='master')
+            return {'name': node['name'], 'method': 'ask'}
 
         return {}
 
@@ -223,19 +221,6 @@ class RedisCluster(StrictRedis):
         """
         raise RedisClusterException("method RedisCluster.transaction() is not implemented")
 
-    def _determine_nodes(self, *args, **kwargs):
-        if len(args) == 0:
-            raise RedisClusterException("Unable to determine command to use")
-
-        command = args[0]
-
-        if command in self.nodes_callbacks:
-            return self.nodes_callbacks[command](self, command)
-
-        # Default way to determine node
-        slot = self._determine_slot(*args, **kwargs)
-        return [self.connection_pool.get_node_by_slot(slot)]
-
     def _determine_slot(self, *args, **kwargs):
         """
         figure out what slot based on command and args
@@ -271,6 +256,14 @@ class RedisCluster(StrictRedis):
         """
         Send a command to a node in the cluster
         """
+        if len(args) == 0:
+            raise RedisClusterException("Unable to determine command to use")
+
+        command = args[0]
+
+        if command in self.nodes_callbacks:
+            return self._execute_command_on_nodes(self.nodes_callbacks[command](self, command), *args, **kwargs)
+
         # If set externally we must update it before calling any commands
         if self.refresh_table_asap:
             self.connection_pool.nodes.initialize()
@@ -278,63 +271,51 @@ class RedisCluster(StrictRedis):
 
         action = {}
         command = args[0]
-        nodes = self._determine_nodes(*args, **kwargs)
-        res = {}
         try_random_node = False
+        slot = self._determine_slot(*args, **kwargs)
+        ttl = int(self.RedisClusterRequestTTL)
+        while ttl > 0:
+            ttl -= 1
+            if action.get("method", "") == "ask":
+                node = self.connection_pool.nodes.nodes[action['name']]
+                r = self.connection_pool.get_connection_by_node(node)
+            elif try_random_node:
+                # TODO: Untested
+                r = self.connection_pool.get_random_connection()
+                try_random_node = False
+            else:
+                node = self.connection_pool.get_node_by_slot(slot)
+                r = self.connection_pool.get_connection_by_node(node)
 
+            try:
+                r.send_command(*args)
+                return self.parse_response(r, command, **kwargs)
+
+            except (RedisClusterException, BusyLoadingError):
+                raise
+            except (ConnectionError, TimeoutError):
+                try_random_node = True
+                if ttl < self.RedisClusterRequestTTL / 2:
+                    time.sleep(0.1)
+            except ResponseError as e:
+                action = self.handle_cluster_command_exception(e)
+                if action.get("method", "") == "clusterdown":
+                    raise ClusterDownException()
+            finally:
+                self.connection_pool.release(r)
+
+        raise RedisClusterException("Too many Cluster redirections")
+
+    def _execute_command_on_nodes(self, nodes, *args, **kwargs):
+        command = args[0]
+        res = {}
         for node in nodes:
-            # Reset ttl for each node
-            ttl = self.RedisClusterRequestTTL
-
-            while ttl > 0:
-                # Must check this on each try in case we need to rebuild the entire
-                # cluster slots/node cache.
-                if self.refresh_table_asap:
-                    self.connection_pool.nodes.initialize()
-                    self.refresh_table_asap = False
-
-                ttl -= 1
-
-                if action.get("method", "") == "ask":
-                    r = self.connection_pool.get_connection_by_node(
-                        {"host": action["host"], "port": action["port"]}
-                    )
-                elif try_random_node:
-                    # TODO: Untested
-                    r = self.connection_pool.get_random_connection()
-                    try_random_node = False
-                else:
-                    r = self.connection_pool.get_connection_by_node(node)
-
-                try:
-                    if action.get("method", "") == "ask":
-                        r.send_command(*args)
-                        res[node["name"]] = self.parse_response(r, command, **kwargs)
-
-                        # continue with next node
-                        break
-                    else:
-                        r.send_command(*args)
-                        res[node["name"]] = self.parse_response(r, command, **kwargs)
-
-                        # Continue with next node.
-                        break
-                except (RedisClusterException, BusyLoadingError):
-                    raise
-                except (ConnectionError, TimeoutError):
-                    try_random_node = True
-                    if ttl < self.RedisClusterRequestTTL / 2:
-                        time.sleep(0.1)
-                except ResponseError as e:
-                    action = self.handle_cluster_command_exception(e)
-                finally:
-                    if action.get("method", "") == "clusterdown":
-                        raise ClusterDownException()
-
-                    self.connection_pool.release(r)
-
-            if ttl == 0:
-                raise RedisClusterException("To many Cluster redirections")
+            r = self.connection_pool.get_connection_by_node(node)
+            try:
+                r.send_command(*args)
+                res[node["name"]] = self.parse_response(r, command, **kwargs)
+            finally:
+                self.connection_pool.release(r)
 
         return self._merge_result(command, res)
 

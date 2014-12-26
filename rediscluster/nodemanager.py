@@ -17,7 +17,7 @@ class NodeManager(object):
     RedisClusterHashSlots = 16384
 
     def __init__(self, startup_nodes=None):
-        self.nodes = []
+        self.nodes = {}
         self.slots = {}
         self.startup_nodes = [] if startup_nodes is None else startup_nodes
         self.orig_startup_nodes = [node for node in self.startup_nodes]
@@ -41,11 +41,11 @@ class NodeManager(object):
         return crc16(k) % self.RedisClusterHashSlots
 
     def all_nodes(self):
-        for node in self.nodes:
+        for node in self.nodes.values():
             yield node
 
     def all_masters(self):
-        for node in self.nodes:
+        for node in self.nodes.values():
             if node["server_type"] == "master":
                 yield node
 
@@ -57,15 +57,12 @@ class NodeManager(object):
         """
         Generator that will return a random startup nodes. Works as a generator.
         """
-        # TODO: Make this picka a random connection w/o having to shuffle around all startup nodes
-        # return self.startup_nodes[0]
         while True:
-            random.shuffle(self.startup_nodes)
-            yield self.startup_nodes[0]
+            yield random.choice(self.startup_nodes)
 
     def random_node(self):
-        # TODO: Make this get a random node
-        return self.nodes[0]
+        key = random.choice(list(self.nodes.keys()))
+        return self.nodes[key]
 
     def get_redis_link(self, host, port, decode_responses=False):
         return StrictRedis(host=host, port=port, decode_responses=decode_responses)
@@ -82,6 +79,7 @@ class NodeManager(object):
         self.flush_nodes_cache()
         self.flush_slots_cache()
         all_slots_covered = False
+        disagreements = []
         for node in self.startup_nodes:
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
@@ -105,31 +103,25 @@ class NodeManager(object):
 
                 # Only store the master node as address for each slot.
                 # TODO: Slave nodes have to be fixed/patched in later...
-                master_addr = {
-                    "host": master_node[0],
-                    "port": master_node[1],
-                    "name": "{0}:{1}".format(master_node[0], master_node[1]),
-                    "server_type": "master",
-                }
+                if master_node[0] == '':
+                    master_node[0] = node['host']
+                master_node[1] = int(master_node[1])
 
-                self.nodes.append(master_addr)
+                node = self.set_node(master_node[0], master_node[1], server_type='master')
+
                 for i in range(int(slot[0]), int(slot[1]) + 1):
                     if i not in self.slots:
-                        self.slots[i] = master_addr
+                        self.slots[i] = node
                     else:
                         # Validate that 2 nodes want to use the same slot cache setup
-                        if self.slots[i] != master_addr:
-                            raise RedisClusterException("startup_nodes could not agree on a valid slots cache. {} vs {} on slo: {}".format(self.slots[i], master_addr, i))
+                        if self.slots[i]['name'] != node['name']:
+                            disagreements.append("{} vs {} on slot: {}".format(self.slots[i]['name'], node['name'], i))
+                            if len(disagreements) > 5:
+                                raise RedisClusterException("startup_nodes could not agree on a valid slots cache. %s" % ", ".join(disagreements))
 
                 slave_nodes = [slot[i] for i in range(3, len(slot))]
                 for slave_node in slave_nodes:
-                    slave_addr = {
-                        "host": slave_node[0],
-                        "port": slave_node[1],
-                        "name": "{0}:{1}".format(slave_node[0], slave_node[1]),
-                        "server_type": "slave",
-                    }
-                    self.nodes.append(slave_addr)
+                    self.set_node(slave_node[0], slave_node[1], server_type='slave')
 
                 self.populate_startup_nodes()
                 self.refresh_table_asap = False
@@ -159,7 +151,7 @@ class NodeManager(object):
         """
         highest = -1
         node = None
-        for n in self.nodes:
+        for n in self.nodes.values():
             if n["port"] > highest:
                 highest = n["port"]
                 node = n
@@ -174,23 +166,20 @@ class NodeManager(object):
         if "name" not in n:
             n["name"] = "{0}:{1}".format(n["host"], n["port"])
 
-    def set_slot(self, slot, host=None, port=None, server_type=None):
+    def set_node(self, host, port, server_type=None):
         """
-        Update data for a node on a slot.
+        Update data for a node.
         """
-        # In case the slot do not exists yet
-        self.slots.setdefault(slot, {})
+        node_name = "{0}:{1}".format(host, port)
+        self.nodes.setdefault(node_name, {})
+        self.nodes[node_name]['host'] = host
+        self.nodes[node_name]['port'] = port
+        self.nodes[node_name]['name'] = node_name
 
-        if host:
-            self.slots[slot]['host'] = host
-        if port:
-            self.slots[slot]['port'] = port
-        if host and port:
-            self.slots[slot]['name'] = "{0}:{1}".format(host, port)
         if server_type:
-            self.slots[slot]['server_type'] = server_type
+            self.nodes[node_name]['server_type'] = server_type
 
-        return self.slots[slot]
+        return self.nodes[node_name]
 
     def populate_startup_nodes(self):
         """
@@ -198,7 +187,7 @@ class NodeManager(object):
         """
         for item in self.startup_nodes:
             self.set_node_name(item)
-        for n in self.nodes:
+        for n in self.nodes.values():
             if n not in self.startup_nodes:
                 self.startup_nodes.append(n)
         # freeze it so we can set() it
@@ -224,4 +213,4 @@ class NodeManager(object):
         """
         Reset nodes cache back to empty dict
         """
-        self.nodes = []
+        self.nodes = {}

@@ -126,6 +126,7 @@ def test_init_slots_cache_slots_collision():
     In this test both nodes will say that the first slots block should be bound to different
      servers.
     """
+
     n = NodeManager(startup_nodes=[
         {"host": "127.0.0.1", "port": 7000},
         {"host": "127.0.0.1", "port": 7001},
@@ -136,19 +137,26 @@ def test_init_slots_cache_slots_collision():
         Helper function to return custom slots cache data from different redis nodes
         """
         if port == 7000:
-            r = RedisCluster(host="127.0.0.1", port=7000, decode_responses=True)
-            r.result_callbacks["cluster"] = lambda command, res: [
-                [0, 5460, [b'127.0.0.1', 7000], [b'127.0.0.1', 7003]],
-                [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.1', 7004]],
-            ]
-            return r
+            result = [[0, 5460, [b'127.0.0.1', 7000], [b'127.0.0.1', 7003]],
+                      [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.1', 7004]]]
+
         elif port == 7001:
-            r = RedisCluster(host="127.0.0.1", port=7000, decode_responses=True)
-            r.result_callbacks["cluster"] = lambda command, res: [
-                [0, 5460, [b'127.0.0.1', 7001], [b'127.0.0.1', 7003]],
-                [5461, 10922, [b'127.0.0.1', 7000], [b'127.0.0.1', 7004]],
-            ]
-            return r
+            result = [[0, 5460, [b'127.0.0.1', 7001], [b'127.0.0.1', 7003]],
+                      [5461, 10922, [b'127.0.0.1', 7000], [b'127.0.0.1', 7004]]]
+
+        else:
+            result = []
+
+        r = RedisCluster(host=host, port=port, decode_responses=True)
+        orig_execute_command = r.execute_command
+
+        def execute_command(*args, **kwargs):
+            if args == ("cluster", "slots"):
+                return result
+            return orig_execute_command(*args, **kwargs)
+
+        r.execute_command = execute_command
+        return r
 
     n.get_redis_link = monkey_link
 
@@ -161,12 +169,13 @@ def test_all_nodes():
     """
     Set a list of nodes and it should be possible to itterate over all
     """
-    n = NodeManager(startup_nodes=[{}])
-    nodes = [{"1": 1}, {"2": 2}, {"3": 3}]
-    n.nodes = nodes
+    n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+    n.initialize()
+
+    nodes = [node for node in n.nodes.values()]
 
     for i, node in enumerate(n.all_nodes()):
-        assert nodes[i] == node
+        assert node in nodes
 
 
 def test_all_nodes_masters():
@@ -174,13 +183,10 @@ def test_all_nodes_masters():
     Set a list of nodes with random masters/slaves config and it shold be possible
     to itterate over all of them.
     """
-    n = NodeManager(startup_nodes=[{}])
-    nodes = [
-        {"1": 1, "server_type": "master"},
-        {"2": 2, "server_type": "slave"},
-        {"1": 1, "server_type": "master"},
-    ]
-    n.nodes = nodes
+    n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}, {"host": "127.0.0.1", "port": 7001}])
+    n.initialize()
+
+    nodes = [node for node in n.nodes.values() if node['server_type'] == 'master']
 
     for node in n.all_masters():
         assert node in nodes
@@ -217,12 +223,12 @@ def test_determine_pubsub_node():
     """
     n = NodeManager(startup_nodes=[{}])
 
-    n.nodes = [
-        {"host": "127.0.0.1", "port": 7001, "server_type": "master"},
-        {"host": "127.0.0.1", "port": 7005, "server_type": "master"},
-        {"host": "127.0.0.1", "port": 7000, "server_type": "master"},
-        {"host": "127.0.0.1", "port": 7002, "server_type": "master"},
-    ]
+    n.nodes = {
+        "127.0.0.1:7001": {"host": "127.0.0.1", "port": 7001, "server_type": "master"},
+        "127.0.0.1:7005": {"host": "127.0.0.1", "port": 7005, "server_type": "master"},
+        "127.0.0.1:7000": {"host": "127.0.0.1", "port": 7000, "server_type": "master"},
+        "127.0.0.1:7002": {"host": "127.0.0.1", "port": 7002, "server_type": "master"},
+    }
 
     n.determine_pubsub_node()
     assert n.pubsub_node == {"host": "127.0.0.1", "port": 7005, "server_type": "master", "pubsub": True}
@@ -242,7 +248,7 @@ def test_cluster_slots_error():
             n.initialize()
 
 
-def test_set_slot():
+def test_set_node():
     """
     Test to update data in a slot.
     """
@@ -255,9 +261,9 @@ def test_set_slot():
 
     n = NodeManager(startup_nodes=[{}])
     assert len(n.slots) == 0, "no slots should exist"
-    r = n.set_slot(0, host="127.0.0.1", port=7000, server_type="master")
-    assert r == expected
-    assert n.slots == {0: expected}
+    res = n.set_node(host="127.0.0.1", port=7000, server_type="master")
+    assert res == expected
+    assert n.nodes == {expected['name']: expected}
 
 
 def test_reset():
@@ -271,7 +277,7 @@ def test_reset():
     n.reset()
 
     assert n.slots == {}
-    assert n.nodes == []
+    assert n.nodes == {}
 
 
 def test_cluster_one_instance():
@@ -286,12 +292,12 @@ def test_cluster_one_instance():
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7006}])
         n.initialize()
 
-        assert n.nodes == [{
+        assert n.nodes == {"127.0.0.1:7006": {
             'host': '127.0.0.1',
             'name': '127.0.0.1:7006',
             'port': 7006,
             'server_type': 'master',
-        }]
+        }}
 
         assert len(n.slots) == 16384
         assert n.slots[0] == {
