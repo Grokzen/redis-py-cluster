@@ -4,21 +4,26 @@ Redis cluster client in python for the official cluster support targeted for red
 
 This project is a port of `redis-rb-cluster` by antirez, with alot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster
 
-[![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen+/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![Latest Version](https://pypip.in/version/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Downloads](https://pypip.in/download/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Supported Python versions](https://pypip.in/py_versions/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![License](https://pypip.in/license/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/)
+[![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![Latest Version](https://pypip.in/version/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Downloads](https://pypip.in/download/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Supported Python versions](https://pypip.in/py_versions/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![License](https://pypip.in/license/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Code Health](https://landscape.io/github/Grokzen/redis-py-cluster/unstable/landscape.svg)](https://landscape.io/github/Grokzen/redis-py-cluster/unstable)
 
 
 
 ## Dependencies & supported python versions
 
-- redis >= 2.9.1
+- redis >= 2.10.2
 - Cluster enabled redis servers. Only Redis 3.0 beta.7 and above is supported because of CLUSTER SLOTS command was introduced in that release.
+- Optional: hiredis >= 0.1.3
 
-Current python support is
+Hiredis is tested and supported on all supported python versions.
 
-- 2.7 + hiredis
-- 3.2 + hiredis
-- 3.3 + hiredis
-- 3.4 + hiredis
+Supported python versions:
+
+- 2.7.x
+- 3.2.x
+- 3.3.x
+- 3.4.1+
+
+Python 3.4.0 do not not work with pubsub because of segfault issues (Same as redis-py has). If rediscluster is runned on 3.4.0 it will raise RuntimeError exception and exit. If you get this error locally when running tox, consider using `pyenv` to fix this problem.
 
 
 
@@ -52,6 +57,12 @@ True
 'bar'
 ```
 
+The following imports can be imported from `redis` package. 
+
+- `RedisCluster` 
+- `StrictClusterPipeline` 
+- `ClusterPubSub` 
+
 
 
 ## Testing
@@ -75,7 +86,6 @@ To run all environments you need all supported python versions installed on your
 To run a specific python version use either `tox -e py27` or `tox -e py34`
 
 
-
 ## More documentation
 
 More detailed documentation can be found in `docs` folder.
@@ -85,6 +95,7 @@ More detailed documentation can be found in `docs` folder.
 - [Command differences](docs/Commands.md)
 - [Limitations and differences](docs/Limits_and_differences.md)
 - [Redisco support (Django ORM)](docs/Redisco.md)
+- [Threaded Pipeline support](docs/Threads.md)
 - [Authors](docs/Authors)
 
 

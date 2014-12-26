@@ -1,6 +1,6 @@
-# Alpha notes
+# Beta notes
 
-Release 0.1.0 of redis-cluster is a Alpha release.
+Release 0.2.0 of redis-cluster is a Beta release.
 
 Before using this lib please read the documentation and understand the major differences and problems that exists with redis clustering. The following documents is best to read.
 

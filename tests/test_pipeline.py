@@ -51,6 +51,15 @@ class TestPipeline(object):
             assert r['b'] == b('b1')
             assert r['c'] == b('c1')
 
+    def test_pipeline_eval(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            pipe.eval("return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}", 2, "A{foo}", "B{foo}", "first", "second")
+            res = pipe.execute()[0]
+            assert(res[0] == b('A{foo}'))
+            assert(res[1] == b('B{foo}'))
+            assert(res[2] == b('first'))
+            assert(res[3] == b('second'))
+
     @pytest.mark.xfail(reason="unsupported command: watch")
     def test_pipeline_no_transaction_watch(self, r):
         r['a'] = 0
@@ -387,6 +396,7 @@ class TestPipeline(object):
         res = pipe.execute()
         assert(res == [True, True, True, True, True, b'1', b'2', b'3', b'4', b'5'])
 
+    @pytest.mark.xfail(reson="perform_execute_pipeline is not used any longer")
     def test_connection_error(self, r):
         test = self
         test._calls = []
@@ -418,6 +428,7 @@ class TestPipeline(object):
             pipe.perform_execute_pipeline = orig_perform_execute_pipeline
             del test._calls
 
+    @pytest.mark.xfail(reson="perform_execute_pipeline is not used any longer")
     def test_asking_error(self, r):
         test = self
         test._calls = []
@@ -425,7 +436,7 @@ class TestPipeline(object):
         def perform_execute_pipeline(pipe):
             if not test._calls:
 
-                e = ResponseError("ASK %s 127.0.0.1:7003" % (r.keyslot('foo')))
+                e = ResponseError("ASK {0} 127.0.0.1:7003".format(r.keyslot('foo')))
                 test._calls.append({'exception': e})
                 return [e, e]
             result = pipe.execute(raise_on_error=False)
@@ -449,3 +460,12 @@ class TestPipeline(object):
         finally:
             pipe.perform_execute_pipeline = orig_perform_execute_pipeline
             del test._calls
+
+    def test_empty_stack(self, r):
+        """
+        If pipeline is executed with no commands it should
+        return a empty list.
+        """
+        p = r.pipeline()
+        result = p.execute()
+        assert result == []

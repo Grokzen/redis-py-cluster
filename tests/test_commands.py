@@ -8,13 +8,13 @@ import time
 
 # rediscluster imports
 from rediscluster.exceptions import RedisClusterException
-from tests.conftest import skip_if_server_version_lt
+from tests.conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt
 
 # 3rd party imports
 import pytest
-from redis._compat import (unichr, u, b, ascii_letters, iteritems, iterkeys, itervalues)
+from redis._compat import unichr, u, b, ascii_letters, iteritems, iterkeys, itervalues, unicode
 from redis.client import parse_info
-from redis.exceptions import ResponseError, DataError
+from redis.exceptions import ResponseError, DataError, RedisError
 
 
 pytestmark = skip_if_server_version_lt('2.9.0')
@@ -117,11 +117,38 @@ class TestRedisCommands(object):
         with pytest.raises(RedisClusterException):
             r.bitop('not', 'r', 'a')
 
-    @pytest.mark.xfail(reason="older versions of redis-py don't support bitpos but the latest from github does")
+    @skip_if_server_version_lt('2.8.7')
+    @skip_if_redis_py_version_lt("2.10.2")
     def test_bitpos(self, r):
+        """
+        Bitpos was added in redis-py in version 2.10.2
+
+        # TODO: Added b() around keys but i think they should not have to be
+                there for this command to work properly.
+        """
         key = 'key:bitpos'
         r.set(key, b('\xff\xf0\x00'))
-        assert(r.bitpos(key, 0) == 12)
+        assert r.bitpos(key, 0) == 12
+        assert r.bitpos(key, 0, 2, -1) == 16
+        assert r.bitpos(key, 0, -2, -1) == 12
+        r.set(key, b('\x00\xff\xf0'))
+        assert r.bitpos(key, 1, 0) == 8
+        assert r.bitpos(key, 1, 1) == 8
+        r.set(key, '\x00\x00\x00')
+        assert r.bitpos(key, 1) == -1
+
+    @skip_if_server_version_lt('2.8.7')
+    @skip_if_redis_py_version_lt("2.10.2")
+    def test_bitpos_wrong_arguments(self, r):
+        """
+        Bitpos was added in redis-py in version 2.10.2
+        """
+        key = 'key:bitpos:wrong:args'
+        r.set(key, b('\xff\xf0\x00'))
+        with pytest.raises(RedisError):
+            r.bitpos(key, 0, end=1) == 12
+        with pytest.raises(RedisError):
+            r.bitpos(key, 7) == 12
 
     def test_decr(self, r):
         assert r.decr('a') == -1
@@ -355,12 +382,24 @@ class TestRedisCommands(object):
         assert r.get('a') is None
         assert r['b'] == b('1')
 
+        with pytest.raises(ResponseError) as ex:
+            r.rename("foo", "foo")
+        assert unicode(ex.value).startswith("source and destination objects are the same")
+
+        assert r.get("foo") is None
+        with pytest.raises(ResponseError) as ex:
+            r.rename("foo", "bar")
+        assert unicode(ex.value).startswith("no such key")
+
     def test_renamenx(self, r):
         r['a'] = '1'
         r['b'] = '2'
         assert not r.renamenx('a', 'b')
         assert r['a'] == b('1')
         assert r['b'] == b('2')
+
+        assert r.renamenx('a', 'c')
+        assert r['c'] == b('1')
 
     def test_set_nx(self, r):
         assert r.set('a', '1', nx=True)
@@ -588,7 +627,7 @@ class TestRedisCommands(object):
             keys += partial_keys
         assert set(keys) == set([b('a')])
 
-    def test_scan_iter(self, r):
+    def test_iter_scan(self, r):
         r.set('a', 1)
         r.set('b', 2)
         r.set('c', 3)
@@ -1221,6 +1260,13 @@ class TestStrictCommands(object):
         assert r.persist('a')
         assert r.pttl('a') == -1
 
+    def test_eval(self, r):
+        res = r.eval("return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}", 2, "A{foo}", "B{foo}", "first", "second")
+        assert(res[0] == b('A{foo}'))
+        assert(res[1] == b('B{foo}'))
+        assert(res[2] == b('first'))
+        assert(res[3] == b('second'))
+
 
 class TestBinarySave(object):
     def test_binary_get_set(self, r):
@@ -1240,7 +1286,6 @@ class TestBinarySave(object):
         assert r.delete(' foo\r\nbar\r\n ')
         assert r.delete(' \r\n\t\x07\x13 ')
 
-    @pytest.mark.xfail(reason='Test not working in python 3')
     def test_binary_lists(self, r):
         mapping = {
             b('foo bar'): [b('1'), b('2'), b('3')],
@@ -1307,48 +1352,3 @@ class TestBinarySave(object):
         timestamp = 1349673917.939762
         r.zadd('a', timestamp, 'a1')
         assert r.zscore('a', 'a1') == timestamp
-
-    def test_asking_and_moved_redirection(self, r):
-        execute_command_via_connection_original = r.execute_command_via_connection
-        execute_asking_command_via_connection_original = r.execute_asking_command_via_connection
-        test = self
-        test.execute_command_calls = []
-        test.execute_asking_command_calls = []
-
-        def execute_command_via_connection(r, *argv, **kwargs):
-            # the first time this is called, simulate an ASK exception.
-            # after that behave normally.
-            # capture all the requests and responses.
-            if not test.execute_command_calls:
-                e = ResponseError("ASK 1 127.0.0.1:7003")
-                test.execute_command_calls.append({'exception': e})
-                raise e
-            try:
-                result = execute_command_via_connection_original(r, *argv, **kwargs)
-                test.execute_command_calls.append({'argv': argv, 'kwargs': kwargs, 'result': result})
-                return result
-            except Exception as e:
-                test.execute_command_calls.append({'argv': argv, 'kwargs': kwargs, 'exception': e})
-                raise e
-
-        def execute_asking_command_via_connection(r, *argv, **kwargs):
-            # capture all request/responses including exceptions
-            try:
-                result = execute_asking_command_via_connection_original(r, *argv, **kwargs)
-                test.execute_asking_command_calls.append({'argv': argv, 'kwargs': kwargs, 'result': result})
-                return result
-            except Exception as e:
-                test.execute_asking_command_calls.append({'argv': argv, 'kwargs': kwargs, 'exception': e})
-                raise e
-        try:
-            r.execute_command_via_connection = execute_command_via_connection
-            r.execute_asking_command_via_connection = execute_asking_command_via_connection
-            r.set('foo', 'bar')
-            assert re.match('ASK', str(test.execute_command_calls[0]['exception'])) is not None
-            assert re.match('MOVED', str(test.execute_asking_command_calls[0]['exception'])) is not None
-            assert test.execute_command_calls[1]['argv'], ['SET', 'foo', 'bar']
-            assert test.execute_command_calls[1]['result'], True
-        finally:
-            r.execute_command_via_connection = execute_command_via_connection_original
-            r.execute_asking_command_via_connection = execute_asking_command_via_connection_original
-        assert r.get('foo'), 'bar'

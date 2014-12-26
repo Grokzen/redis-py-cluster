@@ -1,7 +1,17 @@
+# -*- coding: utf-8 -*-
+
+# python std lib
+import os
+
 try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
+
+# if you are using vagrant, just delete os.link directly,
+# The hard link only saves a little disk space, so you should not care
+if os.getenv('USER', '').lower() == 'vagrant':
+    del os.link
 
 with open("docs/ALPHA.md") as f:
     alpha = f.read()
@@ -12,7 +22,7 @@ with open('CHANGES') as f:
 
 setup(
     name="redis-py-cluster",
-    version="0.1.0",
+    version="0.2.0",
     description="Cluster library for redis 3.0.0 built on top of redis-py lib",
     long_description=alpha + '\n\n' + readme + '\n\n' + history,
     author="Johan Andersson",
@@ -23,7 +33,7 @@ setup(
     url='http://github.com/grokzen/redis-py-cluster',
     license='MIT',
     install_requires=[
-        'redis>=2.9.1'
+        'redis>=2.10.2'
     ],
     keywords=[
         'redis',
@@ -33,8 +43,8 @@ setup(
         # As from https://pypi.python.org/pypi?%3Aaction=list_classifiers
         # 'Development Status :: 1 - Planning',
         # 'Development Status :: 2 - Pre-Alpha',
-        'Development Status :: 3 - Alpha',
-        # 'Development Status :: 4 - Beta',
+        # 'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         # 'Development Status :: 5 - Production/Stable',
         # 'Development Status :: 6 - Mature',
         # 'Development Status :: 7 - Inactive',

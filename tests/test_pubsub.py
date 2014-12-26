@@ -7,9 +7,6 @@ import time
 # 3rd party imports
 import pytest
 
-# rediscluster imports
-from tests.conftest import r as _redis_client
-
 # import redis
 from redis import StrictRedis, Redis
 from redis.exceptions import ConnectionError
@@ -60,7 +57,6 @@ def make_subscribe_test_data(pubsub, type):
     assert False, 'invalid subscribe type: %s' % type
 
 
-@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubSubscribeUnsubscribe(object):
 
     def _test_subscribe_unsubscribe(self, p, sub_type, unsub_type, sub_func,
@@ -220,7 +216,6 @@ class TestPubSubSubscribeUnsubscribe(object):
         assert p.subscribed is False
 
 
-@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubMessages(object):
     """
     Bug: Currently in cluster mode publish command will behave different then in
@@ -253,6 +248,7 @@ class TestPubSubMessages(object):
         # Cleanup pubsub connections
         p.close()
 
+    @pytest.mark.xfail(reason="This test is buggy and fails randomly")
     def test_publish_message_to_channel_other_server(self):
         """
         Test that pubsub still works across the cluster on different nodes
@@ -328,7 +324,6 @@ class TestPubSubMessages(object):
                                             'test message', pattern=pattern)
 
 
-@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubAutoDecoding(object):
     "These tests only validate that we get unicode values back"
 
@@ -350,12 +345,8 @@ class TestPubSubAutoDecoding(object):
     def message_handler(self, message):
         self.message = message
 
-    @pytest.fixture()
-    def r(self, request):
-        return _redis_client(request=request, decode_responses=True)
-
-    def test_channel_subscribe_unsubscribe(self, r):
-        p = r.pubsub()
+    def test_channel_subscribe_unsubscribe(self, o):
+        p = o.pubsub()
         p.subscribe(self.channel)
         assert wait_for_message(p) == self.make_message('subscribe',
                                                         self.channel, 1)
@@ -364,8 +355,8 @@ class TestPubSubAutoDecoding(object):
         assert wait_for_message(p) == self.make_message('unsubscribe',
                                                         self.channel, 0)
 
-    def test_pattern_subscribe_unsubscribe(self, r):
-        p = r.pubsub()
+    def test_pattern_subscribe_unsubscribe(self, o):
+        p = o.pubsub()
         p.psubscribe(self.pattern)
         assert wait_for_message(p) == self.make_message('psubscribe',
                                                         self.pattern, 1)
@@ -374,27 +365,27 @@ class TestPubSubAutoDecoding(object):
         assert wait_for_message(p) == self.make_message('punsubscribe',
                                                         self.pattern, 0)
 
-    def test_channel_publish(self, r):
-        p = r.pubsub(ignore_subscribe_messages=True)
+    def test_channel_publish(self, o):
+        p = o.pubsub(ignore_subscribe_messages=True)
         p.subscribe(self.channel)
-        r.publish(self.channel, self.data)
+        o.publish(self.channel, self.data)
         assert wait_for_message(p) == self.make_message('message',
                                                         self.channel,
                                                         self.data)
 
-    def test_pattern_publish(self, r):
-        p = r.pubsub(ignore_subscribe_messages=True)
+    def test_pattern_publish(self, o):
+        p = o.pubsub(ignore_subscribe_messages=True)
         p.psubscribe(self.pattern)
-        r.publish(self.channel, self.data)
+        o.publish(self.channel, self.data)
         assert wait_for_message(p) == self.make_message('pmessage',
                                                         self.channel,
                                                         self.data,
                                                         pattern=self.pattern)
 
-    def test_channel_message_handler(self, r):
-        p = r.pubsub(ignore_subscribe_messages=True)
+    def test_channel_message_handler(self, o):
+        p = o.pubsub(ignore_subscribe_messages=True)
         p.subscribe(**{self.channel: self.message_handler})
-        r.publish(self.channel, self.data)
+        o.publish(self.channel, self.data)
         assert wait_for_message(p) is None
         assert self.message == self.make_message('message', self.channel,
                                                  self.data)
@@ -403,15 +394,15 @@ class TestPubSubAutoDecoding(object):
         p.connection.disconnect()
         assert wait_for_message(p) is None  # should reconnect
         new_data = self.data + u('new data')
-        r.publish(self.channel, new_data)
+        o.publish(self.channel, new_data)
         assert wait_for_message(p) is None
         assert self.message == self.make_message('message', self.channel,
                                                  new_data)
 
-    def test_pattern_message_handler(self, r):
-        p = r.pubsub(ignore_subscribe_messages=True)
+    def test_pattern_message_handler(self, o):
+        p = o.pubsub(ignore_subscribe_messages=True)
         p.psubscribe(**{self.pattern: self.message_handler})
-        r.publish(self.channel, self.data)
+        o.publish(self.channel, self.data)
         assert wait_for_message(p) is None
         assert self.message == self.make_message('pmessage', self.channel,
                                                  self.data,
@@ -421,14 +412,13 @@ class TestPubSubAutoDecoding(object):
         p.connection.disconnect()
         assert wait_for_message(p) is None  # should reconnect
         new_data = self.data + u('new data')
-        r.publish(self.channel, new_data)
+        o.publish(self.channel, new_data)
         assert wait_for_message(p) is None
         assert self.message == self.make_message('pmessage', self.channel,
                                                  new_data,
                                                  pattern=self.pattern)
 
 
-@pytest.mark.xfail(reason="Currently broken...")
 class TestPubSubRedisDown(object):
 
     def test_channel_subscribe(self, r):
