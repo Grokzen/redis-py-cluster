@@ -123,7 +123,7 @@ class StrictClusterPipeline(RedisCluster):
 
         ttl = self.RedisClusterRequestTTL
         response = {}
-        attempt = range(0, len(stack)) if stack else []
+        attempt = xrange(0, len(stack)) if stack else []  # noqa
         ask_slots = {}
 
         while attempt and ttl > 0:
@@ -239,7 +239,7 @@ class StrictClusterPipeline(RedisCluster):
         try:
             connection.send_packed_command(all_cmds)
         except ConnectionError as e:
-            return [e for _ in xrange(len(commands))]
+            return [e for _ in xrange(len(commands))]  # noqa
 
         response = []
         for args, options in commands:

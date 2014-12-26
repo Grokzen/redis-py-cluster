@@ -25,7 +25,7 @@ def loop(rc, reset_last_key=None):
             print("error {0}".format(e))
             time.sleep(1)
 
-    for i in xrange(last, 1000000000):
+    for i in xrange(last, 1000000000):  # noqa
         try:
             print("SET foo{0} {1}".format(i, i))
             rc.set("foo{0}".format(i), i)
@@ -42,7 +42,7 @@ def timeit(rc, itterations=50000):
     """ Time how long it take to run a number of set/get:s
     """
     t0 = time.time()
-    for i in xrange(0, itterations):
+    for i in xrange(0, itterations):  # noqa
         try:
             s = "foo{0}".format(i)
             rc.set(s, i)
