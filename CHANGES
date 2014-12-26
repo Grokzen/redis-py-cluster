@@ -11,6 +11,7 @@
     * Better support for CLUSTERDOWN error. (Neuront)
     * Parallel pipeline execution using threads. (72squared)
     * Added vagrant support for testing and development. (72squared)
+    * Improve stability of client during resharding operations (72squared)
 
 * 0.1.0
     * Initial release
