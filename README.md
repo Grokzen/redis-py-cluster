@@ -90,6 +90,7 @@ To run a specific python version use either `tox -e py27` or `tox -e py34`
 
 More detailed documentation can be found in `docs` folder.
 
+- [Benchmarks](docs/Benchmarks.md)
 - [Pubsub](docs/Pubsub.md)
 - [Setup a redis cluster. Manually, Docker & Vagrant](docs/Cluster_Setup.md)
 - [Command differences](docs/Commands.md)

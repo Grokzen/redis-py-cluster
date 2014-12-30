@@ -1,3 +1,7 @@
+* 0.3.0
+    * simple benchmark now uses docopt for cli parsing
+    * New make target to run some benchmarks 'make benchmark'
+
 * 0.2.0
     * Moved pipeline code into new file.
     * Code now uses a proper cluster connection pool class that handles 

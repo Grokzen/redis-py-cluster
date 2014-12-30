@@ -2,10 +2,9 @@
 
 # python std lib
 import time
-import argparse
 
-# rediscluster imports
-from rediscluster.rediscluster import RedisCluster
+# 3rd party imports
+from docopt import docopt
 
 
 def loop(rc, reset_last_key=None):
@@ -35,7 +34,7 @@ def loop(rc, reset_last_key=None):
         except Exception as e:
             print("error {0}".format(e))
 
-        time.sleep(0.1)
+        time.sleep(0.05)
 
 
 def timeit(rc, itterations=50000):
@@ -43,59 +42,47 @@ def timeit(rc, itterations=50000):
     """
     t0 = time.time()
     for i in xrange(0, itterations):  # noqa
-        try:
-            s = "foo{0}".format(i)
-            rc.set(s, i)
-            rc.get(s)
-        except Exception as e:
-            print("error {0}".format(e))
+        s = "foo{0}".format(i)
+        rc.set(s, i)
+        rc.get(s)
 
     t1 = time.time() - t0
-    print("{}k SET and then GET took: {} seconds... {} itterations per second".format((itterations / 1000), t1, (itterations / t1)))
+    print("{}k SET/GET operations took: {} seconds... {} operations per second".format((itterations / 1000) * 2, t1, (itterations / t1) * 2))
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        conflict_handler="resolve",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "-h",
-        "--host",
-        help="host of a cluster member",
-        default="127.0.0.1"
-    )
-    parser.add_argument(
-        "-p",
-        "--port",
-        help="port of a cluster member",
-        type=int,
-        default=7000
-    )
-    parser.add_argument(
-        "--timeit",
-        help="run a mini benchmark to test performance",
-        action="store_true"
-    )
-    parser.add_argument(
-        "--resetlastkey",
-        help="reset __last__ key",
-        action="store_true"
-    )
-    args = parser.parse_args()
+    __docopt__ = """
+Usage:
+  simple [--host IP] [--port PORT] [--nocluster] [--timeit] [--resetlastkey] [-h] [--version]
 
-    startup_nodes = [
-        {"host": args.host, "port": args.port}
-    ]
+Options:
+  --nocluster        If flag is set then StrictRedis will be used instead of cluster lib
+  --host IP          Redis server to test against [default: 127.0.0.1]
+  --port PORT        Port on redis server [default: 7000]
+  --timeit           run a mini benchmark to test performance
+  --resetlastkey     reset __last__ key
+  -h --help          show this help and exit
+  -v --version       show version and exit
+    """
 
-    rc = RedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1, decode_responses=True)
+    args = docopt(__docopt__, version="0.3.0")
 
-    if args.timeit:
+    startup_nodes = [{"host": args["--host"], "port": args["--port"]}]
+
+    if not args["--nocluster"]:
+        from rediscluster import RedisCluster
+        rc = RedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1, decode_responses=True)
+    else:
+        from redis import StrictRedis
+        rc = StrictRedis(host=args["--host"], port=args["--port"], socket_timeout=0.1, decode_responses=True)
+
+    if args["--timeit"]:
         test_itterstions = [
+            5000,
             10000,
-            25000,
+            20000,
         ]
         for itterations in test_itterstions:
             timeit(rc, itterations=itterations)
     else:
-        loop(rc, reset_last_key=args.resetlastkey)
+        loop(rc, reset_last_key=args["--resetlastkey"])
