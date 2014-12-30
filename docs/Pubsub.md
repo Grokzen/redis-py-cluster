@@ -18,11 +18,11 @@ Discussion on this topic can be found here: https://groups.google.com/forum/?hl=
 
 
 
-# How pubsub works in RedisCluster
+# How pubsub works in StrictRedisCluster
 
-In 0.2.0 a first solution to pubsub problem was implemented, but it contains some limitations.
+In `0.2.0` a first solution to pubsub problem was implemented, but it contains some limitations.
 
-When a new RedisCluster instance is created it will now just after all slots is initialized determine what one node will be the pubsub node. Currently it will use the node with the highest port number.
+When a new `StrictRedisCluster` instance is created it will now just after all slots is initialized determine what one node will be the pubsub node. Currently it will use the node with the highest port number.
 
 With this solution, pubsub will work in a cluster without any other major workarounds.
 

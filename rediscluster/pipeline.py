@@ -7,7 +7,7 @@ import time
 import threading
 
 # rediscluster imports
-from .client import RedisCluster
+from .client import StrictRedisCluster
 from .connection import by_node_context
 from .exceptions import RedisClusterException, ClusterDownException
 from .utils import clusterdown_wrapper
@@ -18,7 +18,7 @@ from redis.exceptions import ResponseError, ConnectionError
 from redis._compat import imap, unicode, xrange
 
 
-class StrictClusterPipeline(RedisCluster):
+class StrictClusterPipeline(StrictRedisCluster):
     """
     """
 
@@ -191,7 +191,7 @@ class StrictClusterPipeline(RedisCluster):
                         time.sleep(0.1)
                     continue
 
-                errv = RedisCluster._exception_message(v)
+                errv = StrictRedisCluster._exception_message(v)
                 if errv is None:
                     continue
 

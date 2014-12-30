@@ -20,7 +20,7 @@ We improve the situation by using python threads, making each request in paralle
 You can disable threaded execution either in the class constructor:
 
 ```
-r = rediscluster.RedisCluster( ... pipeline_use_threads=False) #true by default
+r = rediscluster.StrictRedisCluster( ... pipeline_use_threads=False) #true by default
 pipe = r.pipeline()
 ```
 
@@ -30,7 +30,7 @@ Or you can disable it on a case by case basis as you instantiate the pipeline ob
 pipe = r.pipeline(use_threads=False)
 ```
 
-The later example always overrides if explicitly set. Otherwise, it falls back on the value passed to the RedisCluster constructor.
+The later example always overrides if explicitly set. Otherwise, it falls back on the value passed to the StrictRedisCluster constructor.
 
 #### Footnote: Gevent
 Python offers something even more lightweight and efficient than threads to perform tasks in parallel: GEVENT.

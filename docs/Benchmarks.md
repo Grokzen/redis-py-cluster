@@ -6,7 +6,7 @@ There is a few benchmarks that is designed to test specific parts of the code th
 
 ## Setup benchmarks
 
-Before running any benchmark you should install this lib in editable mode inside a virtualenv so it can import `RedisCluster` lib.
+Before running any benchmark you should install this lib in editable mode inside a virtualenv so it can import `StrictRedisCluster` lib.
 
 Install with
 

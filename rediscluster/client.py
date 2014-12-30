@@ -25,7 +25,7 @@ from redis._compat import iteritems, basestring, b, izip, nativestr
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
 
 
-class RedisCluster(StrictRedis):
+class StrictRedisCluster(StrictRedis):
     """
     If a command is implemented over the one in StrictRedis then it requires some changes compared to
     the regular implementation of the method.
@@ -94,7 +94,7 @@ class RedisCluster(StrictRedis):
                              Some kwargs is not supported and will raise RedisClusterException
                               - db (Redis do not support database SELECT in cluster mode)
         """
-        super(RedisCluster, self).__init__(**kwargs)
+        super(StrictRedisCluster, self).__init__(**kwargs)
 
         # Tweaks to StrictRedis client arguments when running in cluster mode
         if "db" in kwargs:
@@ -136,7 +136,7 @@ class RedisCluster(StrictRedis):
          - MOVED: Updates the slots cache with the new ip:port
          - ASK: Returns a dict with ip:port where to connect to try again
         """
-        errv = RedisCluster._exception_message(e)
+        errv = StrictRedisCluster._exception_message(e)
         if errv is None:
             raise e
 
@@ -219,7 +219,7 @@ class RedisCluster(StrictRedis):
         """
         Transaction is not implemented in cluster mode yet.
         """
-        raise RedisClusterException("method RedisCluster.transaction() is not implemented")
+        raise RedisClusterException("method StrictRedisCluster.transaction() is not implemented")
 
     def _determine_slot(self, *args, **kwargs):
         """

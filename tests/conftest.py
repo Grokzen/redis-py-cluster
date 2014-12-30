@@ -6,7 +6,7 @@ import sys
 import json
 
 # rediscluster imports
-from rediscluster import RedisCluster
+from rediscluster import StrictRedisCluster
 
 # 3rd party imports
 import pytest
@@ -31,7 +31,7 @@ def get_versions(**kwargs):
 def _get_client(**kwargs):
     params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}], 'socket_timeout': 10, 'decode_responses': False}
     params.update(kwargs)
-    return RedisCluster(**params)
+    return StrictRedisCluster(**params)
 
 
 def _init_client(request, **kwargs):
@@ -80,7 +80,7 @@ def r(request, **kwargs):
 @pytest.fixture()
 def s(request, **kwargs):
     """
-    Create a RedisCluster instance with 'init_slot_cache' set to false
+    Create a StrictRedisCluster instance with 'init_slot_cache' set to false
     """
     s = _get_client(init_slot_cache=False, **kwargs)
     assert s.connection_pool.nodes.slots == {}

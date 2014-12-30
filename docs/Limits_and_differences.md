@@ -2,7 +2,7 @@
 
 There is alot of differences that have to be taken into consideration when using redis cluster.
 
-Any method that can operate on multiple keys have to be reimplemented in the client and in some cases that is not possible to do. In general any method that is overriden in RedisCluster have lost the ability of being atomic.
+Any method that can operate on multiple keys have to be reimplemented in the client and in some cases that is not possible to do. In general any method that is overriden in StrictRedisCluster have lost the ability of being atomic.
 
 Pipelines do not work the same way in a cluster. In `StrictRedis` it batch all commands so that they can be executed at the same time when requested. But with RedisCluster pipelines will send the command directly to the server when it is called, but it will still store the result internally and return the same data from .execute(). This is done so that the code still behaves like a pipeline and no code will break. A better solution will be implemented in the future.
 

@@ -7,6 +7,11 @@ This project is a port of `redis-rb-cluster` by antirez, with alot of added func
 [![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![Latest Version](https://pypip.in/version/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Downloads](https://pypip.in/download/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Supported Python versions](https://pypip.in/py_versions/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![License](https://pypip.in/license/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Code Health](https://landscape.io/github/Grokzen/redis-py-cluster/unstable/landscape.svg)](https://landscape.io/github/Grokzen/redis-py-cluster/unstable)
 
 
+## Upgrading instructions
+
+Please read the [following](docs/Upgrading.md) documentation that will go through all changes that is required when upgrading `redis-py-cluster` between versions.
+
+
 
 ## Dependencies & supported python versions
 
@@ -48,9 +53,9 @@ $ python setup.py install
 Small sample script that show how to get started with RedisCluster. `decode_responses=True` is required to have when running on python3.
 
 ```python
->>> from rediscluster import RedisCluster
+>>> from rediscluster import StrictRedisCluster
 >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
->>> rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+>>> rc = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True)
 >>> rc.set("foo", "bar")
 True
 >>> rc.get("foo")
@@ -59,7 +64,7 @@ True
 
 The following imports can be imported from `redis` package. 
 
-- `RedisCluster` 
+- `StrictRedisCluster`
 - `StrictClusterPipeline` 
 - `ClusterPubSub` 
 
