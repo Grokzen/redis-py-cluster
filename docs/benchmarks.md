@@ -14,10 +14,12 @@ Install with
 $ pip install -e .
 ```
 
+You also need a few redis servers to test against. It is required to have 1 cluster with atleast one node on port `7001` and it also required to have a non-clustered server on port `7007`.
+
 
 ## Bencmarks
 
-`simple.py` - This benchmark can be used to messure a simple `set` and `get` operation chain.
+`simple.py` - This benchmark can be used to messure a simple `set` and `get` operation chain. It also support running pipelines bu adding the flag `--pipeline`
 
 
 

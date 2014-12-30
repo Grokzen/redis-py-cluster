@@ -1,6 +1,7 @@
 * 0.3.0
     * simple benchmark now uses docopt for cli parsing
     * New make target to run some benchmarks 'make benchmark'
+    * simple benchmark now support pipelines tests
 
 * 0.2.0
     * Moved pipeline code into new file.
