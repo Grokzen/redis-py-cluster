@@ -6,7 +6,7 @@ import sys
 import json
 
 # rediscluster imports
-from rediscluster import StrictRedisCluster
+from rediscluster import StrictRedisCluster, RedisCluster
 
 # 3rd party imports
 import pytest
@@ -28,13 +28,16 @@ def get_versions(**kwargs):
     return _REDIS_VERSIONS[key]
 
 
-def _get_client(**kwargs):
+def _get_client(cls=None, **kwargs):
+    if not cls:
+        cls = RedisCluster
+
     params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}], 'socket_timeout': 10, 'decode_responses': False}
     params.update(kwargs)
     return StrictRedisCluster(**params)
 
 
-def _init_client(request, **kwargs):
+def _init_client(request, cls=None, **kwargs):
     client = _get_client(**kwargs)
     client.flushdb()
     if request:
@@ -64,7 +67,7 @@ def skip_if_redis_py_version_lt(min_version):
 @pytest.fixture()
 def o(request, **kwargs):
     """
-    Create a Rediscluster instance with decode_responses set to True.
+    Create a RedisCluster instance with decode_responses set to True.
     """
     return _init_client(request, decode_responses=True, **kwargs)
 
@@ -72,7 +75,7 @@ def o(request, **kwargs):
 @pytest.fixture()
 def r(request, **kwargs):
     """
-    Create a Rediscluster instance with default settings.
+    Create a RedisCluster instance with default settings.
     """
     return _init_client(request, **kwargs)
 
@@ -94,3 +97,11 @@ def t(request, *args, **kwargs):
     Create a regular StrictRedis object instance
     """
     return StrictRedis(*args, **kwargs)
+
+
+@pytest.fixture()
+def sr(request, *args, **kwargs):
+    """
+    Returns a instance of StrictRedisCluster
+    """
+    return _init_client(request, cls=StrictRedisCluster, **kwargs)
