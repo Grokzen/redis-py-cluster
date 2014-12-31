@@ -7,6 +7,7 @@ This project is a port of `redis-rb-cluster` by antirez, with alot of added func
 [![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![Latest Version](https://pypip.in/version/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Downloads](https://pypip.in/download/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Supported Python versions](https://pypip.in/py_versions/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![License](https://pypip.in/license/redis-py-cluster/badge.svg)](https://pypi.python.org/pypi/redis-py-cluster/) [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Code Health](https://landscape.io/github/Grokzen/redis-py-cluster/unstable/landscape.svg)](https://landscape.io/github/Grokzen/redis-py-cluster/unstable)
 
 
+
 ## Upgrading instructions
 
 Please read the [following](docs/Upgrading.md) documentation that will go through all changes that is required when upgrading `redis-py-cluster` between versions.
@@ -65,8 +66,11 @@ True
 The following imports can be imported from `redis` package. 
 
 - `StrictRedisCluster`
+- `RedisCluster`
 - `StrictClusterPipeline` 
 - `ClusterPubSub` 
+
+`StrictRedisCluster` is based on `redis.StrictRedis` and `RedisCluster` has the same functionality as `redis.Redis` even if it is not directly based on it.
 
 
 
@@ -89,6 +93,7 @@ Install tox with `pip install tox`
 To run all environments you need all supported python versions installed on your machine. (See supported python versions list) and you also need the python-dev package for all python versions to build hiredis.
 
 To run a specific python version use either `tox -e py27` or `tox -e py34`
+
 
 
 ## More documentation
