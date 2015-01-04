@@ -4,6 +4,7 @@
     * simple benchmark now support pipelines tests
     * Renamed RedisCluster --> StrictRedisCluster
     * Implement backwards compatible redis.Redis class in cluster mode. It was named RedisCluster and everyone updating from 0.2.0 to 0.3.0 should consult docs/Upgrading.md for instructions how to change your code.
+    * Added comprehensive documentation regarding pipelines
 
 * 0.2.0
     * Moved pipeline code into new file.
