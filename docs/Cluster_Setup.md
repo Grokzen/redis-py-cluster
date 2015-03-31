@@ -1,7 +1,7 @@
 # How to setup a cluster manually
 
  - Redis cluster tutorial: http://redis.io/topics/cluster-tutorial
- - Redis cluster specs: http://redis.io/topics/cluster-spect
+ - Redis cluster specs: http://redis.io/topics/cluster-spec
  - This video will describe how to setup and use a redis cluster: http://vimeo.com/63672368 (This video old and maybe outdated)
 
 
