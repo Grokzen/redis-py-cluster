@@ -311,6 +311,7 @@ def test_cluster_one_instance():
 def test_init_with_down_node():
     """
     If I can't connect to one of the nodes, everything should still work.
+    But if I can't connect to any of the nodes, exception should be thrown.
     """
     def get_redis_link(host, port, decode_responses=False):
         if port == 7000:
@@ -326,4 +327,4 @@ def test_init_with_down_node():
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
         with pytest.raises(RedisClusterException) as e:
             n.initialize()
-        assert 'All slots are not covered' in unicode(e.value)
+        assert 'Redis Cluster cannot be connected' in unicode(e.value)
