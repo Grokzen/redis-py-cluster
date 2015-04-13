@@ -80,10 +80,12 @@ class NodeManager(object):
         self.flush_slots_cache()
         all_slots_covered = False
         disagreements = []
+        startup_nodes_reachable = False
         for node in self.startup_nodes:
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")
+                startup_nodes_reachable = True
             except ConnectionError:
                 continue
             except Exception:
@@ -137,6 +139,9 @@ class NodeManager(object):
                 self.determine_pubsub_node()
                 return
 
+        if not startup_nodes_reachable:
+            raise RedisClusterException("Redis Cluster cannot be connected. Please provide at least one reachable node.")
+        
         if not all_slots_covered:
             raise RedisClusterException("All slots are not covered after query all startup_nodes. {} of {} covered...".format(len(self.slots), self.RedisClusterHashSlots))
 
