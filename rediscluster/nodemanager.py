@@ -95,8 +95,7 @@ class NodeManager(object):
 
             # If there's only one server in the cluster, its ``host`` is ''
             # Fix it to the host in startup_nodes
-            if (len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0
-                    and len(self.startup_nodes) == 1):
+            if (len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0 and len(self.startup_nodes) == 1):
                 cluster_slots[0][2][0] = self.startup_nodes[0]['host']
 
             # No need to decode response because StrictRedis should handle that for us...
@@ -141,7 +140,7 @@ class NodeManager(object):
 
         if not startup_nodes_reachable:
             raise RedisClusterException("Redis Cluster cannot be connected. Please provide at least one reachable node.")
-        
+
         if not all_slots_covered:
             raise RedisClusterException("All slots are not covered after query all startup_nodes. {} of {} covered...".format(len(self.slots), self.RedisClusterHashSlots))
 
