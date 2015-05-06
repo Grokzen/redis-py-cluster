@@ -63,12 +63,12 @@ True
 'bar'
 ```
 
-The following imports can be imported from `redis` package. 
+The following imports can be imported from `redis` package.
 
 - `StrictRedisCluster`
 - `RedisCluster`
-- `StrictClusterPipeline` 
-- `ClusterPubSub` 
+- `StrictClusterPipeline`
+- `ClusterPubSub`
 
 `StrictRedisCluster` is based on `redis.StrictRedis` and `RedisCluster` has the same functionality as `redis.Redis` even if it is not directly based on it.
 
@@ -114,7 +114,13 @@ More detailed documentation can be found in `docs` folder.
 
 ## Disclaimer
 
-Both this client and Redis Cluster are a work in progress that is not suitable to be used in production environments. This is only my current personal opinion about both projects.
+Both Redis cluster and redis-py-cluster is considered stable and production ready.
+
+But this depends on what you are going to use clustering for. In the simple use cases with SET/GET and other single key functions there is not issues. If you require multi key functinoality or pipelines then you must be very carefull when developing because they work slightly different from the normal redis server.
+
+If you require advance features like pubsub or scripting, this lib and redis do not handle that kind of use-cases very well. You either need to develop a custom solution yourself or use a non clustered redis server for that.
+
+Finally, this lib itself is very stable and i know of atleast 2 companies that use this in production with high loads and big cluster sizes.
 
 
 
