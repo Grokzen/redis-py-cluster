@@ -74,15 +74,12 @@ class RedisClusterMgt(object):
         }
 
     def _parse_node_line(self, line):
-        slots = None
-        if 'slave' in line:
-            (node_id, ip_port, flags, master_id, ping, pong, epoch,
-                status) = line.split(' ')
-        else:
-            (node_id, ip_port, flags, master_id, ping, pong, epoch,
-                status, slots) = line.split(' ')
-        return (node_id, ip_port, flags, master_id, ping, pong, epoch,
-                status, slots)
+        line_items = line.split(' ')
+        ret = line_items[:8]
+        slots = [sl.split('-') for sl in line_items[8:]]
+        ret.append(slots)
+        print ret
+        return ret
 
     def nodes(self, host_required=False):
         raw =  self._execute_cluster_commands('nodes')
@@ -105,6 +102,6 @@ class RedisClusterMgt(object):
                 'last_pong_rcvd': pong,
                 'epoch': epoch,
                 'status': status,
-                'slots': slots.split('-') if slots else ''
+                'slots': slots
             }
         return ret
