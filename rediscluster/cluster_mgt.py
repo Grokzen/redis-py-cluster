@@ -56,8 +56,8 @@ class RedisClusterMgt(object):
 
     def slots(self, host_required=False):
         slots_info = self._execute_cluster_commands('slots')
-        master_slots = dict()
-        slave_slots = dict()
+        master_slots = {}
+        slave_slots = {}
         for item in slots_info:
             master_ip, master_port = item[2]
             slots = [item[0], item[1]]
@@ -78,12 +78,11 @@ class RedisClusterMgt(object):
         ret = line_items[:8]
         slots = [sl.split('-') for sl in line_items[8:]]
         ret.append(slots)
-        print ret
         return ret
 
     def nodes(self, host_required=False):
         raw =  self._execute_cluster_commands('nodes')
-        ret = dict()
+        ret = {}
         for line in raw.split('\n'):
             if not line:
                 continue
