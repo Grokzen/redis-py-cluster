@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from collections import defaultdict
 
 from .client import StrictRedisCluster
 from .connection import ClusterConnectionPool
@@ -56,17 +57,17 @@ class RedisClusterMgt(object):
 
     def slots(self, host_required=False):
         slots_info = self._execute_cluster_commands('slots')
-        master_slots = {}
-        slave_slots = {}
+        master_slots = defaultdict(list)
+        slave_slots = defaultdict(list)
         for item in slots_info:
             master_ip, master_port = item[2]
             slots = [item[0], item[1]]
             master_host = nslookup(master_ip) if host_required else master_ip
-            master_slots[self._make_host(master_host, master_port)] = slots
+            master_slots[self._make_host(master_host, master_port)].append(slots)
             slaves = item[3:]
             for slave_ip, slave_port in slaves:
                 slave_host = nslookup(slave_ip) if host_required else slave_ip
-                slave_slots[self._make_host(slave_host, slave_port)] = slots
+                slave_slots[self._make_host(slave_host, slave_port)].append(slots)
         
         return {
             'master': master_slots,
