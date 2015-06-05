@@ -76,17 +76,18 @@ def skip_if_redis_py_version_lt(min_version):
 @pytest.fixture()
 def o(request, **kwargs):
     """
-    Create a RedisCluster instance with decode_responses set to True.
+    Create a StrictRedisCluster instance with decode_responses set to True.
     """
-    return _init_client(request, decode_responses=True, **kwargs)
+    return _init_client(request, cls=StrictRedisCluster, decode_responses=True,
+                        **kwargs)
 
 
 @pytest.fixture()
 def r(request, **kwargs):
     """
-    Create a RedisCluster instance with default settings.
+    Create a StrictRedisCluster instance with default settings.
     """
-    return _init_client(request, **kwargs)
+    return _init_client(request, cls=StrictRedisCluster, **kwargs)
 
 
 @pytest.fixture()

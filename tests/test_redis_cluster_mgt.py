@@ -14,7 +14,7 @@ class TestRedisClusterMgt(object):
         master_slots = slots['master']
         for host, slots in master_slots.iteritems():        
             s = slots[0]
-            # node can have multiple formats
+            # node can have multiple slots
             # as a result, the format is [[1, 2], [3, 4]]
             assert isinstance(s, list) 
             assert len(s) == 2
