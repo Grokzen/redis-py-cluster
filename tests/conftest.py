@@ -48,8 +48,8 @@ def _init_client(request, cls=None, **kwargs):
     return client
 
 
-def _init_mgt_client(request, cls=None):
-    client = _get_client(cls=cls)
+def _init_mgt_client(request, cls=None, **kwargs):
+    client = _get_client(cls=cls, **kwargs)
     if request:
         def teardown():
             client.connection_pool.disconnect()
@@ -122,4 +122,5 @@ def rcm(request, *args, **kwargs):
     """
     Returns a instance of RedisClusterMgt
     """
-    return _init_mgt_client(request, cls=RedisClusterMgt, **kwargs)
+    return _init_mgt_client(request, cls=RedisClusterMgt, decode_responses=True,
+                            **kwargs)
