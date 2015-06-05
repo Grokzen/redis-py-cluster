@@ -6,7 +6,7 @@ import sys
 import json
 
 # rediscluster imports
-from rediscluster import StrictRedisCluster, RedisCluster
+from rediscluster import StrictRedisCluster, RedisCluster, RedisClusterMgt
 
 # 3rd party imports
 import pytest
@@ -34,15 +34,24 @@ def _get_client(cls=None, **kwargs):
 
     params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}], 'socket_timeout': 10, 'decode_responses': False}
     params.update(kwargs)
-    return StrictRedisCluster(**params)
+    return cls(**params)
 
 
 def _init_client(request, cls=None, **kwargs):
-    client = _get_client(**kwargs)
+    client = _get_client(cls=cls, **kwargs)
     client.flushdb()
     if request:
         def teardown():
             client.flushdb()
+            client.connection_pool.disconnect()
+        request.addfinalizer(teardown)
+    return client
+
+
+def _init_mgt_client(request, cls=None):
+    client = _get_client(cls=cls)
+    if request:
+        def teardown():
             client.connection_pool.disconnect()
         request.addfinalizer(teardown)
     return client
@@ -105,3 +114,11 @@ def sr(request, *args, **kwargs):
     Returns a instance of StrictRedisCluster
     """
     return _init_client(request, cls=StrictRedisCluster, **kwargs)
+
+
+@pytest.fixture()
+def rcm(request, *args, **kwargs):
+    """
+    Returns a instance of RedisClusterMgt
+    """
+    return _init_mgt_client(request, cls=RedisClusterMgt, **kwargs)

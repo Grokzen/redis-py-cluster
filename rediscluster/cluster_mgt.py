@@ -14,10 +14,10 @@ class RedisClusterMgt(object):
                     'getkeysinslot', 'keyslot', 'meet', 'replicate', 'reset',
                     'saveconfig', 'set_config_epoch', 'setslot', 'slaves')
 
-    def __init__(self, startup_nodes):
+    def __init__(self, startup_nodes=None, **kwargs):
         self.connection_pool = ClusterConnectionPool(
             startup_nodes=startup_nodes,
-            init_slot_cache=True            
+            init_slot_cache=True, **kwargs
         )
         
     def __getattr__(self, attr):
