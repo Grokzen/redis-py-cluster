@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
 
-from .client import StrictRedisCluster
 from .connection import ClusterConnectionPool
 from .exceptions import RedisClusterException
 from .utils import clusterdown_wrapper, first_key, nslookup
