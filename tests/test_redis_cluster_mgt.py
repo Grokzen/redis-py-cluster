@@ -3,7 +3,7 @@
 class TestRedisClusterMgt(object):
 
     def test_info(self, rcm):
-        info = rcm.info()        
+        info = rcm.info()
         assert 'cluster_state' in info
 
     def test_slots(self, rcm):
@@ -12,11 +12,11 @@ class TestRedisClusterMgt(object):
         assert 'slave' in slots
 
         master_slots = slots['master']
-        for host, slots in master_slots.items():        
+        for host, slots in master_slots.items():
             s = slots[0]
             # node can have multiple slots
             # as a result, the format is [[1, 2], [3, 4]]
-            assert isinstance(s, list) 
+            assert isinstance(s, list)
             assert len(s) == 2
 
     def test_nodes(self, rcm):

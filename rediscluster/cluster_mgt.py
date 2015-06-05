@@ -18,7 +18,7 @@ class RedisClusterMgt(object):
             startup_nodes=startup_nodes,
             init_slot_cache=True, **kwargs
         )
-        
+
     def __getattr__(self, attr):
         if attr in self.blocked_args:
             raise RedisClusterException('%s is currently not supported' % attr)
@@ -36,21 +36,21 @@ class RedisClusterMgt(object):
             finally:
                 self.connection_pool.release(c)
         return first_key(command, res)
-        
+
     def _execute_cluster_commands(self, *args, **kwargs):
         args = ('cluster',) + args
         node = self.connection_pool.nodes.random_node()
         return self._execute_command_on_nodes([node], *args, **kwargs)
 
     def info(self):
-        raw = self._execute_cluster_commands('info')        
+        raw = self._execute_cluster_commands('info')
         def _split(line):
             k, v = line.split(':')
             yield k
             yield v
         return {k: v for k, v in
                 [_split(line) for line in raw.split('\r\n') if line]}
-            
+
     def _make_host(self, host, port):
         return '%s:%s' % (host, port)
 
@@ -67,7 +67,7 @@ class RedisClusterMgt(object):
             for slave_ip, slave_port in slaves:
                 slave_host = nslookup(slave_ip) if host_required else slave_ip
                 slave_slots[self._make_host(slave_host, slave_port)].append(slots)
-        
+
         return {
             'master': master_slots,
             'slave': slave_slots
@@ -81,7 +81,7 @@ class RedisClusterMgt(object):
         return ret
 
     def nodes(self, host_required=False):
-        raw =  self._execute_cluster_commands('nodes')
+        raw = self._execute_cluster_commands('nodes')
         ret = {}
         for line in raw.split('\n'):
             if not line:
