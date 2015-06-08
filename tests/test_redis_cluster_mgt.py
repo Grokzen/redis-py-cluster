@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+
 class TestRedisClusterMgt(object):
 
     def test_info(self, rcm):

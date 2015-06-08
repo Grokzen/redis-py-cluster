@@ -96,4 +96,3 @@ def nslookup(node_ip):
         return gethostbyaddr(node_ip)[0]
     ip, port = node_ip.split(':')
     return '%s:%s' % (gethostbyaddr(ip)[0], port)
-    

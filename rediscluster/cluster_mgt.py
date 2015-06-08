@@ -44,6 +44,7 @@ class RedisClusterMgt(object):
 
     def info(self):
         raw = self._execute_cluster_commands('info')
+
         def _split(line):
             k, v = line.split(':')
             yield k
