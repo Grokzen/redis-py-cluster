@@ -13,8 +13,6 @@ except ImportError:
 if os.getenv('USER', '').lower() == 'vagrant':
     del os.link
 
-with open("docs/ALPHA.md") as f:
-    alpha = f.read()
 with open('README.md') as f:
     readme = f.read()
 with open('CHANGES') as f:
@@ -22,9 +20,9 @@ with open('CHANGES') as f:
 
 setup(
     name="redis-py-cluster",
-    version="0.2.0",
+    version="0.3.0",
     description="Cluster library for redis 3.0.0 built on top of redis-py lib",
-    long_description=alpha + '\n\n' + readme + '\n\n' + history,
+    long_description=readme + '\n\n' + history,
     author="Johan Andersson",
     author_email="Grokzen@gmail.com",
     maintainer='Johan Andersson',
@@ -44,8 +42,8 @@ setup(
         # 'Development Status :: 1 - Planning',
         # 'Development Status :: 2 - Pre-Alpha',
         # 'Development Status :: 3 - Alpha',
-        'Development Status :: 4 - Beta',
-        # 'Development Status :: 5 - Production/Stable',
+        # 'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         # 'Development Status :: 6 - Mature',
         # 'Development Status :: 7 - Inactive',
         'Programming Language :: Python',

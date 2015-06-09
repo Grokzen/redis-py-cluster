@@ -1,6 +1,6 @@
 # Implemented commands
 
-This document will describe all changes that RedisCluster have done to make a command to work.
+This document will describe all changes that StrictRedisCluster have done to make a command to work.
 
 If a command is not listed here then the default implementation in 'StrictRedis' is used.
 

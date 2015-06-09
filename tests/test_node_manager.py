@@ -5,7 +5,7 @@ from __future__ import with_statement
 
 # rediscluster imports
 from tests.conftest import skip_if_server_version_lt
-from rediscluster import RedisCluster
+from rediscluster import StrictRedisCluster
 from rediscluster.exceptions import RedisClusterException
 from rediscluster.nodemanager import NodeManager
 
@@ -147,7 +147,7 @@ def test_init_slots_cache_slots_collision():
         else:
             result = []
 
-        r = RedisCluster(host=host, port=port, decode_responses=True)
+        r = StrictRedisCluster(host=host, port=port, decode_responses=True)
         orig_execute_command = r.execute_command
 
         def execute_command(*args, **kwargs):
@@ -239,7 +239,7 @@ def test_cluster_slots_error():
     Check that exception is raised if initialize can't execute
     'CLUSTER SLOTS' command.
     """
-    with patch.object(RedisCluster, 'execute_command') as execute_command_mock:
+    with patch.object(StrictRedisCluster, 'execute_command') as execute_command_mock:
         execute_command_mock.side_effect = Exception("foobar")
 
         n = NodeManager(startup_nodes=[{}])
@@ -311,6 +311,7 @@ def test_cluster_one_instance():
 def test_init_with_down_node():
     """
     If I can't connect to one of the nodes, everything should still work.
+    But if I can't connect to any of the nodes, exception should be thrown.
     """
     def get_redis_link(host, port, decode_responses=False):
         if port == 7000:
@@ -326,4 +327,4 @@ def test_init_with_down_node():
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
         with pytest.raises(RedisClusterException) as e:
             n.initialize()
-        assert 'All slots are not covered' in unicode(e.value)
+        assert 'Redis Cluster cannot be connected' in unicode(e.value)

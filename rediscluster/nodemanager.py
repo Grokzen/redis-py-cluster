@@ -80,10 +80,12 @@ class NodeManager(object):
         self.flush_slots_cache()
         all_slots_covered = False
         disagreements = []
+        startup_nodes_reachable = False
         for node in self.startup_nodes:
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")
+                startup_nodes_reachable = True
             except ConnectionError:
                 continue
             except Exception:
@@ -93,8 +95,7 @@ class NodeManager(object):
 
             # If there's only one server in the cluster, its ``host`` is ''
             # Fix it to the host in startup_nodes
-            if (len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0
-                    and len(self.startup_nodes) == 1):
+            if (len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0 and len(self.startup_nodes) == 1):
                 cluster_slots[0][2][0] = self.startup_nodes[0]['host']
 
             # No need to decode response because StrictRedis should handle that for us...
@@ -137,8 +138,12 @@ class NodeManager(object):
                 self.determine_pubsub_node()
                 return
 
+        if not startup_nodes_reachable:
+            raise RedisClusterException("Redis Cluster cannot be connected. Please provide at least one reachable node.")
+
         if not all_slots_covered:
-            raise RedisClusterException("All slots are not covered after query all startup_nodes. {} of {} covered...".format(len(self.slots), self.RedisClusterHashSlots))
+            raise RedisClusterException("All slots are not covered after query all startup_nodes. {} of {} covered...".format(
+                len(self.slots), self.RedisClusterHashSlots))
 
     def determine_pubsub_node(self):
         """

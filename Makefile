@@ -120,6 +120,7 @@ help:
 	@echo "  sdist           make a source distribution"
 	@echo "  bdist           make an egg distribution"
 	@echo "  install         install package"
+	@echo "  benchmark       runs all benchmarks. assumes nodes running on port 7001 and 7007"
 	@echo " *** CI Commands ***"
 	@echo "  start           starts a test redis cluster"
 	@echo "  stop            stop all started redis nodes (Started via 'make start' only affected)"
@@ -208,5 +209,19 @@ redis-install:
 	make -C redis-git -j4
 	gem install redis
 	sleep 3
+
+benchmark:
+	@echo ""
+	@echo " -- Running Simple benchmark with StrictRedis lib and non cluster server --"
+	python benchmarks/simple.py --port 7007 --timeit --nocluster
+	@echo ""
+	@echo " -- Running Simple benchmark with StrictRedisCluster lib and cluster server --"
+	python benchmarks/simple.py --port 7001 --timeit
+	@echo ""
+	@echo " -- Running Simple benchmark with pipelines & StrictRedis lib and non cluster server --"
+	python benchmarks/simple.py --port 7007 --timeit --pipeline --nocluster
+	@echo ""
+	@echo " -- Running Simple benchmark with StrictRedisCluster lib and cluster server"
+	python benchmarks/simple.py --port 7001 --timeit --pipeline
 
 .PHONY: test

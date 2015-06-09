@@ -7,7 +7,7 @@ import time
 import threading
 
 # rediscluster imports
-from .client import RedisCluster
+from .client import StrictRedisCluster
 from .connection import by_node_context
 from .exceptions import RedisClusterException, ClusterDownException
 from .utils import clusterdown_wrapper
@@ -18,13 +18,15 @@ from redis.exceptions import ResponseError, ConnectionError
 from redis._compat import imap, unicode, xrange
 
 
-class StrictClusterPipeline(RedisCluster):
+class StrictClusterPipeline(StrictRedisCluster):
     """
     """
 
-    def __init__(self, connection_pool, nodes_callbacks=None, result_callbacks=None, response_callbacks=None, startup_nodes=[], connections=[], opt={}, refresh_table_asap=False, slots={}, nodes=[], use_threads=True):
+    def __init__(self, connection_pool, nodes_callbacks=None, result_callbacks=None,
+                 response_callbacks=None, startup_nodes=None, refresh_table_asap=False,
+                 use_threads=True):
         self.connection_pool = connection_pool
-        self.startup_nodes = startup_nodes
+        self.startup_nodes = startup_nodes if startup_nodes else []
         self.refresh_table_asap = refresh_table_asap
         self.command_stack = []
 
@@ -134,7 +136,7 @@ class StrictClusterPipeline(RedisCluster):
             # Keep this section so that we can determine what nodes to contact
             for i in attempt:
                 c = stack[i]
-                slot = self._determine_slot(*c[0], **c[1])
+                slot = self._determine_slot(*c[0])
                 if slot in ask_slots:
                     node = ask_slots[slot]
                 else:
@@ -191,7 +193,7 @@ class StrictClusterPipeline(RedisCluster):
                         time.sleep(0.1)
                     continue
 
-                errv = RedisCluster._exception_message(v)
+                errv = StrictRedisCluster._exception_message(v)
                 if errv is None:
                     continue
 
