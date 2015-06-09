@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from socket import gethostbyaddr
 
 # rediscluster imports
 from .exceptions import RedisClusterException, ClusterDownException
@@ -88,3 +89,10 @@ def clusterdown_wrapper(func):
         # If it fails 3 times then raise exception back to caller
         raise ClusterDownException("CLUSTERDOWN error. Unable to rebuild the cluster")
     return inner
+
+
+def nslookup(node_ip):
+    if ':' not in node_ip:
+        return gethostbyaddr(node_ip)[0]
+    ip, port = node_ip.split(':')
+    return '%s:%s' % (gethostbyaddr(ip)[0], port)

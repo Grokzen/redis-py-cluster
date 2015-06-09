@@ -5,6 +5,7 @@ import sys
 
 # Import shortcut
 from .client import StrictRedisCluster, RedisCluster
+from .cluster_mgt import RedisClusterMgt  # NOQA
 from .pipeline import StrictClusterPipeline
 from .pubsub import ClusterPubSub
 
