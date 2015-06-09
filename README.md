@@ -108,6 +108,7 @@ More detailed documentation can be found in `docs` folder.
 - [Redisco support (Django ORM)](docs/Redisco.md)
 - [Pipelines](docs/Pipelines.md)
 - [Threaded Pipeline support](docs/Threads.md)
+- [Cluster Management class](docs/ClusterMgt.md)
 - [Authors](docs/Authors)
 
 
