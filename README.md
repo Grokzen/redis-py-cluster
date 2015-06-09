@@ -8,6 +8,16 @@ This project is a port of `redis-rb-cluster` by antirez, with alot of added func
 
 
 
+# Project status
+
+The project is not dead but not much new development is done right now. I do awnser issue reports and pull requests as soon as possible and if you have a problem you can ping me inside the gitter channel that you can find here [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) and i will help you out with problems or usage of this lib.
+
+As of release `0.3.0` this project will be considered stable and usable in production. Just remember that if you are going to use redis cluster to please reda up on the documentation that you can find in the bottom of this Readme. It will contain usage examples and descriptions of what is implemented and what is not implemented and why things are the way they are.
+
+On the topic about porting/moving this code into `redis-py` there is currently work over here https://github.com/andymccurdy/redis-py/pull/604 that will bring cluster uspport based on this code. But my suggestion is that until that work is completed that you should use this lib.
+
+
+
 ## Upgrading instructions
 
 Please read the [following](docs/Upgrading.md) documentation that will go through all changes that is required when upgrading `redis-py-cluster` between versions.
