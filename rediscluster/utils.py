@@ -26,7 +26,9 @@ def dict_merge(*dicts):
     Merge all provided dicts into 1 dict.
     """
     merged = {}
-    [merged.update(d) for d in dicts if is_dict(d)]
+    for d in dicts:
+        if is_dict(d):
+            merged.update(d)
     return merged
 
 
@@ -47,7 +49,7 @@ def merge_result(command, res):
     is_dict(res)
 
     result = set([])
-    for k, v in res.items():
+    for _, v in res.items():
         for value in v:
             result.add(value)
     return list(result)
@@ -78,7 +80,7 @@ def clusterdown_wrapper(func):
     It will try 3 times to rerun the command and raises ClusterDownException if it continues to fail.
     """
     def inner(*args, **kwargs):
-        for i in range(0, 3):
+        for _ in range(0, 3):
             try:
                 return func(*args, **kwargs)
             except ClusterDownException:

@@ -142,7 +142,8 @@ class NodeManager(object):
             raise RedisClusterException("Redis Cluster cannot be connected. Please provide at least one reachable node.")
 
         if not all_slots_covered:
-            raise RedisClusterException("All slots are not covered after query all startup_nodes. {} of {} covered...".format(len(self.slots), self.RedisClusterHashSlots))
+            raise RedisClusterException("All slots are not covered after query all startup_nodes. {} of {} covered...".format(
+                len(self.slots), self.RedisClusterHashSlots))
 
     def determine_pubsub_node(self):
         """

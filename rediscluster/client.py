@@ -190,7 +190,7 @@ class StrictRedisCluster(StrictRedis):
         a = errv[2].split(":")
         return {"action": errv[0], "slot": int(errv[1]), "host": a[0], "port": int(a[1])}
 
-    def pubsub(self, *args, **kwargs):
+    def pubsub(self, **kwargs):
         return ClusterPubSub(self.connection_pool, **kwargs)
 
     def pipeline(self, transaction=None, shard_hint=None, use_threads=None):
@@ -222,7 +222,7 @@ class StrictRedisCluster(StrictRedis):
         """
         raise RedisClusterException("method StrictRedisCluster.transaction() is not implemented")
 
-    def _determine_slot(self, *args, **kwargs):
+    def _determine_slot(self, *args):
         """
         figure out what slot based on command and args
         """
@@ -273,7 +273,7 @@ class StrictRedisCluster(StrictRedis):
         action = {}
         command = args[0]
         try_random_node = False
-        slot = self._determine_slot(*args, **kwargs)
+        slot = self._determine_slot(*args)
         ttl = int(self.RedisClusterRequestTTL)
         while ttl > 0:
             ttl -= 1
@@ -336,7 +336,7 @@ class StrictRedisCluster(StrictRedis):
         """
         cursor = '0'
         while cursor != 0:
-            for node, node_data in self.scan(cursor=cursor, match=match, count=count).items():
+            for _, node_data in self.scan(cursor=cursor, match=match, count=count).items():
                 cursor, data = node_data
                 for item in data:
                     yield item
@@ -387,7 +387,7 @@ class StrictRedisCluster(StrictRedis):
             kwargs.update(args[0])
 
         # Itterate over all items and fail fast if one value is True.
-        for k, v in kwargs.items():
+        for k, _ in kwargs.items():
             if self.get(k):
                 return False
 
