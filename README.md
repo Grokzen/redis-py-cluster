@@ -26,13 +26,13 @@ Please read the [following](docs/Upgrading.md) documentation that will go throug
 
 ## Dependencies & supported python versions
 
-- redis >= 2.10.2
-- Cluster enabled redis servers. Only Redis 3.0 beta.7 and above is supported because of CLUSTER SLOTS command was introduced in that release.
-- Optional: hiredis >= 0.1.3
+- Python: redis >= `2.10.2` is required
+- Redis server >= `3.0.0` is required
+- Optional Python: hiredis >= `0.1.3`
 
 Hiredis is tested and supported on all supported python versions.
 
-Supported python versions:
+Supported python versions, all minor releases in each major version should be supported unless otherwise stated here:
 
 - 2.7.x
 - 3.2.x
