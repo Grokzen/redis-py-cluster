@@ -20,7 +20,7 @@ with open('CHANGES') as f:
 
 setup(
     name="redis-py-cluster",
-    version="0.3.0",
+    version="1.0.0",
     description="Cluster library for redis 3.0.0 built on top of redis-py lib",
     long_description=readme + '\n\n' + history,
     author="Johan Andersson",
