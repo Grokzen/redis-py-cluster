@@ -74,14 +74,26 @@ def test_init_slots_cache(s):
     Test that slots cache can in initialized and all slots are covered
     """
     good_slots_resp = [
-        [0, 5460, [b'127.0.0.1', 7000], [b'127.0.0.1', 7003]],
-        [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.1', 7004]],
-        [10923, 16383, [b'127.0.0.1', 7002], [b'127.0.0.1', 7005]],
+        [0, 5460, [b'127.0.0.1', 7000], [b'127.0.0.2', 7003]],
+        [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.2', 7004]],
+        [10923, 16383, [b'127.0.0.1', 7002], [b'127.0.0.2', 7005]],
     ]
 
     s.execute_command = lambda *args: good_slots_resp
     s.connection_pool.nodes.initialize()
     assert len(s.connection_pool.nodes.slots) == NodeManager.RedisClusterHashSlots
+    for slot_info in good_slots_resp:
+        all_hosts = ['127.0.0.1', '127.0.0.2']
+        all_ports = [7000, 7001, 7002, 7003, 7004, 7005]
+        slot_start = slot_info[0]
+        slot_end = slot_info[1]
+        for i in range(slot_start, slot_end + 1):
+            assert len(s.connection_pool.nodes.slots[i]) == len(slot_info[2:])
+            assert s.connection_pool.nodes.slots[i][0]['host'] in all_hosts
+            assert s.connection_pool.nodes.slots[i][1]['host'] in all_hosts
+            assert s.connection_pool.nodes.slots[i][0]['port'] in all_ports
+            assert s.connection_pool.nodes.slots[i][1]['port'] in all_ports
+
     assert len(s.connection_pool.nodes.nodes) == 6
 
 
@@ -300,12 +312,13 @@ def test_cluster_one_instance():
         }}
 
         assert len(n.slots) == 16384
-        assert n.slots[0] == {
-            "host": "127.0.0.1",
-            "name": "127.0.0.1:7006",
-            "port": 7006,
-            "server_type": "master",
-        }
+        for i in range(0, 16384):
+            assert n.slots[i] == [{
+                "host": "127.0.0.1",
+                "name": "127.0.0.1:7006",
+                "port": 7006,
+                "server_type": "master",
+            }]
 
 
 def test_init_with_down_node():

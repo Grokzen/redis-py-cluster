@@ -6,7 +6,7 @@ import re
 
 # rediscluster imports
 from rediscluster import StrictRedisCluster
-from rediscluster.connection import ClusterConnectionPool
+from rediscluster.connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
 from rediscluster.exceptions import RedisClusterException
 from rediscluster.nodemanager import NodeManager
 from tests.conftest import _get_client, skip_if_server_version_lt
@@ -14,7 +14,7 @@ from tests.conftest import _get_client, skip_if_server_version_lt
 # 3rd party imports
 from mock import patch, Mock
 from redis.exceptions import ResponseError
-from redis._compat import unicode
+from redis._compat import b, unicode
 import pytest
 
 
@@ -56,6 +56,13 @@ def test_empty_startup_nodes(s):
         _get_client(init_slot_cache=False, startup_nodes=[])
 
     assert unicode(ex.value).startswith("No startup nodes provided"), unicode(ex.value)
+
+
+def test_readonly_instance(ro):
+    """
+    Test that readonly_mode=True instance has ClusterReadOnlyConnectionPool
+    """
+    assert isinstance(ro.connection_pool, ClusterReadOnlyConnectionPool)
 
 
 def test_blocked_commands(r):
@@ -115,12 +122,12 @@ def test_cluster_of_one_instance():
                 self.slots = {}
 
                 for i in range(0, 16383):
-                    self.slots[i] = {
+                    self.slots[i] = [{
                         'host': '127.0.0.1',
                         'server_type': 'master',
                         'port': 7006,
                         'name': '127.0.0.1:7006',
-                    }
+                    }]
 
                 # Second call should map all to 7007
                 def map_7007(self):
@@ -128,12 +135,12 @@ def test_cluster_of_one_instance():
                     self.slots = {}
 
                     for i in range(0, 16383):
-                        self.slots[i] = {
+                        self.slots[i] = [{
                             'host': '127.0.0.1',
                             'server_type': 'master',
                             'port': 7007,
                             'name': '127.0.0.1:7007',
-                        }
+                        }]
 
                 # First call should map all to 7006
                 init_mock.side_effect = map_7007
@@ -165,7 +172,7 @@ def test_moved_exception_handling(r):
     resp.message = "MOVED 1337 127.0.0.1:7000"
     r.handle_cluster_command_exception(resp)
     assert r.refresh_table_asap is True
-    assert r.connection_pool.nodes.slots[1337] == {
+    assert r.connection_pool.nodes.slots[1337][0] == {
         "host": "127.0.0.1",
         "port": 7000,
         "name": "127.0.0.1:7000",
@@ -240,12 +247,12 @@ def test_refresh_table_asap():
         mock_initialize.return_value = None
 
         r = StrictRedisCluster(host="127.0.0.1", port=7000)
-        r.connection_pool.nodes.slots[12182] = {
+        r.connection_pool.nodes.slots[12182] = [{
             "host": "127.0.0.1",
             "port": 7002,
             "name": "127.0.0.1:7002",
             "server_type": "master",
-        }
+        }]
         r.refresh_table_asap = True
 
         i = len(mock_initialize.mock_calls)
@@ -375,3 +382,46 @@ def test_moved_redirection_pipeline():
     p.parse_response = m
     p.set("foo", "bar")
     assert p.execute() == ["MOCK_OK"]
+
+
+def test_moved_redirection_on_slave_with_default_client():
+    """
+    Test that the client returns 'Too many Cluster redirections error'
+    with default (readonly_mode=False) client when we connect always to slave.
+    """
+
+    with patch.object(ClusterConnectionPool, 'get_node_by_slot') as return_slave_mock:
+        return_slave_mock.return_value = {
+            'name': '127.0.0.1:7004',
+            'host': '127.0.0.1',
+            'port': 7004,
+            'server_type': 'slave',
+        }
+
+        normal_client = StrictRedisCluster(host="127.0.0.1", port=7000)
+        with pytest.raises(RedisClusterException) as ex:
+            normal_client.get('foo')
+        assert unicode(ex.value).startswith('Too many Cluster redirections')
+
+
+def test_moved_redirection_on_slave_with_readonly_mode_client(sr):
+    """
+    Test that the client can get value normally with readonly mode
+    when we connect always to slave.
+    """
+
+    # we assume this key is set on 127.0.0.1:7001
+    sr.set('foo16706', 'foo')
+    import time
+    time.sleep(1)
+
+    with patch.object(ClusterConnectionPool, 'get_node_by_slot') as return_slave_mock:
+        return_slave_mock.return_value = {
+            'name': '127.0.0.1:7004',
+            'host': '127.0.0.1',
+            'port': 7004,
+            'server_type': 'slave',
+        }
+
+        readonly_client = StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
+        assert b('foo') == readonly_client.get('foo16706')
