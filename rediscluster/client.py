@@ -287,7 +287,10 @@ class StrictRedisCluster(StrictRedis):
                 r = self.connection_pool.get_random_connection()
                 try_random_node = False
             else:
-                node = self.connection_pool.get_node_by_slot(slot)
+                if self.refresh_table_asap:  # MOVED
+                    node = self.connection_pool.get_master_node_by_slot(slot)
+                else:
+                    node = self.connection_pool.get_node_by_slot(slot)
                 r = self.connection_pool.get_connection_by_node(node)
 
             try:

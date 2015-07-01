@@ -140,7 +140,10 @@ class StrictClusterPipeline(StrictRedisCluster):
                 if slot in ask_slots:
                     node = ask_slots[slot]
                 else:
-                    node = self.connection_pool.nodes.slots[slot][0]
+                    if self.refresh_table_asap:  # MOVED
+                        node = self.connection_pool.get_master_node_by_slot(slot)
+                    else:
+                        node = self.connection_pool.get_node_by_slot(slot)
 
                 self.connection_pool.nodes.set_node_name(node)
                 node_name = node['name']

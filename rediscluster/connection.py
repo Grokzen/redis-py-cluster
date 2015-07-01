@@ -213,8 +213,11 @@ class ClusterConnectionPool(ConnectionPool):
 
         return connection
 
-    def get_node_by_slot(self, slot):
+    def get_master_node_by_slot(self, slot):
         return self.nodes.slots[slot][0]
+
+    def get_node_by_slot(self, slot):
+        return self.get_master_node_by_slot(slot)
 
 
 class ClusterReadOnlyConnectionPool(ClusterConnectionPool):

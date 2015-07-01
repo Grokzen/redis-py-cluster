@@ -123,6 +123,13 @@ class TestConnectionPool(object):
             pool.get_connection("GET")
         assert unicode(ex.value).startswith("Only 'pubsub' commands can be used by get_connection()")
 
+    def test_master_node_by_slot(self):
+        pool = self.get_pool(connection_kwargs={})
+        node = pool.get_master_node_by_slot(0)
+        node['port'] = 7000
+        node = pool.get_master_node_by_slot(12182)
+        node['port'] = 7002
+
 
 class TestReadOnlyConnectionPool(object):
     def get_pool(self, connection_kwargs=None, max_connections=None):
