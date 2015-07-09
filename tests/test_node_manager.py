@@ -79,20 +79,22 @@ def test_init_slots_cache(s):
         [10923, 16383, [b'127.0.0.1', 7002], [b'127.0.0.2', 7005]],
     ]
 
-    s.execute_command = lambda *args: good_slots_resp
-    s.connection_pool.nodes.initialize()
-    assert len(s.connection_pool.nodes.slots) == NodeManager.RedisClusterHashSlots
-    for slot_info in good_slots_resp:
-        all_hosts = ['127.0.0.1', '127.0.0.2']
-        all_ports = [7000, 7001, 7002, 7003, 7004, 7005]
-        slot_start = slot_info[0]
-        slot_end = slot_info[1]
-        for i in range(slot_start, slot_end + 1):
-            assert len(s.connection_pool.nodes.slots[i]) == len(slot_info[2:])
-            assert s.connection_pool.nodes.slots[i][0]['host'] in all_hosts
-            assert s.connection_pool.nodes.slots[i][1]['host'] in all_hosts
-            assert s.connection_pool.nodes.slots[i][0]['port'] in all_ports
-            assert s.connection_pool.nodes.slots[i][1]['port'] in all_ports
+    with patch.object(StrictRedis, 'execute_command') as execute_command_mock:
+        execute_command_mock.side_effect = lambda *args: good_slots_resp
+
+        s.connection_pool.nodes.initialize()
+        assert len(s.connection_pool.nodes.slots) == NodeManager.RedisClusterHashSlots
+        for slot_info in good_slots_resp:
+            all_hosts = [b'127.0.0.1', b'127.0.0.2']
+            all_ports = [7000, 7001, 7002, 7003, 7004, 7005]
+            slot_start = slot_info[0]
+            slot_end = slot_info[1]
+            for i in range(slot_start, slot_end + 1):
+                assert len(s.connection_pool.nodes.slots[i]) == len(slot_info[2:])
+                assert s.connection_pool.nodes.slots[i][0]['host'] in all_hosts
+                assert s.connection_pool.nodes.slots[i][1]['host'] in all_hosts
+                assert s.connection_pool.nodes.slots[i][0]['port'] in all_ports
+                assert s.connection_pool.nodes.slots[i][1]['port'] in all_ports
 
     assert len(s.connection_pool.nodes.nodes) == 6
 
