@@ -9,22 +9,45 @@ from itertools import chain
 
 # rediscluster imports
 from .nodemanager import NodeManager
-from .exceptions import RedisClusterException
+from .exceptions import (
+    RedisClusterException, AskError, MovedError,
+    TryAgainError, ClusterDownError, ClusterCrossSlotError,
+)
 
 # 3rd party imports
 from redis._compat import nativestr
-from redis.connection import ConnectionPool, Connection
+from redis.client import dict_merge
+from redis.connection import ConnectionPool, Connection, DefaultParser
 from redis.exceptions import ConnectionError
+
+
+class ClusterParser(DefaultParser):
+    EXCEPTION_CLASSES = dict_merge(
+        DefaultParser.EXCEPTION_CLASSES, {
+            'ASK': AskError,
+            'TRYAGAIN': TryAgainError,
+            'MOVED': MovedError,
+            'CLUSTERDOWN': ClusterDownError,
+            'CROSSSLOT': ClusterCrossSlotError,
+        })
 
 
 class ClusterConnection(Connection):
     "Manages TCP communication to and from a Redis server"
     description_format = "ClusterConnection<host=%(host)s,port=%(port)s>"
 
+    def __init__(self, *args, **kwargs):
+        kwargs['parser_class'] = ClusterParser
+        super(ClusterConnection, self).__init__(*args, **kwargs)
+
 
 class ClusterReadOnlyConnection(Connection):
     "Manages READONLY TCP communication to and from a Redis server"
     description_format = "ClusterReadOnlyConnection<host=%(host)s,port=%(port)s>"
+
+    def __init__(self, *args, **kwargs):
+        kwargs['parser_class'] = ClusterParser
+        super(ClusterReadOnlyConnection, self).__init__(*args, **kwargs)
 
     def on_connect(self):
         "Initialize the connection, authenticate and select a database and send READONLY command"

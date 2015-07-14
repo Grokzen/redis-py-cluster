@@ -2,7 +2,9 @@
 from socket import gethostbyaddr
 
 # rediscluster imports
-from .exceptions import RedisClusterException, ClusterDownException
+from .exceptions import (
+    RedisClusterException, ClusterDownError
+)
 
 
 def is_dict(d):
@@ -83,13 +85,13 @@ def clusterdown_wrapper(func):
         for _ in range(0, 3):
             try:
                 return func(*args, **kwargs)
-            except ClusterDownException:
+            except ClusterDownError:
                 # Try again with the new cluster setup. All other errors
                 # should be raised.
                 pass
 
         # If it fails 3 times then raise exception back to caller
-        raise ClusterDownException("CLUSTERDOWN error. Unable to rebuild the cluster")
+        raise ClusterDownError("CLUSTERDOWN error. Unable to rebuild the cluster")
     return inner
 
 
