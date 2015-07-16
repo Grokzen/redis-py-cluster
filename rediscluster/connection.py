@@ -11,13 +11,16 @@ from .nodemanager import NodeManager
 from .exceptions import RedisClusterException
 
 # 3rd party imports
-from redis.connection import ConnectionPool, Connection
+from redis.connection import ConnectionPool, Connection, SSLConnection
 
 
 class ClusterConnection(Connection):
     "Manages TCP communication to and from a Redis server"
     description_format = "ClusterConnection<host=%(host)s,port=%(port)s>"
 
+class SSLClusterConnection(SSLConnection):
+    "Manages TCP communication to and from a Redis server over an SSL connection"
+    description_format = "SSLClusterConnection<host=%(host)s,port=%(port)s>"
 
 class UnixDomainSocketConnection(Connection):
     description_format = "ClusterUnixDomainSocketConnection<path=%(path)s>"
@@ -29,14 +32,17 @@ class ClusterConnectionPool(ConnectionPool):
     """
     RedisClusterDefaultTimeout = None
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection, max_connections=None, **connection_kwargs):
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection, max_connections=None,
+                 host_map=None, **connection_kwargs):
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
+        self.host_map = host_map or {}
 
-        self.nodes = NodeManager(startup_nodes)
+        self.nodes = NodeManager(startup_nodes, host_map=self.host_map, **connection_kwargs)
         if init_slot_cache:
             self.nodes.initialize()
 
         self.connections = {}
+        connection_kwargs.pop('ssl', None) # don't pass ssl to the connection_class constructor later
         self.connection_kwargs = connection_kwargs
         self.reset()
 

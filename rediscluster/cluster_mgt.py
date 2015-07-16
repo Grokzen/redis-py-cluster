@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from collections import defaultdict
 
-from .connection import ClusterConnectionPool
+from .connection import ClusterConnectionPool, SSLClusterConnection
 from .exceptions import RedisClusterException
 from .utils import clusterdown_wrapper, first_key, nslookup
 
@@ -14,10 +14,18 @@ class RedisClusterMgt(object):
                     'saveconfig', 'set_config_epoch', 'setslot', 'slaves')
 
     def __init__(self, startup_nodes=None, **kwargs):
+        if kwargs.get('ssl'):
+            kwargs['connection_class'] = SSLClusterConnection
         self.connection_pool = ClusterConnectionPool(
             startup_nodes=startup_nodes,
             init_slot_cache=True, **kwargs
         )
+        self.host_map = kwargs.get('host_map', {})
+
+        # Setup a mapping needed for nodes response handlaing
+        self.hostport_map = {}
+        for (priv_host, priv_port), (pub_host, pub_port) in self.host_map.items():
+            self.hostport_map['%s:%d' % (priv_host, priv_port)] = '%s:%d' % (pub_host, pub_port)
 
     def __getattr__(self, attr):
         if attr in self.blocked_args:
@@ -60,12 +68,13 @@ class RedisClusterMgt(object):
         master_slots = defaultdict(list)
         slave_slots = defaultdict(list)
         for item in slots_info:
-            master_ip, master_port = item[2]
+            master_ip, master_port = self.host_map.get(tuple(item[2]), item[2])
             slots = [item[0], item[1]]
             master_host = nslookup(master_ip) if host_required else master_ip
             master_slots[self._make_host(master_host, master_port)].append(slots)
             slaves = item[3:]
             for slave_ip, slave_port in slaves:
+                slave_ip, slave_port = self.host_map.get((slave_ip, slave_port), (slave_ip, slave_port))
                 slave_host = nslookup(slave_ip) if host_required else slave_ip
                 slave_slots[self._make_host(slave_host, slave_port)].append(slots)
 
@@ -89,6 +98,8 @@ class RedisClusterMgt(object):
                 continue
             node_id, ip_port, flags, master_id, ping, pong, epoch, \
                 status, slots = self._parse_node_line(line)
+            ip_port = self.hostport_map.get(ip_port, ip_port)
+
             role = flags
             if ',' in flags:
                 _, role = flags.split(',')
