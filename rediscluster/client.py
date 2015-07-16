@@ -7,7 +7,7 @@ import string
 import time
 
 # rediscluster imports
-from .connection import ClusterConnectionPool
+from .connection import ClusterConnectionPool, SSLClusterConnection
 from .exceptions import RedisClusterException, ClusterDownException
 from .pubsub import ClusterPubSub
 from .utils import (
@@ -82,13 +82,16 @@ class StrictRedisCluster(StrictRedis):
     )
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, init_slot_cache=True,
-                 pipeline_use_threads=True, **kwargs):
+                 pipeline_use_threads=True, host_map=None, **kwargs):
         """
         startup_nodes    --> List of nodes that initial bootstrapping can be done from
         host             --> Can be used to point to a startup node
         port             --> Can be used to point to a startup node
         max_connections  --> Maximum number of connections that should be kept open at one time
         pipeline_use_threads  ->  By default, use threads in pipeline if this flag is set to True
+        host_map         --> dict of private (host, port) --> public (host, port) to remap node address info
+                             for cases where clients use different IPs to talk to redis nodes than what
+                             the redis nodes themselves use to talk to each other (e.g. public vs private)
         **kwargs         --> Extra arguments that will be sent into StrictRedis instance when created
                              (See Official redis-py doc for supported kwargs
                              [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
@@ -96,6 +99,7 @@ class StrictRedisCluster(StrictRedis):
                               - db (Redis do not support database SELECT in cluster mode)
         """
         super(StrictRedisCluster, self).__init__(**kwargs)
+        self.host_map = host_map or {}
 
         # Tweaks to StrictRedis client arguments when running in cluster mode
         if "db" in kwargs:
@@ -107,10 +111,14 @@ class StrictRedisCluster(StrictRedis):
         if host:
             startup_nodes.append({"host": host, "port": port if port else 7000})
 
+        if kwargs.get('ssl'):
+            kwargs['connection_class'] = SSLClusterConnection
+
         self.connection_pool = ClusterConnectionPool(
             startup_nodes=startup_nodes,
             init_slot_cache=init_slot_cache,
             max_connections=max_connections,
+            host_map=self.host_map,
             **kwargs
         )
 

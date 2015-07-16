@@ -16,10 +16,12 @@ from redis import ConnectionError
 class NodeManager(object):
     RedisClusterHashSlots = 16384
 
-    def __init__(self, startup_nodes=None):
+    def __init__(self, startup_nodes=None, host_map=None, **connection_kwargs):
         self.nodes = {}
         self.slots = {}
+        self.host_map = host_map or {}
         self.startup_nodes = [] if startup_nodes is None else startup_nodes
+        self.connection_kwargs = connection_kwargs
         self.orig_startup_nodes = [node for node in self.startup_nodes]
         self.pubsub_node = None
 
@@ -65,7 +67,7 @@ class NodeManager(object):
         return self.nodes[key]
 
     def get_redis_link(self, host, port, decode_responses=False):
-        return StrictRedis(host=host, port=port, decode_responses=decode_responses)
+        return StrictRedis(host=host, port=port, decode_responses=decode_responses, **self.connection_kwargs)
 
     def initialize(self):
         """
@@ -175,6 +177,7 @@ class NodeManager(object):
         """
         Update data for a node.
         """
+        host, port = self.host_map.get((host, port), (host, port)) # perform host/IP remapping if needed
         node_name = "{0}:{1}".format(host, port)
         self.nodes.setdefault(node_name, {})
         self.nodes[node_name]['host'] = host
