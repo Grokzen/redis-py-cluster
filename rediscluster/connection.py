@@ -2,6 +2,7 @@
 
 # python std lib
 import os
+import random
 import threading
 from contextlib import contextmanager
 from itertools import chain
@@ -11,12 +12,27 @@ from .nodemanager import NodeManager
 from .exceptions import RedisClusterException
 
 # 3rd party imports
+from redis._compat import nativestr
 from redis.connection import ConnectionPool, Connection
+from redis.exceptions import ConnectionError
 
 
 class ClusterConnection(Connection):
     "Manages TCP communication to and from a Redis server"
     description_format = "ClusterConnection<host=%(host)s,port=%(port)s>"
+
+
+class ClusterReadOnlyConnection(Connection):
+    "Manages READONLY TCP communication to and from a Redis server"
+    description_format = "ClusterReadOnlyConnection<host=%(host)s,port=%(port)s>"
+
+    def on_connect(self):
+        "Initialize the connection, authenticate and select a database and send READONLY command"
+        super(ClusterReadOnlyConnection, self).on_connect()
+
+        self.send_command('READONLY')
+        if nativestr(self.read_response()) != 'OK':
+            raise ConnectionError('READONLY command failed')
 
 
 class UnixDomainSocketConnection(Connection):
@@ -197,8 +213,28 @@ class ClusterConnectionPool(ConnectionPool):
 
         return connection
 
+    def get_master_node_by_slot(self, slot):
+        return self.nodes.slots[slot][0]
+
     def get_node_by_slot(self, slot):
-        return self.nodes.slots[slot]
+        return self.get_master_node_by_slot(slot)
+
+
+class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
+    """
+    Readonly connection pool for rediscluster
+    """
+
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterReadOnlyConnection, max_connections=None, **connection_kwargs):
+        super(ClusterReadOnlyConnectionPool, self).__init__(
+            startup_nodes=startup_nodes,
+            init_slot_cache=init_slot_cache,
+            connection_class=connection_class,
+            max_connections=max_connections,
+            **connection_kwargs)
+
+    def get_node_by_slot(self, slot):
+        return random.choice(self.nodes.slots[slot])
 
 
 @contextmanager

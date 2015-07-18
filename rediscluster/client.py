@@ -7,7 +7,7 @@ import string
 import time
 
 # rediscluster imports
-from .connection import ClusterConnectionPool
+from .connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
 from .exceptions import RedisClusterException, ClusterDownException
 from .pubsub import ClusterPubSub
 from .utils import (
@@ -82,13 +82,14 @@ class StrictRedisCluster(StrictRedis):
     )
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, init_slot_cache=True,
-                 pipeline_use_threads=True, **kwargs):
+                 pipeline_use_threads=True, readonly_mode=False, **kwargs):
         """
         startup_nodes    --> List of nodes that initial bootstrapping can be done from
         host             --> Can be used to point to a startup node
         port             --> Can be used to point to a startup node
         max_connections  --> Maximum number of connections that should be kept open at one time
         pipeline_use_threads  ->  By default, use threads in pipeline if this flag is set to True
+        readonly_mode    --> enable READONLY mode. You can read possibly stale data from slave.
         **kwargs         --> Extra arguments that will be sent into StrictRedis instance when created
                              (See Official redis-py doc for supported kwargs
                              [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
@@ -107,7 +108,8 @@ class StrictRedisCluster(StrictRedis):
         if host:
             startup_nodes.append({"host": host, "port": port if port else 7000})
 
-        self.connection_pool = ClusterConnectionPool(
+        connection_pool_cls = ClusterReadOnlyConnectionPool if readonly_mode else ClusterConnectionPool
+        self.connection_pool = connection_pool_cls(
             startup_nodes=startup_nodes,
             init_slot_cache=init_slot_cache,
             max_connections=max_connections,
@@ -157,7 +159,7 @@ class StrictRedisCluster(StrictRedis):
         if info['action'] == "MOVED":
             self.refresh_table_asap = True
             node = self.connection_pool.nodes.set_node(info['host'], info['port'], server_type='master')
-            self.connection_pool.nodes.slots[info['slot']] = node
+            self.connection_pool.nodes.slots[info['slot']][0] = node
         elif info['action'] == "ASK":
             node = self.connection_pool.nodes.set_node(info['host'], info['port'], server_type='master')
             return {'name': node['name'], 'method': 'ask'}
@@ -285,7 +287,10 @@ class StrictRedisCluster(StrictRedis):
                 r = self.connection_pool.get_random_connection()
                 try_random_node = False
             else:
-                node = self.connection_pool.get_node_by_slot(slot)
+                if self.refresh_table_asap:  # MOVED
+                    node = self.connection_pool.get_master_node_by_slot(slot)
+                else:
+                    node = self.connection_pool.get_node_by_slot(slot)
                 r = self.connection_pool.get_connection_by_node(node)
 
             try:

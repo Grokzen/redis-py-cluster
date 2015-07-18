@@ -91,6 +91,16 @@ def r(request, **kwargs):
 
 
 @pytest.fixture()
+def ro(request, **kwargs):
+    """
+    Create a StrictRedisCluster instance with readonly mode
+    """
+    params = {'readonly_mode': True}
+    params.update(kwargs)
+    return _init_client(request, cls=StrictRedisCluster, **params)
+
+
+@pytest.fixture()
 def s(request, **kwargs):
     """
     Create a StrictRedisCluster instance with 'init_slot_cache' set to false

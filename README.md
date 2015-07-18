@@ -107,6 +107,7 @@ More detailed documentation can be found in `docs` folder.
 - [Pipelines](docs/Pipelines.md)
 - [Threaded Pipeline support](docs/Threads.md)
 - [Cluster Management class](docs/ClusterMgt.md)
+- [READONLY mode](docs/Readonly_mode.md)
 - [Authors](docs/Authors)
 
 

@@ -140,7 +140,10 @@ class StrictClusterPipeline(StrictRedisCluster):
                 if slot in ask_slots:
                     node = ask_slots[slot]
                 else:
-                    node = self.connection_pool.nodes.slots[slot]
+                    if self.refresh_table_asap:  # MOVED
+                        node = self.connection_pool.get_master_node_by_slot(slot)
+                    else:
+                        node = self.connection_pool.get_node_by_slot(slot)
 
                 self.connection_pool.nodes.set_node_name(node)
                 node_name = node['name']
@@ -211,7 +214,7 @@ class StrictClusterPipeline(StrictRedisCluster):
                 if redir['action'] == "MOVED":
                     self.refresh_table_asap = True
                     node = self.connection_pool.nodes.set_node(redir['host'], redir['port'], server_type='master')
-                    self.connection_pool.nodes.slots[redir['slot']] = node
+                    self.connection_pool.nodes.slots[redir['slot']][0] = node
                     attempt.append(i)
                     self._fail_on_redirect(allow_redirections)
                 elif redir['action'] == "ASK":

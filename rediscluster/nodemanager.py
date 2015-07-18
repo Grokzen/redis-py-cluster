@@ -102,8 +102,6 @@ class NodeManager(object):
             for slot in cluster_slots:
                 master_node = slot[2]
 
-                # Only store the master node as address for each slot.
-                # TODO: Slave nodes have to be fixed/patched in later...
                 if master_node[0] == '':
                     master_node[0] = node['host']
                 master_node[1] = int(master_node[1])
@@ -112,17 +110,17 @@ class NodeManager(object):
 
                 for i in range(int(slot[0]), int(slot[1]) + 1):
                     if i not in self.slots:
-                        self.slots[i] = node
+                        self.slots[i] = [node]
+                        slave_nodes = [slot[j] for j in range(3, len(slot))]
+                        for slave_node in slave_nodes:
+                            target_slave_node = self.set_node(slave_node[0], slave_node[1], server_type='slave')
+                            self.slots[i].append(target_slave_node)
                     else:
                         # Validate that 2 nodes want to use the same slot cache setup
-                        if self.slots[i]['name'] != node['name']:
-                            disagreements.append("{} vs {} on slot: {}".format(self.slots[i]['name'], node['name'], i))
+                        if self.slots[i][0]['name'] != node['name']:
+                            disagreements.append("{} vs {} on slot: {}".format(self.slots[i][0]['name'], node['name'], i))
                             if len(disagreements) > 5:
                                 raise RedisClusterException("startup_nodes could not agree on a valid slots cache. %s" % ", ".join(disagreements))
-
-                slave_nodes = [slot[i] for i in range(3, len(slot))]
-                for slave_node in slave_nodes:
-                    self.set_node(slave_node[0], slave_node[1], server_type='slave')
 
                 self.populate_startup_nodes()
                 self.refresh_table_asap = False

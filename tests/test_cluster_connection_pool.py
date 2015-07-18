@@ -8,7 +8,9 @@ import time
 from threading import Thread
 
 # rediscluster imports
-from rediscluster.connection import ClusterConnectionPool, ClusterConnection, UnixDomainSocketConnection
+from rediscluster.connection import (
+    ClusterConnectionPool, ClusterReadOnlyConnectionPool,
+    ClusterConnection, UnixDomainSocketConnection)
 from rediscluster.exceptions import RedisClusterException
 from tests.conftest import skip_if_server_version_lt
 
@@ -120,6 +122,49 @@ class TestConnectionPool(object):
         with pytest.raises(RedisClusterException) as ex:
             pool.get_connection("GET")
         assert unicode(ex.value).startswith("Only 'pubsub' commands can be used by get_connection()")
+
+    def test_master_node_by_slot(self):
+        pool = self.get_pool(connection_kwargs={})
+        node = pool.get_master_node_by_slot(0)
+        node['port'] = 7000
+        node = pool.get_master_node_by_slot(12182)
+        node['port'] = 7002
+
+
+class TestReadOnlyConnectionPool(object):
+    def get_pool(self, connection_kwargs=None, max_connections=None):
+        connection_kwargs = connection_kwargs or {}
+        pool = ClusterReadOnlyConnectionPool(
+            max_connections=max_connections,
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            **connection_kwargs)
+        return pool
+
+    def test_repr_contains_db_info_readonly(self):
+        connection_kwargs = {'host': 'localhost', 'port': 7000}
+        pool = self.get_pool(connection_kwargs=connection_kwargs)
+        expected = 'ClusterReadOnlyConnectionPool<ClusterReadOnlyConnection<host=localhost,port=7000>>'
+        assert repr(pool) == expected
+
+    def test_max_connections(self):
+        pool = self.get_pool(max_connections=2)
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        with pytest.raises(RedisClusterException):
+            pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+
+    def test_get_node_by_slot(self):
+        """
+        We can randomly get all nodes in readonly mode.
+        """
+        pool = self.get_pool(connection_kwargs={})
+
+        expected_ports = {7000, 7003}
+        actual_ports = set()
+        for _ in range(0, 100):
+            node = pool.get_node_by_slot(0)
+            actual_ports.add(node['port'])
+        assert actual_ports == expected_ports
 
 
 class TestBlockingConnectionPool(object):
