@@ -22,7 +22,15 @@ Discussion on this topic can be found here: https://groups.google.com/forum/?hl=
 
 The following part is from this discussion https://groups.google.com/forum/?hl=sv#!topic/redis-db/B0_fvfDWLGM and it describes the scalability issue that pubsub has and the performance that goes with it when used in a cluster environment.
 
-    according to [1] and [2] PubSub works by broadcasting every publish to every other Redis Cluster node. This limits the PubSub throughput to the bisection bandwidth of the underlying network infrastructure divided by the number of nodes times message size. So if a typical message has 1KB, the cluster has 10 nodes and bandwidth is 1 GBit/s, throughput is already limited to 12.5K RPS. If we increase the message size to 5 KB and the number of nodes to 50, we only get 500 RPS - much less than a single Redis instance could service (>100K RPS), while putting maximum pressure on the network. PubSub thus scales linearly wrt. to the cluster size, but in the the negative direction!
+    according to [1] and [2] PubSub works by broadcasting every publish to every other
+    Redis Cluster node. This limits the PubSub throughput to the bisection bandwidth 
+    of the underlying network infrastructure divided by the number of nodes times 
+    message size. So if a typical message has 1KB, the cluster has 10 nodes and 
+    bandwidth is 1 GBit/s, throughput is already limited to 12.5K RPS. If we increase
+    the message size to 5 KB and the number of nodes to 50, we only get 500 RPS
+    much less than a single Redis instance could service (>100K RPS), while putting
+    maximum pressure on the network. PubSub thus scales linearly wrt. to the cluster size,
+    but in the the negative direction!
 
 
 
