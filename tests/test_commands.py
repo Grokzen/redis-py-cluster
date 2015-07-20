@@ -806,7 +806,7 @@ class TestRedisCommands(object):
         r.zadd('c', a1=6, a3=5, a4=4)
         with pytest.raises(ResponseError) as excinfo:
             r.zinterstore('d', ['a', 'b', 'c'])
-        assert re.search('CROSSSLOT', str(excinfo))
+        assert re.search('ClusterCrossSlotError', str(excinfo))
 
     def test_zinterstore_sum(self, r):
         r.zadd('a{foo}', a1=1, a2=1, a3=1)
@@ -971,7 +971,7 @@ class TestRedisCommands(object):
         r.zadd('c', a1=6, a3=5, a4=4)
         with pytest.raises(ResponseError) as excinfo:
             r.zunionstore('d', ['a', 'b', 'c'])
-        assert re.search('CROSSSLOT', str(excinfo))
+        assert re.search('ClusterCrossSlotError', str(excinfo))
 
     def test_zunionstore_sum(self, r):
         r.zadd('a{foo}', a1=1, a2=1, a3=1)
