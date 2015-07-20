@@ -37,25 +37,21 @@ class ClusterConnection(Connection):
     description_format = "ClusterConnection<host=%(host)s,port=%(port)s>"
 
     def __init__(self, *args, **kwargs):
+        self.readonly = kwargs.pop('readonly', False)
         kwargs['parser_class'] = ClusterParser
         super(ClusterConnection, self).__init__(*args, **kwargs)
 
-
-class ClusterReadOnlyConnection(Connection):
-    "Manages READONLY TCP communication to and from a Redis server"
-    description_format = "ClusterReadOnlyConnection<host=%(host)s,port=%(port)s>"
-
-    def __init__(self, *args, **kwargs):
-        kwargs['parser_class'] = ClusterParser
-        super(ClusterReadOnlyConnection, self).__init__(*args, **kwargs)
-
     def on_connect(self):
-        "Initialize the connection, authenticate and select a database and send READONLY command"
-        super(ClusterReadOnlyConnection, self).on_connect()
+        '''
+        Initialize the connection, authenticate and select a database and send READONLY if it is
+        set during object initialization.
+        '''
+        super(ClusterConnection, self).on_connect()
 
-        self.send_command('READONLY')
-        if nativestr(self.read_response()) != 'OK':
-            raise ConnectionError('READONLY command failed')
+        if self.readonly:
+            self.send_command('READONLY')
+            if nativestr(self.read_response()) != 'OK':
+                raise ConnectionError('READONLY command failed')
 
 
 class UnixDomainSocketConnection(Connection):
@@ -252,12 +248,13 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
     Readonly connection pool for rediscluster
     """
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterReadOnlyConnection, max_connections=None, **connection_kwargs):
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection, max_connections=None, **connection_kwargs):
         super(ClusterReadOnlyConnectionPool, self).__init__(
             startup_nodes=startup_nodes,
             init_slot_cache=init_slot_cache,
             connection_class=connection_class,
             max_connections=max_connections,
+            readonly=True,
             **connection_kwargs)
 
     def get_node_by_slot(self, slot):

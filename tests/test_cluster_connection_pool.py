@@ -162,7 +162,7 @@ class TestReadOnlyConnectionPool(object):
             init_slot_cache=False,
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}, {"host": "127.0.0.2", "port": 7001}],
         )
-        expected = 'ClusterReadOnlyConnectionPool<ClusterReadOnlyConnection<host=127.0.0.1,port=7000>, ClusterReadOnlyConnection<host=127.0.0.2,port=7001>>'
+        expected = 'ClusterReadOnlyConnectionPool<ClusterConnection<host=127.0.0.1,port=7000>, ClusterConnection<host=127.0.0.2,port=7001>>'
         assert repr(pool) == expected
 
     def test_max_connections(self):
