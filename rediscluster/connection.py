@@ -83,9 +83,13 @@ class ClusterConnectionPool(ConnectionPool):
             self.connection_kwargs["socket_timeout"] = ClusterConnectionPool.RedisClusterDefaultTimeout
 
     def __repr__(self):
+        """
+        Return a string with all unique ip:port combinations that this pool is connected to.
+        """
+        nodes = [{'host': i['host'], 'port': i['port']} for i in self.nodes.startup_nodes]
         return "%s<%s>" % (
             type(self).__name__,
-            self.connection_class.description_format % self.connection_kwargs,
+            ", ".join([self.connection_class.description_format % dict(node, **self.connection_kwargs) for node in nodes])
         )
 
     def reset(self):

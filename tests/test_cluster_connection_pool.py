@@ -33,12 +33,13 @@ class DummyConnection(object):
 
 
 class TestConnectionPool(object):
-    def get_pool(self, connection_kwargs=None, max_connections=None, connection_class=DummyConnection):
+    def get_pool(self, connection_kwargs=None, max_connections=None, connection_class=DummyConnection, init_slot_cache=True):
         connection_kwargs = connection_kwargs or {}
         pool = ClusterConnectionPool(
             connection_class=connection_class,
             max_connections=max_connections,
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            init_slot_cache=init_slot_cache,
             **connection_kwargs)
         return pool
 
@@ -70,16 +71,26 @@ class TestConnectionPool(object):
         assert c1 == c2
 
     def test_repr_contains_db_info_tcp(self):
+        """
+        Note: init_slot_cache muts be set to false otherwise it will try to
+              query the test server for data and then it can't be predicted reliably
+        """
         connection_kwargs = {'host': 'localhost', 'port': 7000}
         pool = self.get_pool(connection_kwargs=connection_kwargs,
-                             connection_class=ClusterConnection)
+                             connection_class=ClusterConnection,
+                             init_slot_cache=False)
         expected = 'ClusterConnectionPool<ClusterConnection<host=localhost,port=7000>>'
         assert repr(pool) == expected
 
     def test_repr_contains_db_info_unix(self):
+        """
+        Note: init_slot_cache muts be set to false otherwise it will try to
+              query the test server for data and then it can't be predicted reliably
+        """
         connection_kwargs = {'path': '/abc', 'db': 1}
         pool = self.get_pool(connection_kwargs=connection_kwargs,
-                             connection_class=UnixDomainSocketConnection)
+                             connection_class=UnixDomainSocketConnection,
+                             init_slot_cache=False)
         expected = 'ClusterConnectionPool<ClusterUnixDomainSocketConnection<path=/abc>>'
         assert repr(pool) == expected
 
@@ -132,18 +143,26 @@ class TestConnectionPool(object):
 
 
 class TestReadOnlyConnectionPool(object):
-    def get_pool(self, connection_kwargs=None, max_connections=None):
+    def get_pool(self, connection_kwargs=None, max_connections=None, init_slot_cache=True, startup_nodes=None):
+        startup_nodes = startup_nodes or [{'host': '127.0.0.1', 'port': 7000}]
         connection_kwargs = connection_kwargs or {}
         pool = ClusterReadOnlyConnectionPool(
+            init_slot_cache=init_slot_cache,
             max_connections=max_connections,
-            startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            startup_nodes=startup_nodes,
             **connection_kwargs)
         return pool
 
     def test_repr_contains_db_info_readonly(self):
-        connection_kwargs = {'host': 'localhost', 'port': 7000}
-        pool = self.get_pool(connection_kwargs=connection_kwargs)
-        expected = 'ClusterReadOnlyConnectionPool<ClusterReadOnlyConnection<host=localhost,port=7000>>'
+        """
+        Note: init_slot_cache must be set to false otherwise it will try to
+              query the test server for data and then it can't be predicted reliably
+        """
+        pool = self.get_pool(
+            init_slot_cache=False,
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}, {"host": "127.0.0.2", "port": 7001}],
+        )
+        expected = 'ClusterReadOnlyConnectionPool<ClusterReadOnlyConnection<host=127.0.0.1,port=7000>, ClusterReadOnlyConnection<host=127.0.0.2,port=7001>>'
         assert repr(pool) == expected
 
     def test_max_connections(self):
