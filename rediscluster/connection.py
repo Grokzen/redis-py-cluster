@@ -64,8 +64,10 @@ class ClusterConnectionPool(ConnectionPool):
     """
     RedisClusterDefaultTimeout = None
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection, max_connections=None, **connection_kwargs):
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection, max_connections=None, max_connections_per_node=False, **connection_kwargs):
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
+
+        self.max_connections_per_node = max_connections_per_node
 
         self.nodes = NodeManager(startup_nodes)
         if init_slot_cache:
@@ -128,7 +130,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Create a new connection
         """
-        if self.count_num_connections() >= self.max_connections:
+        if self.count_num_connections(node) >= self.max_connections:
             raise RedisClusterException("Too many connections")
         self._created_connections += 1
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
@@ -183,7 +185,10 @@ class ClusterConnectionPool(ConnectionPool):
         for connection in all_pubsub_conns:
             connection.disconnect()
 
-    def count_num_connections(self):
+    def count_num_connections(self, node):
+        if self.max_connections_per_node:
+            return len(self._in_use_connections.get(node['name'], []))
+
         i = 0
         for _, connections in self._in_use_connections.items():
             i += len(connections)
