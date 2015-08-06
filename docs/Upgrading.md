@@ -19,6 +19,8 @@ Added new `MovedError` exception class.
 
 Added new `ClusterCrossSlotError` exception class.
 
+Added optional `max_connections_per_node` parameter to `ClusterConnectionPool` which changes behavior of `max_connections` so that it applies per-node rather than across the whole cluster. The new feature is opt-in, and the existing default behavior is unchanged. Users are recommended to opt-in as the feature fixes two important problems. First is that some nodes could be starved for connections after max_connections is used up by connecting to other nodes. Second is that the asymmetric number of connections across nodes makes it challenging to configure file descriptor and redis max client settings.
+
 
 
 ## 0.2.0 --> 0.3.0
