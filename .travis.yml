@@ -1,14 +1,29 @@
 sudo: false
 language: python
 python:
+  - "2.7"
+  - "3.2"
   - "3.3"
+  - "3.4"
+  - "3.5-dev"
 services:
   - redis-server
 install:
   - make redis-install
-  - pip install coverage python-coveralls tox
+  - pip install -r dev-requirements.txt
   - pip install -e .
+  - "if [[ $TEST_HIREDIS == '1' ]]; then pip install hiredis; fi"
+env:
+  - TEST_HIREDIS=0
+  - TEST_HIREDIS=1
 script: 
-  - make test
+  - make start
+  - coverage erase
+  - coverage run --source rediscluster -p -m py.test
+  - make stop
 after_success: 
+  - coverage combine
   - coveralls
+matrix:
+  allow_failures:
+    - python: "3.5-dev"
