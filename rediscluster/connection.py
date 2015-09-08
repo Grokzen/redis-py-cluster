@@ -216,6 +216,8 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Determine what server a specific slot belongs to and return a redis object that is connected
         """
+        self._checkpid()
+
         try:
             return self.get_connection_by_node(self.get_node_by_slot(slot))
         except KeyError:
@@ -225,6 +227,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         get a connection by node
         """
+        self._checkpid()
         self.nodes.set_node_name(node)
 
         try:
