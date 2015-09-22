@@ -269,12 +269,23 @@ class StrictRedisCluster(StrictRedis):
         command = args[0]
         res = {}
         for node in nodes:
-            r = self.connection_pool.get_connection_by_node(node)
+            connection = self.connection_pool.get_connection_by_node(node)
+
+            # copy from redis-py
             try:
-                r.send_command(*args)
-                res[node["name"]] = self.parse_response(r, command, **kwargs)
+                connection.send_command(*args)
+                res[node["name"]] = self.parse_response(connection, command,
+                                                        **kwargs)
+            except (ConnectionError, TimeoutError) as e:
+                connection.disconnect()
+                if (not connection.retry_on_timeout and
+                    isinstance(e, TimeoutError)):
+                    raise
+                connection.send_command(*args)
+                res[node["name"]] = self.parse_response(connection,
+                                                        command, **kwargs)
             finally:
-                self.connection_pool.release(r)
+                self.connection_pool.release(connection)
 
         return self._merge_result(command, res)
 
