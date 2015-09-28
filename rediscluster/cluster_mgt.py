@@ -5,6 +5,8 @@ from .connection import ClusterConnectionPool
 from .exceptions import RedisClusterException
 from .utils import clusterdown_wrapper, first_key, nslookup
 
+from redis.exceptions import ConnectionError, TimeoutError
+
 
 class RedisClusterMgt(object):
 
@@ -31,6 +33,13 @@ class RedisClusterMgt(object):
         for node in nodes:
             c = self.connection_pool.get_connection_by_node(node)
             try:
+                c.send_command(*args)
+                res[node["name"]] = c.read_response()
+            except (ConnectionError, TimeoutError) as e:
+                c.disconnect()
+                if (not c.retry_on_timeout and
+                    isinstance(e, TimeoutError)):
+                    raise
                 c.send_command(*args)
                 res[node["name"]] = c.read_response()
             finally:
