@@ -5,7 +5,8 @@ python:
   - "3.2"
   - "3.3"
   - "3.4"
-  - "3.5-dev"
+  - "3.5"
+  - "nightly"
 services:
   - redis-server
 install:
@@ -26,4 +27,4 @@ after_success:
   - coveralls
 matrix:
   allow_failures:
-    - python: "3.5-dev"
+    - python: "nightly"
