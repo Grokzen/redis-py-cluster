@@ -1,9 +1,10 @@
 * Next release
-    * Refactored exception handling and exception classes. 
+    * Refactored exception handling and exception classes.
     * Added READONLY mode support, scales reads using slave nodes.
     * Fix __repr__ for ClusterConnectionPool and ClusterReadOnlyConnectionPool
     * Add max_connections_per_node parameter to ClusterConnectionPool so that max_connections parameter is calculated per-node rather than across the whole cluster.
     * Improve thread safty of get_connection_by_slot and get_connection_by_node methods (iandyh)
+    * Improved error handling when sending commands to all nodes, e.g. info. Now the connection takes retry_on_timeout as an option and retry once when there is a timeout. (iandyh)
 
 * 1.0.0
     * No change to anything just a bump to 1.0.0 because the lib is now considered stable/production ready.
@@ -19,9 +20,9 @@
 
 * 0.2.0
     * Moved pipeline code into new file.
-    * Code now uses a proper cluster connection pool class that handles 
+    * Code now uses a proper cluster connection pool class that handles
       all nodes and connections similar to how redis-py do.
-    * Better support for pubsub. All clients will now talk to the same server because 
+    * Better support for pubsub. All clients will now talk to the same server because
       pubsub commands do not work reliably if it talks to a random server in the cluster.
     * Better result callbacks and node routing support. No more ugly decorators.
     * Fix keyslot command when using non ascii characters.
