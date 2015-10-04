@@ -270,12 +270,8 @@ def test_reset():
     """
     n = NodeManager(startup_nodes=[{}])
     n.initialize = Mock()
-    n.slots = {"foo": "bar"}
-    n.nodes = ["foo", "bar"]
     n.reset()
-
-    assert n.slots == {}
-    assert n.nodes == {}
+    assert n.initialize.call_count == 1
 
 
 def test_cluster_one_instance():

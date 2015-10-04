@@ -182,19 +182,25 @@ def test_refresh_table_asap():
     with patch.object(NodeManager, 'initialize') as mock_initialize:
         mock_initialize.return_value = None
 
-        r = StrictRedisCluster(host="127.0.0.1", port=7000)
-        r.connection_pool.nodes.slots[12182] = [{
-            "host": "127.0.0.1",
-            "port": 7002,
-            "name": "127.0.0.1:7002",
-            "server_type": "master",
-        }]
-        r.refresh_table_asap = True
+        # Patch parse_response to avoid issues when the cluster sometimes return MOVED
+        with patch.object(StrictRedisCluster, 'parse_response') as mock_parse_response:
+            def side_effect(self, *args, **kwargs):
+                return None
+            mock_parse_response.side_effect = side_effect
 
-        i = len(mock_initialize.mock_calls)
-        r.execute_command("SET", "foo", "bar")
-        assert len(mock_initialize.mock_calls) - i == 1
-        assert r.refresh_table_asap is False
+            r = StrictRedisCluster(host="127.0.0.1", port=7000)
+            r.connection_pool.nodes.slots[12182] = [{
+                "host": "127.0.0.1",
+                "port": 7002,
+                "name": "127.0.0.1:7002",
+                "server_type": "master",
+            }]
+            r.refresh_table_asap = True
+
+            i = len(mock_initialize.mock_calls)
+            r.execute_command("SET", "foo", "bar")
+            assert len(mock_initialize.mock_calls) - i == 1
+            assert r.refresh_table_asap is False
 
 
 def test_ask_redirection():
