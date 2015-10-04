@@ -17,7 +17,7 @@ from tests.conftest import skip_if_server_version_lt
 # 3rd party imports
 import pytest
 import redis
-from mock import Mock
+from mock import patch, Mock
 from redis.connection import ssl_available
 from redis._compat import unicode
 
@@ -110,8 +110,14 @@ class TestConnectionPool(object):
         """
         pool = self.get_pool(connection_kwargs={})
 
-        connection = pool.get_connection_by_key("foo")
-        assert connection.port == 7002
+        # Patch the call that is made inside the method to allow control of the returned connection object
+        with patch.object(ClusterConnectionPool, 'get_connection_by_slot', autospec=True) as pool_mock:
+            def side_effect(self, *args, **kwargs):
+                return DummyConnection(port=1337)
+            pool_mock.side_effect = side_effect
+
+            connection = pool.get_connection_by_key("foo")
+            assert connection.port == 1337
 
         with pytest.raises(RedisClusterException) as ex:
             pool.get_connection_by_key(None)
@@ -123,8 +129,14 @@ class TestConnectionPool(object):
         """
         pool = self.get_pool(connection_kwargs={})
 
-        connection = pool.get_connection_by_slot(12182)
-        assert connection.port == 7002
+        # Patch the call that is made inside the method to allow control of the returned connection object
+        with patch.object(ClusterConnectionPool, 'get_connection_by_node', autospec=True) as pool_mock:
+            def side_effect(self, *args, **kwargs):
+                return DummyConnection(port=1337)
+            pool_mock.side_effect = side_effect
+
+            connection = pool.get_connection_by_slot(12182)
+            assert connection.port == 1337
 
         m = Mock()
         pool.get_random_connection = m
