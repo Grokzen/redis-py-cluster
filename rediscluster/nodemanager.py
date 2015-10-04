@@ -221,18 +221,4 @@ class NodeManager(object):
         """
         Drop all node data and start over from startup_nodes
         """
-        self.flush_nodes_cache()
-        self.flush_slots_cache()
         self.initialize()
-
-    def flush_slots_cache(self):
-        """
-        Reset slots cache back to empty dict
-        """
-        self.slots = {}
-
-    def flush_nodes_cache(self):
-        """
-        Reset nodes cache back to empty dict
-        """
-        self.nodes = {}
