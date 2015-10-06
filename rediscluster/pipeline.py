@@ -207,7 +207,6 @@ class StrictClusterPipeline(StrictRedisCluster):
                     raise v
 
                 if isinstance(v, MovedError):
-                    self.refresh_table_asap = True
                     node = self.connection_pool.nodes.set_node(v.host, v.port, server_type='master')
                     self.connection_pool.nodes.slots[v.slot_id][0] = node
                     attempt.append(i)
