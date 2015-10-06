@@ -21,7 +21,6 @@ from .utils import (
     first_key,
     clusterdown_wrapper,
 )
-
 # 3rd party imports
 from redis import StrictRedis
 from redis.client import list_or_args
@@ -40,17 +39,20 @@ class StrictRedisCluster(StrictRedis):
         string_keys_to_dict([
             "CLIENT SETNAME", "SENTINEL GET-MASTER-ADDR-BY-NAME", 'SENTINEL MASTER', 'SENTINEL MASTERS',
             'SENTINEL MONITOR', 'SENTINEL REMOVE', 'SENTINEL SENTINELS', 'SENTINEL SET',
-            'SENTINEL SLAVES', 'SHUTDOWN', 'SLAVEOF', 'EVALSHA', 'SCRIPT EXISTS', 'SCRIPT KILL',
-            'SCRIPT LOAD', 'MOVE', 'BITOP',
+            'SENTINEL SLAVES', 'SHUTDOWN', 'SLAVEOF', 'SCRIPT KILL',
+            'MOVE', 'BITOP',
         ], blocked_command),
         string_keys_to_dict([
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
-            "TIME", "SCRIPT FLUSH", "SCAN",
+            "TIME", "SCAN",
         ], lambda self, command: self.connection_pool.nodes.all_nodes()),
         string_keys_to_dict([
             "FLUSHALL", "FLUSHDB",
+        ], lambda self, command: self.connection_pool.nodes.all_masters()),
+        string_keys_to_dict([
+            "SCRIPT LOAD", "SCRIPT FLUSH", "SCRIPT EXISTS",
         ], lambda self, command: self.connection_pool.nodes.all_masters()),
         string_keys_to_dict([
             "KEYS",
@@ -68,11 +70,20 @@ class StrictRedisCluster(StrictRedis):
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
-            "TIME", "SCRIPT FLUSH", "SCAN",
+            "TIME", "SCAN",
         ], lambda command, res: res),
         string_keys_to_dict([
             "FLUSHALL", "FLUSHDB",
         ], lambda command, res: res),
+        string_keys_to_dict([
+            "SCRIPT LOAD",
+        ], lambda command, res: list(res.values()).pop()),
+        string_keys_to_dict([
+            "SCRIPT EXISTS",
+        ], lambda command, res: [all(k) for k in zip(*res.values())]),
+        string_keys_to_dict([
+            "SCRIPT FLUSH",
+        ], lambda command, res: all(res.values())),
         string_keys_to_dict([
             "KEYS",
         ], merge_result),
@@ -171,12 +182,14 @@ class StrictRedisCluster(StrictRedis):
             raise RedisClusterException("No way to dispatch this command to Redis Cluster. Missing key.")
         command = args[0]
 
-        if command == 'EVAL':
+        if command in ['EVAL', 'EVALSHA']:
             numkeys = args[2]
             keys = args[3: 3 + numkeys]
             slots = set([self.connection_pool.nodes.keyslot(key) for key in keys])
             if len(slots) != 1:
-                raise RedisClusterException("EVAL - all keys must map to the same key slot")
+                raise RedisClusterException(
+                    "%s - all keys must map to the same key slot" % command
+                )
             return slots.pop()
 
         key = args[1]
@@ -766,12 +779,6 @@ class StrictRedisCluster(StrictRedis):
         ascii uppercase letters and digits.
         """
         return ''.join(random.choice(chars) for _ in range(size))
-
-    def register_script(self, script):
-        """
-        Scripts is not yet supported by rediscluster.
-        """
-        raise RedisClusterException("Method register_script is not possible to use in a redis cluster")
 
 
 class RedisCluster(StrictRedisCluster):
