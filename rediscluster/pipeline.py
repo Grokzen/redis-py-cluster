@@ -162,9 +162,13 @@ class StrictClusterPipeline(StrictRedisCluster):
                 for node_name in node_commands:
                     node = nodes[node_name]
                     cmds = [node_commands[node_name][i] for i in sorted(node_commands[node_name].keys())]
-                    with by_node_context(self.connection_pool, node) as connection:
-                        workers[node_name] = Worker(self._execute_pipeline, connection, cmds, False)
-                        workers[node_name].start()
+
+                    workers[node_name] = ThreadedPipelineExecute(
+                        execute=self._execute_pipeline,
+                        pool=self.connection_pool,
+                        node=node,
+                        cmds=cmds)
+                    workers[node_name].start()
 
                 for node_name, worker in workers.items():
                     worker.join()
@@ -353,23 +357,23 @@ StrictClusterPipeline.sunionstore = block_pipeline_command(StrictRedis.sunionsto
 StrictClusterPipeline.time = block_pipeline_command(StrictRedis.time)
 
 
-class Worker(threading.Thread):
+class ThreadedPipelineExecute(threading.Thread):
     """
-    A simple thread wrapper class to perform an arbitrary function and store the result.
-    Used to parallelize network i/o when issuing many pipelined commands to multiple nodes in the cluster.
-    Later on we may need to convert this to a thread pool, although if you use gevent the current implementation
-    is not too bad.
+    Threaded pipeline execution.
+    release the connection back into the pool after executing.
     """
-    def __init__(self, func, *args, **kwargs):
+    def __init__(self, execute, pool, node, cmds):
         threading.Thread.__init__(self)
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
+        self.execute = execute
+        self.pool = pool
+        self.node = node
+        self.cmds = cmds
         self.exception = None
         self.value = None
 
     def run(self):
         try:
-            self.value = self.func(*self.args, **self.kwargs)
+            with by_node_context(self.pool, self.node) as connection:
+                self.value = self.execute(connection, self.cmds, False)
         except Exception as e:
             self.exception = e
