@@ -26,7 +26,6 @@ The following commands will send the same request to all nodes in the cluster. R
  - lastsave
  - ping
  - save
- - script_flush
  - slowlog_get
  - slowlog_len
  - slowlog_reset
@@ -42,13 +41,21 @@ The following commands will only be send to the master nodes in the cluster. Res
  - flushdb
  - scan
 
+
 This command will sent to a random node in the cluster.
 
  - publish
 
-This command will be sent to the server that matches the first key.
+The following commands will be sent to the server that matches the first key.
 
  - eval
+ - evalsha
+
+This following commands will be sent to the master nodes in the cluster.
+
+- script load - the result is the hash of loaded script
+- script flush - the result is `True` if the command succeeds on all master nodes, else `False`
+- script exists - the result is an array of booleans. An entry is `True` only if the script exists on all the master nodes.
 
 The following commands will be sent to the sever that matches the specefied key.
 
@@ -70,13 +77,9 @@ Either because they do not work, there is no working implementation or it is not
 
  - bitop - Currently to hard to implement a solution in python space
  - client_setname - Not yet implemented
- - evalsha - Lua scripting is not yet implemented
  - move - It is not possible to move a key from one db to another in cluster mode
- - register_script - Lua scripting is not yet implemented
  - restore
- - script_exists - Lua scripting is not yet implemented
- - script_kill - Lua scripting is not yet implemented
- - script_load - Lua scripting is not yet implemented
+ - script_kill - Not yet implemented
  - sentinel
  - sentinel_get_master_addr_by_name
  - sentinel_master
