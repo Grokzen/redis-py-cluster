@@ -26,7 +26,7 @@ class StrictClusterPipeline(StrictRedisCluster):
 
     def __init__(self, connection_pool, nodes_callbacks=None, result_callbacks=None,
                  response_callbacks=None, startup_nodes=None, refresh_table_asap=False,
-                 use_threads=True):
+                 use_threads=True, reinitialize_steps=None):
         self.connection_pool = connection_pool
         self.startup_nodes = startup_nodes if startup_nodes else []
         self.refresh_table_asap = refresh_table_asap
@@ -36,6 +36,9 @@ class StrictClusterPipeline(StrictRedisCluster):
         self.result_callbacks = result_callbacks
         self.response_callbacks = response_callbacks
         self.use_threads = use_threads
+
+        self.reinitialize_counter = 0
+        self.reinitialize_steps = reinitialize_steps or 25
 
     def __repr__(self):
         return "{}".format(type(self).__name__)
@@ -211,6 +214,11 @@ class StrictClusterPipeline(StrictRedisCluster):
                     raise v
 
                 if isinstance(v, MovedError):
+                    # Do not perform full cluster refresh on every MOVED error
+                    self.reinitialize_counter += 1
+                    if self.reinitialize_counter % self.reinitialize_steps == 0:
+                        self.refresh_table_asap = True
+
                     node = self.connection_pool.nodes.set_node(v.host, v.port, server_type='master')
                     self.connection_pool.nodes.slots[v.slot_id][0] = node
                     attempt.append(i)

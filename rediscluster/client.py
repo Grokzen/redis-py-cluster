@@ -167,7 +167,8 @@ class StrictRedisCluster(StrictRedis):
             nodes_callbacks=self.nodes_callbacks,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
-            use_threads=self.pipeline_use_threads if use_threads is None else use_threads
+            use_threads=self.pipeline_use_threads if use_threads is None else use_threads,
+            reinitialize_steps=self.reinitialize_steps,
         )
 
     def transaction(self, func, *watches, **kwargs):
