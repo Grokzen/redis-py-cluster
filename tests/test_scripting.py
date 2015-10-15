@@ -18,7 +18,6 @@ value = tonumber(value)
 return value * ARGV[1]"""
 
 
-@pytest.mark.xfail(reason="scripting is not yet supported")
 class TestScripting(object):
     @pytest.fixture(autouse=True)
     def reset_scripts(self, r):
@@ -59,14 +58,12 @@ class TestScripting(object):
         with pytest.raises(RedisClusterException):
             r.eval(script, 2, 'A{foo}', 'B{bar}')
 
-    @pytest.mark.xfail(reason="Not Yet Implemented")
     def test_evalsha(self, r):
         r.set('a', 2)
         sha = r.script_load(multiply_script)
         # 2 * 3 == 6
         assert r.evalsha(sha, 1, 'a', 3) == 6
 
-    @pytest.mark.xfail(reason="Not Yet Implemented")
     def test_evalsha_script_not_loaded(self, r):
         r.set('a', 2)
         sha = r.script_load(multiply_script)
@@ -75,7 +72,6 @@ class TestScripting(object):
         with pytest.raises(exceptions.NoScriptError):
             r.evalsha(sha, 1, 'a', 3)
 
-    @pytest.mark.xfail(reason="Not Yet Implemented")
     def test_script_loading(self, r):
         # get the sha, then clear the cache
         sha = r.script_load(multiply_script)
@@ -84,7 +80,6 @@ class TestScripting(object):
         r.script_load(multiply_script)
         assert r.script_exists(sha) == [True]
 
-    @pytest.mark.xfail(reason="Not Yet Implemented")
     def test_script_object(self, r):
         r.set('a', 2)
         multiply = r.register_script(multiply_script)

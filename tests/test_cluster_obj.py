@@ -72,8 +72,7 @@ def test_blocked_commands(r):
     blocked_commands = [
         "CLIENT SETNAME", "SENTINEL GET-MASTER-ADDR-BY-NAME", 'SENTINEL MASTER', 'SENTINEL MASTERS',
         'SENTINEL MONITOR', 'SENTINEL REMOVE', 'SENTINEL SENTINELS', 'SENTINEL SET',
-        'SENTINEL SLAVES', 'SHUTDOWN', 'SLAVEOF', 'EVALSHA', 'SCRIPT EXISTS', 'SCRIPT KILL',
-        'SCRIPT LOAD', 'MOVE', 'BITOP',
+        'SENTINEL SLAVES', 'SHUTDOWN', 'SLAVEOF', 'SCRIPT KILL', 'MOVE', 'BITOP',
     ]
 
     for command in blocked_commands:

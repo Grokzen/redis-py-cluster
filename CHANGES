@@ -5,6 +5,7 @@
     * Add max_connections_per_node parameter to ClusterConnectionPool so that max_connections parameter is calculated per-node rather than across the whole cluster.
     * Improve thread safty of get_connection_by_slot and get_connection_by_node methods (iandyh)
     * Improved error handling when sending commands to all nodes, e.g. info. Now the connection takes retry_on_timeout as an option and retry once when there is a timeout. (iandyh)
+    * Added support for SCRIPT LOAD, SCRIPT FLUSH, SCRIPT EXISTS and EVALSHA commands. (alisaifee)
 
 * 1.0.0
     * No change to anything just a bump to 1.0.0 because the lib is now considered stable/production ready.
