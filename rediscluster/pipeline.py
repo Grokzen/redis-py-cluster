@@ -27,18 +27,16 @@ class StrictClusterPipeline(StrictRedisCluster):
     def __init__(self, connection_pool, nodes_callbacks=None, result_callbacks=None,
                  response_callbacks=None, startup_nodes=None, refresh_table_asap=False,
                  use_threads=True, reinitialize_steps=None):
-        self.connection_pool = connection_pool
-        self.startup_nodes = startup_nodes if startup_nodes else []
-        self.refresh_table_asap = refresh_table_asap
         self.command_stack = []
-
+        self.connection_pool = connection_pool
         self.nodes_callbacks = nodes_callbacks
-        self.result_callbacks = result_callbacks
-        self.response_callbacks = response_callbacks
-        self.use_threads = use_threads
-
+        self.refresh_table_asap = refresh_table_asap
         self.reinitialize_counter = 0
         self.reinitialize_steps = reinitialize_steps or 25
+        self.response_callbacks = response_callbacks
+        self.result_callbacks = result_callbacks
+        self.startup_nodes = startup_nodes if startup_nodes else []
+        self.use_threads = use_threads
 
     def __repr__(self):
         return "{}".format(type(self).__name__)
@@ -76,8 +74,10 @@ class StrictClusterPipeline(StrictRedisCluster):
 
     def execute(self, raise_on_error=True):
         stack = self.command_stack
+
         if not stack:
             return []
+
         try:
             return self.send_cluster_commands(stack, raise_on_error)
         finally:
@@ -142,6 +142,7 @@ class StrictClusterPipeline(StrictRedisCluster):
             for i in attempt:
                 c = stack[i]
                 slot = self._determine_slot(*c[0])
+
                 if slot in ask_slots:
                     node = ask_slots[slot]
                 else:
@@ -162,6 +163,7 @@ class StrictClusterPipeline(StrictRedisCluster):
             attempt = []
             if self.use_threads and len(node_commands) > 1:
                 workers = dict()
+
                 for node_name in node_commands:
                     node = nodes[node_name]
                     cmds = [node_commands[node_name][i] for i in sorted(node_commands[node_name].keys())]
@@ -175,6 +177,7 @@ class StrictClusterPipeline(StrictRedisCluster):
 
                 for node_name, worker in workers.items():
                     worker.join()
+
                     if worker.exception:
                         for i in sorted(node_commands[node_name].keys()):
                             response[i] = worker.exception
@@ -201,6 +204,7 @@ class StrictClusterPipeline(StrictRedisCluster):
                 if isinstance(v, ConnectionError):
                     ask_slots[self.connection_pool.nodes.keyslot(stack[i][0][1])] = random.choice(self.startup_nodes)
                     attempt.append(i)
+
                     if ttl < self.RedisClusterRequestTTL / 2:
                         time.sleep(0.1)
                     continue
@@ -211,11 +215,13 @@ class StrictClusterPipeline(StrictRedisCluster):
                     self.connection_pool.disconnect()
                     self.connection_pool.reset()
                     self.refresh_table_asap = True
+
                     raise v
 
                 if isinstance(v, MovedError):
                     # Do not perform full cluster refresh on every MOVED error
                     self.reinitialize_counter += 1
+
                     if self.reinitialize_counter % self.reinitialize_steps == 0:
                         self.refresh_table_asap = True
 
@@ -230,6 +236,7 @@ class StrictClusterPipeline(StrictRedisCluster):
                     self._fail_on_redirect(allow_redirections)
 
         response = [response[k] for k in sorted(response.keys())]
+
         if raise_on_error:
             self.raise_first_error(stack, response)
 
@@ -247,12 +254,14 @@ class StrictClusterPipeline(StrictRedisCluster):
         """
         # build up all commands into a single request to increase network perf
         all_cmds = connection.pack_commands([args for args, _ in commands])
+
         try:
             connection.send_packed_command(all_cmds)
         except ConnectionError as e:
             return [e for _ in xrange(len(commands))]  # noqa
 
         response = []
+
         for args, options in commands:
             try:
                 response.append(self.parse_response(connection, args[0], **options))
@@ -261,6 +270,7 @@ class StrictClusterPipeline(StrictRedisCluster):
 
         if raise_on_error:
             self.raise_first_error(commands, response)
+
         return response
 
     def multi(self):
@@ -300,6 +310,7 @@ def block_pipeline_command(func):
     """
     def inner(*args, **kwargs):
         raise RedisClusterException("ERROR: Calling pipelined function {} is blocked when running redis in cluster mode...".format(func.__name__))
+
     return inner
 
 
@@ -370,6 +381,7 @@ class ThreadedPipelineExecute(threading.Thread):
     Threaded pipeline execution.
     release the connection back into the pool after executing.
     """
+
     def __init__(self, execute, pool, node, cmds):
         threading.Thread.__init__(self)
         self.execute = execute

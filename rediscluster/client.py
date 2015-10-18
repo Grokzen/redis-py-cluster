@@ -98,17 +98,24 @@ class StrictRedisCluster(StrictRedis):
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, init_slot_cache=True,
                  pipeline_use_threads=True, readonly_mode=False, reinitialize_steps=None, **kwargs):
         """
-        startup_nodes    --> List of nodes that initial bootstrapping can be done from
-        host             --> Can be used to point to a startup node
-        port             --> Can be used to point to a startup node
-        max_connections  --> Maximum number of connections that should be kept open at one time
-        pipeline_use_threads  ->  By default, use threads in pipeline if this flag is set to True
-        readonly_mode    --> enable READONLY mode. You can read possibly stale data from slave.
-        **kwargs         --> Extra arguments that will be sent into StrictRedis instance when created
-                             (See Official redis-py doc for supported kwargs
-                             [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
-                             Some kwargs is not supported and will raise RedisClusterException
-                              - db (Redis do not support database SELECT in cluster mode)
+        :startup_nodes:
+            List of nodes that initial bootstrapping can be done from
+        :host:
+            Can be used to point to a startup node
+        :port:
+            Can be used to point to a startup node
+        :max_connections:
+            Maximum number of connections that should be kept open at one time
+        :pipeline_use_threads:
+            By default, use threads in pipeline if this flag is set to True
+        :readonly_mode:
+            enable READONLY mode. You can read possibly stale data from slave.
+        :**kwargs:
+            Extra arguments that will be sent into StrictRedis instance when created
+            (See Official redis-py doc for supported kwargs
+            [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
+            Some kwargs is not supported and will raise RedisClusterException
+            - db (Redis do not support database SELECT in cluster mode)
         """
         super(StrictRedisCluster, self).__init__(**kwargs)
 
@@ -245,7 +252,8 @@ class StrictRedisCluster(StrictRedis):
                 r = self.connection_pool.get_random_connection()
                 try_random_node = False
             else:
-                if self.refresh_table_asap:  # MOVED
+                if self.refresh_table_asap:
+                    # MOVED
                     node = self.connection_pool.get_master_node_by_slot(slot)
                 else:
                     node = self.connection_pool.get_node_by_slot(slot)
@@ -258,12 +266,14 @@ class StrictRedisCluster(StrictRedis):
                 raise
             except (ConnectionError, TimeoutError):
                 try_random_node = True
+
                 if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.1)
             except ClusterDownError as e:
                 self.connection_pool.disconnect()
                 self.connection_pool.reset()
                 self.refresh_table_asap = True
+
                 raise e
             except MovedError as e:
                 # Reinitialize on ever x number of MovedError.
@@ -289,24 +299,26 @@ class StrictRedisCluster(StrictRedis):
         raise ClusterError('TTL exhausted.')
 
     def _execute_command_on_nodes(self, nodes, *args, **kwargs):
+        """
+        """
         command = args[0]
         res = {}
+
         for node in nodes:
             connection = self.connection_pool.get_connection_by_node(node)
 
             # copy from redis-py
             try:
                 connection.send_command(*args)
-                res[node["name"]] = self.parse_response(connection, command,
-                                                        **kwargs)
+                res[node["name"]] = self.parse_response(connection, command, **kwargs)
             except (ConnectionError, TimeoutError) as e:
                 connection.disconnect()
-                if (not connection.retry_on_timeout and
-                    isinstance(e, TimeoutError)):
+
+                if not connection.retry_on_timeout and isinstance(e, TimeoutError):
                     raise
+
                 connection.send_command(*args)
-                res[node["name"]] = self.parse_response(connection,
-                                                        command, **kwargs)
+                res[node["name"]] = self.parse_response(connection, command, **kwargs)
             finally:
                 self.connection_pool.release(connection)
 
@@ -330,6 +342,7 @@ class StrictRedisCluster(StrictRedis):
         while cursor != 0:
             for _, node_data in self.scan(cursor=cursor, match=match, count=count).items():
                 cursor, data = node_data
+
                 for item in data:
                     yield item
 
@@ -359,8 +372,10 @@ class StrictRedisCluster(StrictRedis):
             if len(args) != 1 or not isinstance(args[0], dict):
                 raise RedisError('MSET requires **kwargs or a single dict arg')
             kwargs.update(args[0])
+
         for pair in iteritems(kwargs):
             self.set(pair[0], pair[1])
+
         return True
 
     def msetnx(self, *args, **kwargs):
@@ -397,14 +412,19 @@ class StrictRedisCluster(StrictRedis):
             raise ResponseError("source and destination objects are the same")
 
         data = self.dump(src)
+
         if data is None:
             raise ResponseError("no such key")
+
         ttl = self.pttl(src)
+
         if ttl is None or ttl < 1:
             ttl = 0
+
         self.delete(dst)
         self.restore(dst, ttl, data)
         self.delete(src)
+
         return True
 
     def delete(self, *names):
@@ -418,8 +438,10 @@ class StrictRedisCluster(StrictRedis):
             Operation is no longer atomic.
         """
         count = 0
+
         for arg in names:
             count += self.execute_command('DEL', arg)
+
         return count
 
     def renamenx(self, src, dst):
@@ -433,8 +455,8 @@ class StrictRedisCluster(StrictRedis):
         """
         if not self.exists(dst):
             return self.rename(src, dst)
-        else:
-            return False
+
+        return False
 
     ####
     # List commands
@@ -475,29 +497,36 @@ class StrictRedisCluster(StrictRedis):
             Operation is no longer atomic.
         """
         value = self.rpop(src)
+
         if value:
             self.lpush(dst, value)
             return value
+
         return None
 
     def sort(self, name, start=None, num=None, by=None, get=None, desc=False, alpha=False, store=None, groups=None):
         """Sort and return the list, set or sorted set at ``name``.
 
-        ``start`` and ``num`` allow for paging through the sorted data
+        :start: and :num:
+            allow for paging through the sorted data
 
-        ``by`` allows using an external key to weight and sort the items.
+        :by:
+            allows using an external key to weight and sort the items.
             Use an "*" to indicate where in the key the item value is located
 
-        ``get`` allows for returning items from external keys rather than the
+        :get:
+            allows for returning items from external keys rather than the
             sorted data itself.  Use an "*" to indicate where int he key
             the item value is located
 
-        ``desc`` allows for reversing the sort
+        :desc:
+            allows for reversing the sort
 
-        ``alpha`` allows for sorting lexicographically rather than numerically
+        :alpha:
+            allows for sorting lexicographically rather than numerically
 
-        ``store`` allows for storing the result of the sort into
-            the key ``store``
+        :store:
+            allows for storing the result of the sort into the key `store`
 
         ClusterImpl:
             A full implementation of the server side sort mechanics because many of the
@@ -633,8 +662,10 @@ class StrictRedisCluster(StrictRedis):
         """
         k = list_or_args(keys, args)
         res = self.smembers(k[0])
+
         for arg in k[1:]:
             res = res - self.smembers(arg)
+
         return res
 
     def sdiffstore(self, dest, keys, *args):
@@ -648,6 +679,7 @@ class StrictRedisCluster(StrictRedis):
         """
         res = self.sdiff(keys, *args)
         self.delete(dest)
+
         return self.sadd(dest, *res)
 
     def sinter(self, keys, *args):
@@ -659,8 +691,10 @@ class StrictRedisCluster(StrictRedis):
         """
         k = list_or_args(keys, args)
         res = self.smembers(k[0])
+
         for arg in k[1:]:
             res = res & self.smembers(arg)
+
         return res
 
     def sinterstore(self, dest, keys, *args):
@@ -673,6 +707,7 @@ class StrictRedisCluster(StrictRedis):
         """
         res = self.sinter(keys, *args)
         self.delete(dest)
+
         if len(res) != 0:
             self.sadd(dest, *res)
             return len(res)
@@ -705,8 +740,10 @@ class StrictRedisCluster(StrictRedis):
         """
         k = list_or_args(keys, args)
         res = self.smembers(k[0])
+
         for arg in k[1:]:
             res = res | self.smembers(arg)
+
         return res
 
     def sunionstore(self, dest, keys, *args):
@@ -721,6 +758,7 @@ class StrictRedisCluster(StrictRedis):
         """
         res = self.sunion(keys, *args)
         self.delete(dest)
+
         return self.sadd(dest, *res)
 
     def pfmerge(self, dest, *sources):
@@ -749,6 +787,7 @@ class StrictRedisCluster(StrictRedis):
         # Special handling of dest variable if it allready exists, then it shold be included in the HLL merge
         # dest can exists anywhere in the cluster.
         dest_data = self.get(dest)
+
         if dest_data:
             all_hll_objects.append(dest_data)
 
@@ -768,6 +807,7 @@ class StrictRedisCluster(StrictRedis):
 
         # Cleanup tmp variables
         self.delete(tmp_dest)
+
         for k in all_k:
             self.delete(k)
 
@@ -838,6 +878,7 @@ class RedisCluster(StrictRedisCluster):
         """
         if isinstance(time, datetime.timedelta):
             time = time.seconds + time.days * 24 * 3600
+
         return self.execute_command('SETEX', name, time, value)
 
     def lrem(self, name, value, num=0):
@@ -868,14 +909,16 @@ class RedisCluster(StrictRedisCluster):
         redis.zadd('my-key', 'name1', 1.1, 'name2', 2.2, name3=3.3, name4=4.4)
         """
         pieces = []
+
         if args:
             if len(args) % 2 != 0:
-                raise RedisError("ZADD requires an equal number of "
-                                 "values and scores")
+                raise RedisError("ZADD requires an equal number of values and scores")
             pieces.extend(reversed(args))
+
         for pair in iteritems(kwargs):
             pieces.append(pair[1])
             pieces.append(pair[0])
+
         return self.execute_command('ZADD', name, *pieces)
 
 

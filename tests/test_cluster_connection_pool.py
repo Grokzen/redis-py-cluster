@@ -33,7 +33,8 @@ class DummyConnection(object):
 
 
 class TestConnectionPool(object):
-    def get_pool(self, connection_kwargs=None, max_connections=None, max_connections_per_node=None, connection_class=DummyConnection, init_slot_cache=True):
+    def get_pool(self, connection_kwargs=None, max_connections=None, max_connections_per_node=None,
+                 connection_class=DummyConnection, init_slot_cache=True):
         connection_kwargs = connection_kwargs or {}
         pool = ClusterConnectionPool(
             connection_class=connection_class,

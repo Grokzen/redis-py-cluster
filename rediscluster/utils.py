@@ -12,6 +12,7 @@ def is_dict(d):
     Test if variable is a dict or not.
     """
     assert isinstance(d, dict)
+
     return True
 
 
@@ -28,9 +29,11 @@ def dict_merge(*dicts):
     Merge all provided dicts into 1 dict.
     """
     merged = {}
+
     for d in dicts:
         if is_dict(d):
             merged.update(d)
+
     return merged
 
 
@@ -51,9 +54,11 @@ def merge_result(command, res):
     is_dict(res)
 
     result = set([])
+
     for _, v in res.items():
         for value in v:
             result.add(value)
+
     return list(result)
 
 
@@ -67,6 +72,7 @@ def first_key(command, res):
 
     if len(res.keys()) != 1:
         raise RedisClusterException("More then 1 result from command: {0}".format(command))
+
     return list(res.values())[0]
 
 
@@ -98,5 +104,7 @@ def clusterdown_wrapper(func):
 def nslookup(node_ip):
     if ':' not in node_ip:
         return gethostbyaddr(node_ip)[0]
+
     ip, port = node_ip.split(':')
+
     return '%s:%s' % (gethostbyaddr(ip)[0], port)

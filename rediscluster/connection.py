@@ -50,6 +50,7 @@ class ClusterConnection(Connection):
 
         if self.readonly:
             self.send_command('READONLY')
+
             if nativestr(self.read_response()) != 'OK':
                 raise ConnectionError('READONLY command failed')
 
@@ -64,7 +65,8 @@ class ClusterConnectionPool(ConnectionPool):
     """
     RedisClusterDefaultTimeout = None
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection, max_connections=None, max_connections_per_node=False, **connection_kwargs):
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
+                 max_connections=None, max_connections_per_node=False, **connection_kwargs):
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
         self.max_connections_per_node = max_connections_per_node
@@ -85,6 +87,7 @@ class ClusterConnectionPool(ConnectionPool):
         Return a string with all unique ip:port combinations that this pool is connected to.
         """
         nodes = [{'host': i['host'], 'port': i['port']} for i in self.nodes.startup_nodes]
+
         return "%s<%s>" % (
             type(self).__name__,
             ", ".join([self.connection_class.description_format % dict(node, **self.connection_kwargs) for node in nodes])
@@ -124,6 +127,7 @@ class ClusterConnectionPool(ConnectionPool):
         # TOOD: Pop existing connection if it exists
         connection = self.make_connection(self.nodes.pubsub_node)
         self._in_use_pubsub_connections.add(connection)
+
         return connection
 
     def make_connection(self, node):
@@ -132,6 +136,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         if self.count_num_connections(node) >= self.max_connections:
             raise RedisClusterException("Too many connections")
+
         self._created_connections += 1
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
 
@@ -156,6 +161,7 @@ class ClusterConnectionPool(ConnectionPool):
             # There is cases where the connection is to be removed but it will not exist and there
             # must be a safe way to remove
             i_c = self._in_use_connections.get(connection._node["name"], set())
+
             if connection in i_c:
                 i_c.remove(connection)
             else:
@@ -190,8 +196,10 @@ class ClusterConnectionPool(ConnectionPool):
             return len(self._in_use_connections.get(node['name'], []))
 
         i = 0
+
         for _, connections in self._in_use_connections.items():
             i += len(connections)
+
         return i
 
     def get_random_connection(self):
@@ -202,6 +210,7 @@ class ClusterConnectionPool(ConnectionPool):
         #       open available connections and return that instead?
         for node in self.nodes.random_startup_node_ittr():
             connection = self.get_connection_by_node(node)
+
             if connection:
                 return connection
 
@@ -210,6 +219,7 @@ class ClusterConnectionPool(ConnectionPool):
     def get_connection_by_key(self, key):
         if not key:
             raise RedisClusterException("No way to dispatch this command to Redis Cluster.")
+
         return self.get_connection_by_slot(self.nodes.keyslot(key))
 
     def get_connection_by_slot(self, slot):
@@ -256,7 +266,8 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
     Readonly connection pool for rediscluster
     """
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection, max_connections=None, **connection_kwargs):
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
+                 max_connections=None, **connection_kwargs):
         super(ClusterReadOnlyConnectionPool, self).__init__(
             startup_nodes=startup_nodes,
             init_slot_cache=init_slot_cache,

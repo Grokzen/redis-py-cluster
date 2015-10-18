@@ -34,10 +34,12 @@ class NodeManager(object):
         """
         k = unicode(key)
         start = k.find("{")
+
         if start > -1:
             end = k.find("}", start + 1)
             if end > -1 and end != start + 1:
                 k = k[start + 1:end]
+
         return crc16(k) % self.RedisClusterHashSlots
 
     def all_nodes(self):
@@ -51,6 +53,7 @@ class NodeManager(object):
 
     def random_startup_node(self):
         random.shuffle(self.startup_nodes)
+
         return self.startup_nodes[0]
 
     def random_startup_node_ittr(self):
@@ -62,6 +65,7 @@ class NodeManager(object):
 
     def random_node(self):
         key = random.choice(list(self.nodes.keys()))
+
         return self.nodes[key]
 
     def get_redis_link(self, host, port, decode_responses=False):
@@ -122,7 +126,10 @@ class NodeManager(object):
                     else:
                         # Validate that 2 nodes want to use the same slot cache setup
                         if tmp_slots[i][0]['name'] != node['name']:
-                            disagreements.append("{} vs {} on slot: {}".format(tmp_slots[i][0]['name'], node['name'], i))
+                            disagreements.append("{} vs {} on slot: {}".format(
+                                tmp_slots[i][0]['name'], node['name'], i),
+                            )
+
                             if len(disagreements) > 5:
                                 raise RedisClusterException("startup_nodes could not agree on a valid slots cache. %s" % ", ".join(disagreements))
 
@@ -163,10 +170,12 @@ class NodeManager(object):
         """
         highest = -1
         node = None
+
         for n in self.nodes.values():
             if n["port"] > highest:
                 highest = n["port"]
                 node = n
+
         self.pubsub_node = {"host": node["host"], "port": node["port"], "server_type": node["server_type"], "pubsub": True}
 
     def set_node_name(self, n):
@@ -209,9 +218,11 @@ class NodeManager(object):
         """
         for item in self.startup_nodes:
             self.set_node_name(item)
+
         for n in self.nodes.values():
             if n not in self.startup_nodes:
                 self.startup_nodes.append(n)
+
         # freeze it so we can set() it
         uniq = set([frozenset(node.items()) for node in self.startup_nodes])
         # then thaw it back out into a list of dicts

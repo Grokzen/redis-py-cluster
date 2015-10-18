@@ -8,5 +8,6 @@ class ClusterPubSub(PubSub):
     """
     Wrapper for PubSub class.
     """
+
     def __init__(self, *args, **kwargs):
         super(ClusterPubSub, self).__init__(*args, **kwargs)
