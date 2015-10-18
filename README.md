@@ -38,11 +38,16 @@ Supported python versions, all minor releases in each major version should be su
 - 3.2.x
 - 3.3.x
 - 3.4.1+
-- 3.5.0 (Beta 4)
+- 3.5.0
+
+Experimental:
+
+- Python 3.6.0a0 - Currently broken due to `coverage` is not yet compatible with python 3.6
+
+
+### Python 3.4.0
 
 Python 3.4.0 do not not work with pubsub because of segfault issues (Same as redis-py has). If rediscluster is runned on 3.4.0 it will raise RuntimeError exception and exit. If you get this error locally when running tox, consider using `pyenv` to fix this problem.
-
-Testing with python 3.5.0 Beta 4 on travis-ci to ensure it will work when it is released in a stable version.
 
 
 
