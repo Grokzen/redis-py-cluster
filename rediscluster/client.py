@@ -260,6 +260,10 @@ class StrictRedisCluster(StrictRedis):
                 r = self.connection_pool.get_connection_by_node(node)
 
             try:
+                if asking:
+                    r.send_command('ASKING')
+                    asking = False
+
                 r.send_command(*args)
                 return self.parse_response(r, command, **kwargs)
             except (RedisClusterException, BusyLoadingError):
