@@ -517,7 +517,7 @@ class TestReadOnlyPipeline(object):
         """
         self.assert_moved_redirection_on_slave(
             ClusterConnectionPool,
-            StrictRedisCluster(host="127.0.0.1", port=7000)
+            StrictRedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
         )
 
     def test_moved_redirection_on_slave_with_readonly_mode_client(self, sr):
@@ -526,7 +526,7 @@ class TestReadOnlyPipeline(object):
         """
         self.assert_moved_redirection_on_slave(
             ClusterReadOnlyConnectionPool,
-            StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
+            StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True, reinitialize_steps=1)
         )
 
     def test_access_correct_slave_with_readonly_mode_client(self, sr):

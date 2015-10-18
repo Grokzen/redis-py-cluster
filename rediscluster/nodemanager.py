@@ -75,13 +75,14 @@ class NodeManager(object):
         Maybe it should stop to try after it have correctly covered all slots or when one node is reached
          and it could execute CLUSTER SLOTS command.
         """
-        # Reset variables
-        self.flush_nodes_cache()
-        self.flush_slots_cache()
+        nodes_cache = {}
+        tmp_slots = {}
+
         all_slots_covered = False
         disagreements = []
         startup_nodes_reachable = False
-        for node in self.startup_nodes:
+
+        for node in self.orig_startup_nodes:
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")
@@ -106,19 +107,22 @@ class NodeManager(object):
                     master_node[0] = node['host']
                 master_node[1] = int(master_node[1])
 
-                node = self.set_node(master_node[0], master_node[1], server_type='master')
+                node, node_name = self.make_node_obj(master_node[0], master_node[1], 'master')
+                nodes_cache[node_name] = node
 
                 for i in range(int(slot[0]), int(slot[1]) + 1):
-                    if i not in self.slots:
-                        self.slots[i] = [node]
+                    if i not in tmp_slots:
+                        tmp_slots[i] = [node]
                         slave_nodes = [slot[j] for j in range(3, len(slot))]
+
                         for slave_node in slave_nodes:
-                            target_slave_node = self.set_node(slave_node[0], slave_node[1], server_type='slave')
-                            self.slots[i].append(target_slave_node)
+                            target_slave_node, slave_node_name = self.make_node_obj(slave_node[0], slave_node[1], 'slave')
+                            nodes_cache[slave_node_name] = target_slave_node
+                            tmp_slots[i].append(target_slave_node)
                     else:
                         # Validate that 2 nodes want to use the same slot cache setup
-                        if self.slots[i][0]['name'] != node['name']:
-                            disagreements.append("{} vs {} on slot: {}".format(self.slots[i][0]['name'], node['name'], i))
+                        if tmp_slots[i][0]['name'] != node['name']:
+                            disagreements.append("{} vs {} on slot: {}".format(tmp_slots[i][0]['name'], node['name'], i))
                             if len(disagreements) > 5:
                                 raise RedisClusterException("startup_nodes could not agree on a valid slots cache. %s" % ", ".join(disagreements))
 
@@ -127,21 +131,26 @@ class NodeManager(object):
 
             # Validate if all slots are covered or if we should try next startup node
             for i in range(0, self.RedisClusterHashSlots):
-                if i not in self.slots:
+                if i not in tmp_slots:
                     all_slots_covered = False
 
             if all_slots_covered:
                 # All slots are covered and application can continue to execute
                 # Parse and determine what node will be pubsub node
-                self.determine_pubsub_node()
-                return
+                break
 
         if not startup_nodes_reachable:
             raise RedisClusterException("Redis Cluster cannot be connected. Please provide at least one reachable node.")
 
         if not all_slots_covered:
             raise RedisClusterException("All slots are not covered after query all startup_nodes. {} of {} covered...".format(
-                len(self.slots), self.RedisClusterHashSlots))
+                len(tmp_slots), self.RedisClusterHashSlots))
+
+        # Set the tmp variables to the real variables
+        self.slots = tmp_slots
+        self.nodes = nodes_cache
+
+        self.determine_pubsub_node()
 
     def determine_pubsub_node(self):
         """
@@ -169,20 +178,30 @@ class NodeManager(object):
         if "name" not in n:
             n["name"] = "{0}:{1}".format(n["host"], n["port"])
 
+    def make_node_obj(self, host, port, server_type):
+        """
+        Create a node datastructure.
+
+        Returns the node datastructure and the node name
+        """
+        node_name = "{0}:{1}".format(host, port)
+        node = {
+            'host': host,
+            'port': port,
+            'name': node_name,
+            'server_type': server_type
+        }
+
+        return (node, node_name)
+
     def set_node(self, host, port, server_type=None):
         """
         Update data for a node.
         """
-        node_name = "{0}:{1}".format(host, port)
-        self.nodes.setdefault(node_name, {})
-        self.nodes[node_name]['host'] = host
-        self.nodes[node_name]['port'] = port
-        self.nodes[node_name]['name'] = node_name
+        node, node_name = self.make_node_obj(host, port, server_type)
+        self.nodes[node_name] = node
 
-        if server_type:
-            self.nodes[node_name]['server_type'] = server_type
-
-        return self.nodes[node_name]
+        return node
 
     def populate_startup_nodes(self):
         """
@@ -202,18 +221,4 @@ class NodeManager(object):
         """
         Drop all node data and start over from startup_nodes
         """
-        self.flush_nodes_cache()
-        self.flush_slots_cache()
         self.initialize()
-
-    def flush_slots_cache(self):
-        """
-        Reset slots cache back to empty dict
-        """
-        self.slots = {}
-
-    def flush_nodes_cache(self):
-        """
-        Reset nodes cache back to empty dict
-        """
-        self.nodes = {}

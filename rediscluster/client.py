@@ -96,7 +96,7 @@ class StrictRedisCluster(StrictRedis):
     )
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, init_slot_cache=True,
-                 pipeline_use_threads=True, readonly_mode=False, **kwargs):
+                 pipeline_use_threads=True, readonly_mode=False, reinitialize_steps=None, **kwargs):
         """
         startup_nodes    --> List of nodes that initial bootstrapping can be done from
         host             --> Can be used to point to a startup node
@@ -136,6 +136,8 @@ class StrictRedisCluster(StrictRedis):
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
         self.pipeline_use_threads = pipeline_use_threads
+        self.reinitialize_counter = 0
+        self.reinitialize_steps = reinitialize_steps or 25
 
     def __repr__(self):
         servers = list(set(['{}:{}'.format(nativestr(info['host']), info['port']) for info in self.connection_pool.nodes.startup_nodes]))
@@ -165,7 +167,8 @@ class StrictRedisCluster(StrictRedis):
             nodes_callbacks=self.nodes_callbacks,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
-            use_threads=self.pipeline_use_threads if use_threads is None else use_threads
+            use_threads=self.pipeline_use_threads if use_threads is None else use_threads,
+            reinitialize_steps=self.reinitialize_steps,
         )
 
     def transaction(self, func, *watches, **kwargs):
@@ -263,7 +266,14 @@ class StrictRedisCluster(StrictRedis):
                 self.refresh_table_asap = True
                 raise e
             except MovedError as e:
-                self.refresh_table_asap = True
+                # Reinitialize on ever x number of MovedError.
+                # This counter will increase faster when the same client object
+                # is shared between multiple threads. To reduce the frequency you
+                # can set the variable 'reinitialize_steps' in the constructor.
+                self.reinitialize_counter += 1
+                if self.reinitialize_counter % self.reinitialize_steps == 0:
+                    self.refresh_table_asap = True
+
                 node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
                 self.connection_pool.nodes.slots[e.slot_id][0] = node
                 redirect_addr = "%s:%s" % (e.host, e.port)

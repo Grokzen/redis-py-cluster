@@ -118,22 +118,6 @@ def test_wrong_startup_nodes_type():
         NodeManager({})
 
 
-def test_flush_slots_nodes_cache():
-    """
-    Slots cache should already be populated.
-    """
-    n = NodeManager([{"host": "127.0.0.1", "port": 7000}])
-    n.initialize()
-    assert len(n.slots) == NodeManager.RedisClusterHashSlots
-    assert len(n.nodes) == 6
-
-    n.flush_slots_cache()
-    n.flush_nodes_cache()
-
-    assert len(n.slots) == 0
-    assert len(n.nodes) == 0
-
-
 def test_init_slots_cache_slots_collision():
     """
     Test that if 2 nodes do not agree on the same slots setup it should raise an error.
@@ -286,12 +270,8 @@ def test_reset():
     """
     n = NodeManager(startup_nodes=[{}])
     n.initialize = Mock()
-    n.slots = {"foo": "bar"}
-    n.nodes = ["foo", "bar"]
     n.reset()
-
-    assert n.slots == {}
-    assert n.nodes == {}
+    assert n.initialize.call_count == 1
 
 
 def test_cluster_one_instance():

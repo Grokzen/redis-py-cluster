@@ -124,7 +124,7 @@ def sr(request, *args, **kwargs):
     """
     Returns a instance of StrictRedisCluster
     """
-    return _init_client(request, cls=StrictRedisCluster, **kwargs)
+    return _init_client(request, reinitialize_steps=1, cls=StrictRedisCluster, **kwargs)
 
 
 @pytest.fixture()

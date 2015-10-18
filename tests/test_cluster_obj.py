@@ -3,6 +3,7 @@
 # python std lib
 from __future__ import with_statement
 import re
+import time
 
 # rediscluster imports
 from rediscluster import StrictRedisCluster
@@ -182,19 +183,25 @@ def test_refresh_table_asap():
     with patch.object(NodeManager, 'initialize') as mock_initialize:
         mock_initialize.return_value = None
 
-        r = StrictRedisCluster(host="127.0.0.1", port=7000)
-        r.connection_pool.nodes.slots[12182] = [{
-            "host": "127.0.0.1",
-            "port": 7002,
-            "name": "127.0.0.1:7002",
-            "server_type": "master",
-        }]
-        r.refresh_table_asap = True
+        # Patch parse_response to avoid issues when the cluster sometimes return MOVED
+        with patch.object(StrictRedisCluster, 'parse_response') as mock_parse_response:
+            def side_effect(self, *args, **kwargs):
+                return None
+            mock_parse_response.side_effect = side_effect
 
-        i = len(mock_initialize.mock_calls)
-        r.execute_command("SET", "foo", "bar")
-        assert len(mock_initialize.mock_calls) - i == 1
-        assert r.refresh_table_asap is False
+            r = StrictRedisCluster(host="127.0.0.1", port=7000)
+            r.connection_pool.nodes.slots[12182] = [{
+                "host": "127.0.0.1",
+                "port": 7002,
+                "name": "127.0.0.1:7002",
+                "server_type": "master",
+            }]
+            r.refresh_table_asap = True
+
+            i = len(mock_initialize.mock_calls)
+            r.execute_command("SET", "foo", "bar")
+            assert len(mock_initialize.mock_calls) - i == 1
+            assert r.refresh_table_asap is False
 
 
 def test_ask_redirection():
@@ -313,10 +320,10 @@ def test_moved_redirection_pipeline():
 
 
 def assert_moved_redirection_on_slave(sr, connection_pool_cls, cluster_obj):
-
+    """
+    """
     # we assume this key is set on 127.0.0.1:7000(7003)
     sr.set('foo16706', 'foo')
-    import time
     time.sleep(1)
 
     with patch.object(connection_pool_cls, 'get_node_by_slot') as return_slave_mock:
@@ -328,10 +335,8 @@ def assert_moved_redirection_on_slave(sr, connection_pool_cls, cluster_obj):
         }
 
         master_value = {'host': '127.0.0.1', 'name': '127.0.0.1:7000', 'port': 7000, 'server_type': 'master'}
-        with patch.object(
-                ClusterConnectionPool,
-                'get_master_node_by_slot',
-                return_value=master_value) as return_master_mock:
+        with patch.object(ClusterConnectionPool, 'get_master_node_by_slot') as return_master_mock:
+            return_master_mock.return_value = master_value
             assert cluster_obj.get('foo16706') == b('foo')
             assert return_master_mock.call_count == 1
 
@@ -344,7 +349,7 @@ def test_moved_redirection_on_slave_with_default_client(sr):
     assert_moved_redirection_on_slave(
         sr,
         ClusterConnectionPool,
-        StrictRedisCluster(host="127.0.0.1", port=7000)
+        StrictRedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
     )
 
 
@@ -355,7 +360,7 @@ def test_moved_redirection_on_slave_with_readonly_mode_client(sr):
     assert_moved_redirection_on_slave(
         sr,
         ClusterReadOnlyConnectionPool,
-        StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
+        StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True, reinitialize_steps=1)
     )
 
 
