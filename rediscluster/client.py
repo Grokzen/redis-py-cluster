@@ -262,6 +262,7 @@ class StrictRedisCluster(StrictRedis):
             try:
                 if asking:
                     r.send_command('ASKING')
+                    self.parse_response(r, "ASKING", **kwargs)
                     asking = False
 
                 r.send_command(*args)
@@ -295,7 +296,6 @@ class StrictRedisCluster(StrictRedis):
                 if ttl < self.COMMAND_TTL / 2:
                     time.sleep(0.05)
             except AskError as e:
-                node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
                 redirect_addr, asking = "%s:%s" % (e.host, e.port), True
             finally:
                 self.connection_pool.release(r)
