@@ -219,8 +219,10 @@ class StrictClusterPipeline(StrictRedisCluster):
 
                 # allocate all of the redis connections from the connection pool.
                 # each connection gets passed into its own thread so it can query each node in paralle.
-                connections = {node_name: self.connection_pool.get_connection_by_node(nodes[node_name])
-                                   for node_name in node_commands}
+                connections = {
+                    node_name: self.connection_pool.get_connection_by_node(nodes[node_name])
+                    for node_name in node_commands
+                }
 
                 # iterate through each set of commands and pass them into a worker thread so
                 # it can be executed in it's own socket connection from the redis connection pool
@@ -262,8 +264,6 @@ class StrictClusterPipeline(StrictRedisCluster):
                             # some of these responses may represent redis connection or ask errors etc.
                             for i, v in zip(sorted(node_commands[node_name].keys()), worker.value):
                                 response[i] = v
-
-
                 finally:
                     # don't need our threads anymore.
                     # explicitly remove them from the current namespace so they can be garbage collected.
