@@ -18,39 +18,6 @@ On the topic about porting/moving this code into `redis-py` there is currently w
 
 
 
-## Upgrading instructions
-
-Please read the [following](docs/Upgrading.md) documentation that will go through all changes that is required when upgrading `redis-py-cluster` between versions.
-
-
-
-## Dependencies & supported python versions
-
-- Python: redis >= `2.10.2` is required
-- Redis server >= `3.0.0` is required
-- Optional Python: hiredis >= `0.1.3`
-
-Hiredis is tested and supported on all supported python versions.
-
-Supported python versions, all minor releases in each major version should be supported unless otherwise stated here:
-
-- 2.7.x
-- 3.2.x
-- 3.3.x
-- 3.4.1+
-- 3.5.0
-
-Experimental:
-
-- Python 3.6.0a0 - Currently broken due to `coverage` is not yet compatible with python 3.6
-
-
-### Python 3.4.0
-
-Python 3.4.0 do not not work with pubsub because of segfault issues (Same as redis-py has). If rediscluster is runned on 3.4.0 it will raise RuntimeError exception and exit. If you get this error locally when running tox, consider using `pyenv` to fix this problem.
-
-
-
 ## Installation
 
 Latest stable release from pypi
@@ -89,6 +56,39 @@ The following imports can be imported from `redis` package.
 - `ClusterPubSub`
 
 `StrictRedisCluster` is based on `redis.StrictRedis` and `RedisCluster` has the same functionality as `redis.Redis` even if it is not directly based on it.
+
+
+
+## Upgrading instructions
+
+Please read the [following](docs/Upgrading.md) documentation that will go through all changes that is required when upgrading `redis-py-cluster` between versions.
+
+
+
+## Dependencies & supported python versions
+
+- Python: redis >= `2.10.2` is required
+- Redis server >= `3.0.0` is required
+- Optional Python: hiredis >= `0.1.3`
+
+Hiredis is tested and supported on all supported python versions.
+
+Supported python versions, all minor releases in each major version should be supported unless otherwise stated here:
+
+- 2.7.x
+- 3.2.x
+- 3.3.x
+- 3.4.1+
+- 3.5.0
+
+Experimental:
+
+- Python 3.6.0a0 - Currently broken due to `coverage` is not yet compatible with python 3.6
+
+
+### Python 3.4.0
+
+Python 3.4.0 do not not work with pubsub because of segfault issues (Same as redis-py has). If rediscluster is runned on 3.4.0 it will raise RuntimeError exception and exit. If you get this error locally when running tox, consider using `pyenv` to fix this problem.
 
 
 
