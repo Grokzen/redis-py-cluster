@@ -1,20 +1,20 @@
 # redis-py-cluster
 
-Redis cluster client in python for the official cluster support targeted for redis 3.0.
+This client provides a working client for redis cluster that was added in redis 3.0.
 
 This project is a port of `redis-rb-cluster` by antirez, with alot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster
 
-[![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![PyPI version](https://badge.fury.io/py/redis-py-cluster.svg)](http://badge.fury.io/py/redis-py-cluster) [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Code Health](https://landscape.io/github/Grokzen/redis-py-cluster/unstable/landscape.svg)](https://landscape.io/github/Grokzen/redis-py-cluster/unstable)
+[![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![PyPI version](https://badge.fury.io/py/redis-py-cluster.svg)](http://badge.fury.io/py/redis-py-cluster) [![Code Health](https://landscape.io/github/Grokzen/redis-py-cluster/unstable/landscape.svg)](https://landscape.io/github/Grokzen/redis-py-cluster/unstable)
 
 
 
 # Project status
 
-The project is not dead but not much new development is done right now. I do awnser issue reports and pull requests as soon as possible and if you have a problem you can ping me inside the gitter channel that you can find here [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) and i will help you out with problems or usage of this lib.
+The project is not dead but, not much new development is done right now. I do answer issue reports and pull requests as soon as possible. If you have a problem with the code, you can ping me inside the gitter channel that you can find here [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) and i will help you out with problems or usage of this lib.
 
-As of release `0.3.0` this project will be considered stable and usable in production. Just remember that if you are going to use redis cluster to please read up on the documentation that you can find in the bottom of this Readme. It will contain usage examples and descriptions of what is implemented and what is not implemented and why things are the way they are.
+As of release `0.3.0` this project will be considered stable and usable in production. If you are going to use redis cluster in your project, you should read up on all documentation that you can find in the bottom of this Readme file. It will contain usage examples and descriptions of what is and what is not implemented. It will also describe how and why things work the way they do in this client.
 
-On the topic about porting/moving this code into `redis-py` there is currently work over here https://github.com/andymccurdy/redis-py/pull/604 that will bring cluster uspport based on this code. But my suggestion is that until that work is completed that you should use this lib.
+On the topic about porting/moving this code into `redis-py` there is currently work over here https://github.com/andymccurdy/redis-py/pull/604 that will bring cluster support based on this code. But my suggestion is that until that work is completed that you should use this lib.
 
 
 
@@ -66,15 +66,15 @@ Please read the [following](docs/Upgrading.md) documentation that will go throug
 - Redis server >= `3.0.0` is required
 - Optional Python: hiredis >= `0.1.3`
 
-Hiredis is tested and supported on all supported python versions.
+Hiredis is tested on all supported python versions.
 
-Supported python versions, all minor releases in each major version should be supported unless otherwise stated here:
+List of all supported python versions.
 
-- 2.7.x
-- 3.2.x
-- 3.3.x
+- 2.7
+- 3.2
+- 3.3
 - 3.4.1+
-- 3.5.0
+- 3.5
 
 Experimental:
 
@@ -83,7 +83,7 @@ Experimental:
 
 ### Python 3.4.0
 
-Python 3.4.0 do not not work with pubsub because of segfault issues (Same as redis-py has). If rediscluster is runned on 3.4.0 it will raise RuntimeError exception and exit. If you get this error locally when running tox, consider using `pyenv` to fix this problem.
+A segfault was found when running `redis-py` in python `3.4.0` that was introduced into the codebase in python `3.4.0`. Because of this both `redis-py` and `redis-py-cluster` will not work when running with `3.4.0`. This lib has decided to block the lib from execution on `3.4.0` and you will get a exception when trying to import the code. The only solution is to use python `3.4.1` or some other higher minor version in the `3.4` series.
 
 
 
