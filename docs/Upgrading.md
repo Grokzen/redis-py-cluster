@@ -3,7 +3,7 @@
 This document will describe what must be done when upgrading between different versions to ensure that code still works.
 
 
-## 1.0.0 --> Next release
+## 1.0.0 --> 1.1.0
 
 The following exceptions have been changed/added and code that use this client might have to be updated to handle the new classes.
 

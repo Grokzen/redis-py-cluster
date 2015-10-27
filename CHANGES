@@ -1,4 +1,4 @@
-* Next release
+* 1.1.0
     * Refactored exception handling and exception classes.
     * Added READONLY mode support, scales reads using slave nodes.
     * Fix __repr__ for ClusterConnectionPool and ClusterReadOnlyConnectionPool
