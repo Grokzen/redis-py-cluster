@@ -36,26 +36,21 @@ $ python setup.py install
 
 ## Usage example
 
-Small sample script that show how to get started with RedisCluster. `decode_responses=True` is required to have when running on python3.
+Small sample script that shows how to get started with RedisCluster. It can also be found in [examples/basic.py](examples/basic.py)
 
 ```python
 >>> from rediscluster import StrictRedisCluster
+
 >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
+
+>>> # Note: decode_responses must be set to True when used with python3
 >>> rc = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+
 >>> rc.set("foo", "bar")
 True
->>> rc.get("foo")
+>>> print(rc.get("foo"))
 'bar'
 ```
-
-The following imports can be imported from `redis` package.
-
-- `StrictRedisCluster`
-- `RedisCluster`
-- `StrictClusterPipeline`
-- `ClusterPubSub`
-
-`StrictRedisCluster` is based on `redis.StrictRedis` and `RedisCluster` has the same functionality as `redis.Redis` even if it is not directly based on it.
 
 
 
