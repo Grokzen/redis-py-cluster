@@ -8,14 +8,16 @@ import time
 from threading import Thread
 
 # rediscluster imports
-from rediscluster.connection import ClusterConnectionPool, ClusterConnection, UnixDomainSocketConnection
+from rediscluster.connection import (
+    ClusterConnectionPool, ClusterReadOnlyConnectionPool,
+    ClusterConnection, UnixDomainSocketConnection)
 from rediscluster.exceptions import RedisClusterException
 from tests.conftest import skip_if_server_version_lt
 
 # 3rd party imports
 import pytest
 import redis
-from mock import Mock
+from mock import patch, Mock
 from redis.connection import ssl_available
 from redis._compat import unicode
 
@@ -31,12 +33,15 @@ class DummyConnection(object):
 
 
 class TestConnectionPool(object):
-    def get_pool(self, connection_kwargs=None, max_connections=None, connection_class=DummyConnection):
+    def get_pool(self, connection_kwargs=None, max_connections=None, max_connections_per_node=None,
+                 connection_class=DummyConnection, init_slot_cache=True):
         connection_kwargs = connection_kwargs or {}
         pool = ClusterConnectionPool(
             connection_class=connection_class,
             max_connections=max_connections,
+            max_connections_per_node=max_connections_per_node,
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            init_slot_cache=init_slot_cache,
             **connection_kwargs)
         return pool
 
@@ -60,6 +65,15 @@ class TestConnectionPool(object):
         with pytest.raises(RedisClusterException):
             pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
 
+    def test_max_connections_per_node(self):
+        pool = self.get_pool(max_connections=2, max_connections_per_node=True)
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        with pytest.raises(RedisClusterException):
+            pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+
     def test_reuse_previously_released_connection(self):
         pool = self.get_pool()
         c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
@@ -68,16 +82,26 @@ class TestConnectionPool(object):
         assert c1 == c2
 
     def test_repr_contains_db_info_tcp(self):
+        """
+        Note: init_slot_cache muts be set to false otherwise it will try to
+              query the test server for data and then it can't be predicted reliably
+        """
         connection_kwargs = {'host': 'localhost', 'port': 7000}
         pool = self.get_pool(connection_kwargs=connection_kwargs,
-                             connection_class=ClusterConnection)
+                             connection_class=ClusterConnection,
+                             init_slot_cache=False)
         expected = 'ClusterConnectionPool<ClusterConnection<host=localhost,port=7000>>'
         assert repr(pool) == expected
 
     def test_repr_contains_db_info_unix(self):
+        """
+        Note: init_slot_cache muts be set to false otherwise it will try to
+              query the test server for data and then it can't be predicted reliably
+        """
         connection_kwargs = {'path': '/abc', 'db': 1}
         pool = self.get_pool(connection_kwargs=connection_kwargs,
-                             connection_class=UnixDomainSocketConnection)
+                             connection_class=UnixDomainSocketConnection,
+                             init_slot_cache=False)
         expected = 'ClusterConnectionPool<ClusterUnixDomainSocketConnection<path=/abc>>'
         assert repr(pool) == expected
 
@@ -87,8 +111,14 @@ class TestConnectionPool(object):
         """
         pool = self.get_pool(connection_kwargs={})
 
-        connection = pool.get_connection_by_key("foo")
-        assert connection.port == 7002
+        # Patch the call that is made inside the method to allow control of the returned connection object
+        with patch.object(ClusterConnectionPool, 'get_connection_by_slot', autospec=True) as pool_mock:
+            def side_effect(self, *args, **kwargs):
+                return DummyConnection(port=1337)
+            pool_mock.side_effect = side_effect
+
+            connection = pool.get_connection_by_key("foo")
+            assert connection.port == 1337
 
         with pytest.raises(RedisClusterException) as ex:
             pool.get_connection_by_key(None)
@@ -100,8 +130,14 @@ class TestConnectionPool(object):
         """
         pool = self.get_pool(connection_kwargs={})
 
-        connection = pool.get_connection_by_slot(12182)
-        assert connection.port == 7002
+        # Patch the call that is made inside the method to allow control of the returned connection object
+        with patch.object(ClusterConnectionPool, 'get_connection_by_node', autospec=True) as pool_mock:
+            def side_effect(self, *args, **kwargs):
+                return DummyConnection(port=1337)
+            pool_mock.side_effect = side_effect
+
+            connection = pool.get_connection_by_slot(12182)
+            assert connection.port == 1337
 
         m = Mock()
         pool.get_random_connection = m
@@ -120,6 +156,57 @@ class TestConnectionPool(object):
         with pytest.raises(RedisClusterException) as ex:
             pool.get_connection("GET")
         assert unicode(ex.value).startswith("Only 'pubsub' commands can be used by get_connection()")
+
+    def test_master_node_by_slot(self):
+        pool = self.get_pool(connection_kwargs={})
+        node = pool.get_master_node_by_slot(0)
+        node['port'] = 7000
+        node = pool.get_master_node_by_slot(12182)
+        node['port'] = 7002
+
+
+class TestReadOnlyConnectionPool(object):
+    def get_pool(self, connection_kwargs=None, max_connections=None, init_slot_cache=True, startup_nodes=None):
+        startup_nodes = startup_nodes or [{'host': '127.0.0.1', 'port': 7000}]
+        connection_kwargs = connection_kwargs or {}
+        pool = ClusterReadOnlyConnectionPool(
+            init_slot_cache=init_slot_cache,
+            max_connections=max_connections,
+            startup_nodes=startup_nodes,
+            **connection_kwargs)
+        return pool
+
+    def test_repr_contains_db_info_readonly(self):
+        """
+        Note: init_slot_cache must be set to false otherwise it will try to
+              query the test server for data and then it can't be predicted reliably
+        """
+        pool = self.get_pool(
+            init_slot_cache=False,
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}, {"host": "127.0.0.2", "port": 7001}],
+        )
+        expected = 'ClusterReadOnlyConnectionPool<ClusterConnection<host=127.0.0.1,port=7000>, ClusterConnection<host=127.0.0.2,port=7001>>'
+        assert repr(pool) == expected
+
+    def test_max_connections(self):
+        pool = self.get_pool(max_connections=2)
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        with pytest.raises(RedisClusterException):
+            pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+
+    def test_get_node_by_slot(self):
+        """
+        We can randomly get all nodes in readonly mode.
+        """
+        pool = self.get_pool(connection_kwargs={})
+
+        expected_ports = {7000, 7003}
+        actual_ports = set()
+        for _ in range(0, 100):
+            node = pool.get_node_by_slot(0)
+            actual_ports.add(node['port'])
+        assert actual_ports == expected_ports
 
 
 class TestBlockingConnectionPool(object):

@@ -1,3 +1,16 @@
+* 1.1.0
+    * Refactored exception handling and exception classes.
+    * Added READONLY mode support, scales reads using slave nodes.
+    * Fix __repr__ for ClusterConnectionPool and ClusterReadOnlyConnectionPool
+    * Add max_connections_per_node parameter to ClusterConnectionPool so that max_connections parameter is calculated per-node rather than across the whole cluster.
+    * Improve thread safty of get_connection_by_slot and get_connection_by_node methods (iandyh)
+    * Improved error handling when sending commands to all nodes, e.g. info. Now the connection takes retry_on_timeout as an option and retry once when there is a timeout. (iandyh)
+    * Added support for SCRIPT LOAD, SCRIPT FLUSH, SCRIPT EXISTS and EVALSHA commands. (alisaifee)
+    * Improve thread safety to avoid exceptions when running one client object inside multiple threads and doing resharding of the
+      cluster at the same time.
+    * Fix ASKING error handling so now it really sends ASKING to next node during a reshard operation. This improvement was also made to pipelined commands.
+    * Improved thread safety in pipelined commands, along better explanation of the logic inside pipelining with code comments.
+
 * 1.0.0
     * No change to anything just a bump to 1.0.0 because the lib is now considered stable/production ready.
 
@@ -12,9 +25,9 @@
 
 * 0.2.0
     * Moved pipeline code into new file.
-    * Code now uses a proper cluster connection pool class that handles 
+    * Code now uses a proper cluster connection pool class that handles
       all nodes and connections similar to how redis-py do.
-    * Better support for pubsub. All clients will now talk to the same server because 
+    * Better support for pubsub. All clients will now talk to the same server because
       pubsub commands do not work reliably if it talks to a random server in the cluster.
     * Better result callbacks and node routing support. No more ugly decorators.
     * Fix keyslot command when using non ascii characters.

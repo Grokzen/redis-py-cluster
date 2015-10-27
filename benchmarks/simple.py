@@ -65,7 +65,9 @@ def timeit_pipeline(rc, itterations=50000):
         p.execute()
 
     t1 = time.time() - t0
-    print("{}k SET/GET operations inside pipelines took: {} seconds... {} operations per second".format((itterations / 1000) * 2, t1, (itterations / t1) * 2))
+    print("{}k SET/GET operations inside pipelines took: {} seconds... {} operations per second".format(
+        (itterations / 1000) * 2, t1, (itterations / t1) * 2)
+    )
 
 
 if __name__ == "__main__":

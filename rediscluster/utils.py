@@ -2,7 +2,9 @@
 from socket import gethostbyaddr
 
 # rediscluster imports
-from .exceptions import RedisClusterException, ClusterDownException
+from .exceptions import (
+    RedisClusterException, ClusterDownError
+)
 
 
 def is_dict(d):
@@ -10,6 +12,7 @@ def is_dict(d):
     Test if variable is a dict or not.
     """
     assert isinstance(d, dict)
+
     return True
 
 
@@ -26,9 +29,11 @@ def dict_merge(*dicts):
     Merge all provided dicts into 1 dict.
     """
     merged = {}
+
     for d in dicts:
         if is_dict(d):
             merged.update(d)
+
     return merged
 
 
@@ -49,9 +54,11 @@ def merge_result(command, res):
     is_dict(res)
 
     result = set([])
+
     for _, v in res.items():
         for value in v:
             result.add(value)
+
     return list(result)
 
 
@@ -65,6 +72,7 @@ def first_key(command, res):
 
     if len(res.keys()) != 1:
         raise RedisClusterException("More then 1 result from command: {0}".format(command))
+
     return list(res.values())[0]
 
 
@@ -83,18 +91,20 @@ def clusterdown_wrapper(func):
         for _ in range(0, 3):
             try:
                 return func(*args, **kwargs)
-            except ClusterDownException:
+            except ClusterDownError:
                 # Try again with the new cluster setup. All other errors
                 # should be raised.
                 pass
 
         # If it fails 3 times then raise exception back to caller
-        raise ClusterDownException("CLUSTERDOWN error. Unable to rebuild the cluster")
+        raise ClusterDownError("CLUSTERDOWN error. Unable to rebuild the cluster")
     return inner
 
 
 def nslookup(node_ip):
     if ':' not in node_ip:
         return gethostbyaddr(node_ip)[0]
+
     ip, port = node_ip.split(':')
+
     return '%s:%s' % (gethostbyaddr(ip)[0], port)

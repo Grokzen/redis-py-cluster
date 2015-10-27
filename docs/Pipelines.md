@@ -1,3 +1,22 @@
+# How pipelining works
+
+Just like in redis-py, redis-py-cluster queues up all the commands inside the client until execute is called. But, once execute is called, redis-py-cluster internals work slightly differently. It still packs the commands to efficiently 
+transmit multiple commands across the network. But since different keys may be mapped to different nodes, redis-py-cluster must first map each key to the expected node. It then packs all the commands destined for each node in the cluster into its own packed sequence of commands. It uses the redis-py library to communicate with each node in the cluster. 
+Ideally all the commands should be sent to each node in the cluster in parallel so that all the commands can be processed as fast as possible. The naive approach is to iterate through each node and send each batch of commands sequentially to each node. If redis-py supported some sort of non-blocking i/o we could send the network requests first
+and multiplex the socket responses from each node. Instead, we use threads to send the requests in parallel so that the total execution time only equals the amount of time for the slowest round trip to and from the given set of nodes in the cluster needed to process the commands. 
+In previous versions of the library there were some bugs associated with threaded operations and pipelining. We were freeing connections back into the connection pool prior to reading the responses from each thread and it caused all kinds of problems. But these issues should now be addressed. Ff you are worried, you can disable the threaded behavior with a flag so that it only sends the commands to each node sequentially.
+
+
+# Connection Error handling
+
+The other way pipelines differ in redis-py-cluster from redis-py is in error handling and retries. With the normal redis-py client, if you hit a connection error during a pipeline command it raises the error right there. But we expect redis-cluster to be more resilient to failures. If you hit a connection problem with one of the nodes in the cluster, most likely a stand-by slave will take over for the down master pretty quickly. In this case, we try the commands bound for that particular node to another random node. The other random node will not just blindly accept these commands. It only accepts them if the keys referenced in those commands actually map to that node in the cluster configuration. So most likely it will respond with a MOVED error telling the client the new master for those commands. Our code handles these MOVED commands according to the redis cluster specification and re-issues the commands to the correct server transparently inside of pipeline.execute(). You can disable this behavior if you'd like as well.
+
+
+# ASKED and MOVED errors
+
+The other tricky part of the redis-cluster specification is that if any command response comes back with an ASK or MOVED error, the command is to be retried against the specified node. In previous versions of redis-py-cluster we were treating ASKED and MOVED errors the same, but they really need to be handled differently. MOVED error means that the client can safely update its own representation of the slots table to point to a new node for all future commands bound for that slot. But an ASK error means the slot is only partially migrated and that the client can only successfully issue that command to the new server if it prefixes the request with an ASKING command first. This lets the new node taking over that slot know that the original server said it was okay to run that command for the given key against the new node even though the slot is not yet completely migrated. Our current implementation now handles this case correctly.
+
+
 # The philosophy on pipelines
 
 After playing around with pipelines and thinking about possible solutions that could be used in a cluster setting this document will describe how pipelines work, strengths and weaknesses with the implementation that was chosen.

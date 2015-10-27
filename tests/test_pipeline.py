@@ -5,10 +5,13 @@ from __future__ import with_statement
 import re
 
 # rediscluster imports
+from rediscluster.client import StrictRedisCluster
+from rediscluster.connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
 from rediscluster.exceptions import RedisClusterException
 
 # 3rd party imports
 import pytest
+from mock import patch
 from redis._compat import b, u, unichr, unicode
 from redis.exceptions import WatchError, ResponseError, ConnectionError
 
@@ -469,3 +472,89 @@ class TestPipeline(object):
         p = r.pipeline()
         result = p.execute()
         assert result == []
+
+
+class TestReadOnlyPipeline(object):
+
+    def test_pipeline_readonly(self, r, ro):
+        """
+        On readonly mode, we supports get related stuff only.
+        """
+        r.set('foo71', 'a1')   # we assume this key is set on 127.0.0.1:7001
+        r.zadd('foo88', z1=1)  # we assume this key is set on 127.0.0.1:7002
+        r.zadd('foo88', z2=4)
+
+        with ro.pipeline() as readonly_pipe:
+            readonly_pipe.get('foo71').zrange('foo88', 0, 5, withscores=True)
+            assert readonly_pipe.execute() == [
+                b('a1'),
+                [(b('z1'), 1.0), (b('z2'), 4)],
+            ]
+
+    def assert_moved_redirection_on_slave(self, connection_pool_cls, cluster_obj):
+        with patch.object(connection_pool_cls, 'get_node_by_slot') as return_slave_mock:
+            with patch.object(ClusterConnectionPool, 'get_master_node_by_slot') as return_master_mock:
+                def get_mock_node(role, port):
+                    return {
+                        'name': '127.0.0.1:%d' % port,
+                        'host': '127.0.0.1',
+                        'port': port,
+                        'server_type': role,
+                    }
+
+                return_slave_mock.return_value = get_mock_node('slave', 7005)
+                return_master_mock.return_value = get_mock_node('slave', 7001)
+
+                with cluster_obj.pipeline() as pipe:
+                    # we assume this key is set on 127.0.0.1:7001(7004)
+                    pipe.get('foo87').get('foo88').execute() == [None, None]
+                    assert return_master_mock.call_count == 2
+
+    def test_moved_redirection_on_slave_with_default(self):
+        """
+        On Pipeline, we redirected once and finally get from master with
+        readonly client when data is completely moved.
+        """
+        self.assert_moved_redirection_on_slave(
+            ClusterConnectionPool,
+            StrictRedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
+        )
+
+    def test_moved_redirection_on_slave_with_readonly_mode_client(self, sr):
+        """
+        Ditto with READONLY mode.
+        """
+        self.assert_moved_redirection_on_slave(
+            ClusterReadOnlyConnectionPool,
+            StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True, reinitialize_steps=1)
+        )
+
+    def test_access_correct_slave_with_readonly_mode_client(self, sr):
+        """
+        Test that the client can get value normally with readonly mode
+        when we connect to correct slave.
+        """
+
+        # we assume this key is set on 127.0.0.1:7001
+        sr.set('foo87', 'foo')
+        sr.set('foo88', 'bar')
+        import time
+        time.sleep(1)
+
+        with patch.object(ClusterReadOnlyConnectionPool, 'get_node_by_slot') as return_slave_mock:
+            return_slave_mock.return_value = {
+                'name': '127.0.0.1:7004',
+                'host': '127.0.0.1',
+                'port': 7004,
+                'server_type': 'slave',
+            }
+
+            master_value = {'host': '127.0.0.1', 'name': '127.0.0.1:7001', 'port': 7001, 'server_type': 'master'}
+            with patch.object(
+                    ClusterConnectionPool,
+                    'get_master_node_by_slot',
+                    return_value=master_value) as return_master_mock:
+                readonly_client = StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
+                with readonly_client.pipeline() as readonly_pipe:
+                    assert readonly_pipe.get('foo88').get('foo87').execute() == [b('bar'), b('foo')]
+                    assert return_master_mock.call_count == 0
