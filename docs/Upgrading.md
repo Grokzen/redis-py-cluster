@@ -24,6 +24,10 @@ Added optional `max_connections_per_node` parameter to `ClusterConnectionPool` w
 Reinitialize on `MOVED` errors will not run on every error but instead on every
 25 error to avoid excessive cluster reinitialize when used in multiple threads and resharding at the same time. If you want to go back to the old behaviour with reinitialize on every error you should pass in `reinitialize_steps=1` to the client constructor. If you want to increase or decrease the intervall of this new behaviour you should set `reinitialize_steps` in the client constructor to a value that you want.
 
+Pipelines in general have recieved alot of attention so if you are using pipelines in your code, ensure that you test the new code out alot before using it to make sure it still works as you expect.
+
+The entire client code should now be safer to use in a threaded environment. Some race conditions was found and have now been fixed and it should prevent the code from behaving wierd during reshard operations.
+
 
 
 ## 0.2.0 --> 0.3.0
