@@ -1,4 +1,5 @@
 * Next release
+    * Drop maintained support for python 3.2.
     * Remove Vagrant file in favor for repo maintained by 72squared
 
 * 1.1.0
