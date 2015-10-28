@@ -100,17 +100,17 @@ To run all tests in all supported environments with `tox` read this [Tox multien
 
 More detailed documentation can be found in `docs` folder.
 
+- [Authors](docs/Authors)
 - [Benchmarks](docs/Benchmarks.md)
-- [Pubsub](docs/Pubsub.md)
-- [Setup a redis cluster. Manually, Docker & Vagrant](docs/Cluster_Setup.md)
+- [Cluster Management class](docs/ClusterMgt.md)
 - [Command differences](docs/Commands.md)
 - [Limitations and differences](docs/Limits_and_differences.md)
-- [Redisco support (Django ORM)](docs/Redisco.md)
 - [Pipelines](docs/Pipelines.md)
-- [Threaded Pipeline support](docs/Threads.md)
-- [Cluster Management class](docs/ClusterMgt.md)
+- [Pubsub](docs/Pubsub.md)
 - [READONLY mode](docs/Readonly_mode.md)
-- [Authors](docs/Authors)
+- [Redisco support (Django ORM)](docs/Redisco.md)
+- [Setup a redis cluster. Manually, Docker & Vagrant](docs/Cluster_Setup.md)
+- [Threaded Pipeline support](docs/Threads.md)
 
 
 
