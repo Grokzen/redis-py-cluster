@@ -71,7 +71,6 @@ Hiredis is tested on all supported python versions.
 List of all supported python versions.
 
 - 2.7
-- 3.2
 - 3.3
 - 3.4.1+
 - 3.5
