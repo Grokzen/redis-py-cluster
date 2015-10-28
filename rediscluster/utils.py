@@ -11,9 +11,9 @@ def is_dict(d):
     """
     Test if variable is a dict or not.
     """
-    assert isinstance(d, dict)
-
-    return True
+    if isinstance(d, dict):
+        return True
+    return None
 
 
 def string_keys_to_dict(key_strings, callback):
