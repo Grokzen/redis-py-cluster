@@ -32,8 +32,8 @@ def test_dict_merge():
     c = {"c": 3}
     assert dict_merge(a, b, c) == {"a": 1, "b": 2, "c": 3}
 
-    with pytest.raises(AssertionError):
-        dict_merge([])
+    #with pytest.raises(AssertionError):
+    assert dict_merge([]) == dict()
 
 
 def test_blocked_command():
@@ -46,8 +46,8 @@ def test_merge_result():
     assert merge_result("foobar", {"a": [1, 2, 3], "b": [4, 5, 6]}) == [1, 2, 3, 4, 5, 6]
     assert merge_result("foobar", {"a": [1, 2, 3], "b": [1, 2, 3]}) == [1, 2, 3]
 
-    with pytest.raises(AssertionError):
-        merge_result("foobar", [])
+   # with pytest.raises(AssertionError):
+    assert merge_result("foobar", []) == None
 
 
 def test_first_key():
@@ -57,8 +57,8 @@ def test_first_key():
         first_key("foobar", {"foo": 1, "bar": 2})
     assert unicode(ex.value).startswith("More then 1 result from command: foobar")
 
-    with pytest.raises(AssertionError):
-        first_key("foobar", None)
+    #with pytest.raises(AssertionError):
+    assert first_key("foobar", None) == None
 
 
 def test_clusterdown_wrapper():

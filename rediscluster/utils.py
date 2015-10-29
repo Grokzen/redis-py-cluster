@@ -11,9 +11,7 @@ def is_dict(d):
     """
     Test if variable is a dict or not.
     """
-    if isinstance(d, dict):
-        return True
-    return None
+    return  isinstance(d, dict)
 
 
 def string_keys_to_dict(key_strings, callback):
@@ -51,15 +49,16 @@ def merge_result(command, res):
     This command is used when sending a command to multiple nodes
     and they result from each node should be merged into a single list.
     """
-    is_dict(res)
+    if is_dict(res):
 
-    result = set([])
+        result = set([])
 
-    for _, v in res.items():
-        for value in v:
-            result.add(value)
+        for _, v in res.items():
+            for value in v:
+                result.add(value)
 
-    return list(result)
+        return list(result)
+    return None
 
 
 def first_key(command, res):
@@ -68,12 +67,12 @@ def first_key(command, res):
 
     If more then 1 result is returned then a `RedisClusterException` is raised.
     """
-    is_dict(res)
+    if is_dict(res):
 
-    if len(res.keys()) != 1:
-        raise RedisClusterException("More then 1 result from command: {0}".format(command))
+        if len(res.keys()) != 1:
+            raise RedisClusterException("More then 1 result from command: {0}".format(command))
 
-    return list(res.values())[0]
+        return list(res.values())[0]
 
 
 def clusterdown_wrapper(func):
