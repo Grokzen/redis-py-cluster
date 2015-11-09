@@ -71,7 +71,7 @@ class ClusterConnectionPool(ConnectionPool):
 
         self.max_connections_per_node = max_connections_per_node
 
-        self.nodes = NodeManager(startup_nodes)
+        self.nodes = NodeManager(startup_nodes, **connection_kwargs)
         if init_slot_cache:
             self.nodes.initialize()
 
