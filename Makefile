@@ -357,8 +357,7 @@ test:
 
 tox:
 	coverage erase
-	tox -e py27
-	TEST_PASSWORD_PROTECTED tox -e py27
+	tox
 	coverage combine
 	coverage report
 
