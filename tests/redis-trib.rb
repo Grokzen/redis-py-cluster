@@ -48,7 +48,7 @@ def xputs(s)
 end
 
 class ClusterNode
-    def initialize(addr)
+    def initialize(addr, pass)
         s = addr.split(":")
         if s.length < 2
            puts "Invalid IP or Port (given as #{addr}) - use IP:Port format"
@@ -64,6 +64,7 @@ class ClusterNode
         @info[:migrating] = {}
         @info[:importing] = {}
         @info[:replicate] = false
+        @info[:password] = pass
         @dirty = false # True if we need to flush slots info into node.
         @friends = []
     end
@@ -89,10 +90,19 @@ class ClusterNode
         print "Connecting to node #{self}: "
         STDOUT.flush
         begin
-            @r = Redis.new(:host => @info[:host], :port => @info[:port], :timeout => 60)
+            if @info[:password] == nil
+                puts "connecting without password"
+                STDOUT.flush
+                @r = Redis.new(:host => @info[:host], :port => @info[:port], :timeout => 60)
+            else
+                puts "connecting with password", @info[:password]
+                STDOUT.flush
+                @r = Redis.new(:host => @info[:host], :port => @info[:port], :password => @info[:password], :timeout => 60)
+            end
             @r.ping
         rescue
             xputs "[ERR] Sorry, can't connect to node #{self}"
+            puts $!
             exit 1 if o[:abort]
             @r = nil
         end
@@ -987,12 +997,12 @@ class RedisTrib
     end
 
     def create_cluster_cmd(argv,opt)
-        opt = {'replicas' => 0}.merge(opt)
+        opt = {'replicas' => 0, 'password' => nil}.merge(opt)
         @replicas = opt['replicas'].to_i
 
         xputs ">>> Creating cluster"
         argv[0..-1].each{|n|
-            node = ClusterNode.new(n)
+            node = ClusterNode.new(n, opt['password'])
             node.connect(:abort => true)
             node.assert_cluster
             node.load_info
@@ -1151,7 +1161,7 @@ class RedisTrib
         xputs ">>> Importing data from #{source_addr} to cluster #{argv[1]}"
         use_copy = opt['copy']
         use_replace = opt['replace']
-        
+
         # Check the existing cluster.
         load_cluster_info_from_node(argv[0])
         check_cluster
@@ -1347,7 +1357,7 @@ COMMANDS={
 }
 
 ALLOWED_OPTIONS={
-    "create" => {"replicas" => true},
+    "create" => {"replicas" => true, "password" => true},
     "add-node" => {"slave" => false, "master-id" => true},
     "import" => {"from" => :required, "copy" => false, "replace" => false},
     "reshard" => {"from" => true, "to" => true, "slots" => true, "yes" => false}
