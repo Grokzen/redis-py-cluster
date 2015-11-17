@@ -31,8 +31,6 @@ def test_blocked_strict_redis_args():
     Some arguments should explicitly be blocked because they will not work in a cluster setup
     """
     params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}]}
-    if os.environ.get('TEST_PASSWORD_PROTECTED', ''):
-        params['port'] += 100
     c = StrictRedisCluster(**params)
     assert c.connection_pool.connection_kwargs["socket_timeout"] == ClusterConnectionPool.RedisClusterDefaultTimeout
 
@@ -44,10 +42,18 @@ def test_password_procted_nodes():
     """
     Test that it is possible to connect to password protected nodes
     """
+    startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
+    password_protected_startup_nodes = [{"host": "127.0.0.1", "port": "7100"}]
     with pytest.raises(RedisClusterException) as ex:
-        _get_client(port=7100)    
+        _get_client(startup_nodes=password_protected_startup_nodes)
     assert unicode(ex.value).startswith("ERROR sending 'cluster slots' command to redis server:")
-    _get_client(port=7100,  password='password_is_protected')    
+    _get_client(startup_nodes=password_protected_startup_nodes,  password='password_is_protected')
+
+    with pytest.raises(RedisClusterException) as ex:
+        _get_client(startup_nodes=startup_nodes, password='password_is_protected')
+    assert unicode(ex.value).startswith("ERROR sending 'cluster slots' command to redis server:")
+    _get_client(startup_nodes=startup_nodes)
+
 
 def test_host_port_startup_node():
     """
