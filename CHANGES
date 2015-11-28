@@ -2,6 +2,7 @@
     * Drop maintained support for python 3.2.
     * Remove Vagrant file in favor for repo maintained by 72squared
     * Add Support for password protected cluster (etng)
+    * Removed assertion from code (gmolight)
 
 * 1.1.0
     * Refactored exception handling and exception classes.
