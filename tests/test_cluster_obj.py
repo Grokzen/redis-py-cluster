@@ -31,6 +31,8 @@ def test_blocked_strict_redis_args():
     Some arguments should explicitly be blocked because they will not work in a cluster setup
     """
     params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}]}
+    if os.environ.get('TEST_PASSWORD_PROTECTED', ''):
+        params['port'] += 100
     c = StrictRedisCluster(**params)
     assert c.connection_pool.connection_kwargs["socket_timeout"] == ClusterConnectionPool.RedisClusterDefaultTimeout
 
@@ -38,6 +40,14 @@ def test_blocked_strict_redis_args():
         _get_client(db=1)
     assert unicode(ex.value).startswith("Argument 'db' is not possible to use in cluster mode")
 
+def test_password_procted_nodes():
+    """
+    Test that it is possible to connect to password protected nodes
+    """
+    with pytest.raises(RedisClusterException) as ex:
+        _get_client(port=7100)    
+    assert unicode(ex.value).startswith("ERROR sending 'cluster slots' command to redis server:")
+    _get_client(port=7100,  password='password_is_protected')    
 
 def test_host_port_startup_node():
     """
