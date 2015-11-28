@@ -12,7 +12,7 @@ from rediscluster.exceptions import (
     RedisClusterException, MovedError, AskError, ClusterDownError,
 )
 from rediscluster.nodemanager import NodeManager
-from tests.conftest import _get_client, skip_if_server_version_lt
+from tests.conftest import _get_client, skip_if_server_version_lt, skip_if_not_password_protected_nodes
 
 # 3rd party imports
 from mock import patch, Mock
@@ -38,6 +38,8 @@ def test_blocked_strict_redis_args():
         _get_client(db=1)
     assert unicode(ex.value).startswith("Argument 'db' is not possible to use in cluster mode")
 
+
+@skip_if_not_password_protected_nodes()
 def test_password_procted_nodes():
     """
     Test that it is possible to connect to password protected nodes

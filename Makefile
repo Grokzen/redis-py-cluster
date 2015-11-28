@@ -358,7 +358,7 @@ test:
 tox:
 	coverage erase
 	tox
-	TEST_PASSWORD_PROTECTED tox
+	TEST_PASSWORD_PROTECTED=1 tox
 	coverage combine
 	coverage report
 

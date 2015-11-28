@@ -57,6 +57,10 @@ def _init_mgt_client(request, cls=None, **kwargs):
     return client
 
 
+def skip_if_not_password_protected_nodes():
+    return pytest.mark.skipif('TEST_PASSWORD_PROTECTED' not in os.environ, reason="")
+
+
 def skip_if_server_version_lt(min_version):
     versions = get_versions()
     for version in versions.values():
