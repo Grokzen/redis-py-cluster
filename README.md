@@ -77,7 +77,7 @@ List of all supported python versions.
 
 Experimental:
 
-- Python 3.6.0a0 - Currently broken due to `coverage` is not yet compatible with python 3.6
+- Python 3.6.0a0
 
 
 ### Python 3.4.0
