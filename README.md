@@ -62,11 +62,12 @@ Please read the [following](docs/Upgrading.md) documentation that will go throug
 
 ## Dependencies & supported python versions
 
-- Python: redis >= `2.10.2` is required
-- Redis server >= `3.0.0` is required
-- Optional Python: hiredis >= `0.1.3`
+- Python: redis >= `2.10.2`, <= `2.10.5` is required.
+  Older versions in the `2.10.x` series can work but using the latest one is allways recommended.
+- Optional Python: hiredis >= `0.2.0`. Older versions might work but is not tested.
+- A working Redis cluster based on version >= `3.0.0` is required. Only `3.0.x` releases is supported.
 
-Hiredis is tested on all supported python versions.
+Latest release of `Hiredis` is tested on all supported python versions.
 
 List of all supported python versions.
 
