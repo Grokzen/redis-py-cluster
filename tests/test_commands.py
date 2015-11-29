@@ -28,6 +28,17 @@ def redis_server_time(client):
 
 class TestRedisCommands(object):
 
+    @skip_if_server_version_lt('2.9.9')
+    def test_zrevrangebylex(self, r):
+        r.zadd('a', a=0, b=0, c=0, d=0, e=0, f=0, g=0)
+        assert r.zrevrangebylex('a', '[c', '-') == [b('c'), b('b'), b('a')]
+        assert r.zrevrangebylex('a', '(c', '-') == [b('b'), b('a')]
+        assert r.zrevrangebylex('a', '(g', '[aaa') == \
+            [b('f'), b('e'), b('d'), b('c'), b('b')]
+        assert r.zrevrangebylex('a', '+', '[f') == [b('g'), b('f')]
+        assert r.zrevrangebylex('a', '+', '-', start=3, num=2) == \
+            [b('d'), b('c')]
+
     def test_command_on_invalid_key_type(self, r):
         r.lpush('a', '1')
         with pytest.raises(ResponseError):
@@ -75,7 +86,7 @@ class TestRedisCommands(object):
         r['a'] = 'foo'
         assert isinstance(r.object('refcount', 'a'), int)
         # assert isinstance(r.object('idletime', 'a'), int)
-        # assert r.object('encoding', 'a') == b('raw')
+        # assert r.object('encoding', 'a') in (b('raw'), b('embstr'))
         assert r.object('idletime', 'invalid-key') is None
 
     def test_ping(self, r):
@@ -1012,10 +1023,16 @@ class TestRedisCommands(object):
         assert r.pfadd('a', *members) == 0
         assert r.pfcount('a') == len(members)
 
+    @pytest.mark.xfail(reason="New pfcount in 2.10.5 currently breaks in cluster")
+    @skip_if_server_version_lt('2.8.9')
     def test_pfcount(self, r):
         members = set([b('1'), b('2'), b('3')])
         r.pfadd('a', *members)
         assert r.pfcount('a') == len(members)
+        members_b = set([b('2'), b('3'), b('4')])
+        r.pfadd('b', *members_b)
+        assert r.pfcount('b') == len(members_b)
+        assert r.pfcount('a', 'b') == len(members_b.union(members))
 
     def test_pfmerge(self, r):
         mema = set([b('1'), b('2'), b('3')])

@@ -117,8 +117,6 @@ class StrictRedisCluster(StrictRedis):
             Some kwargs is not supported and will raise RedisClusterException
             - db (Redis do not support database SELECT in cluster mode)
         """
-        super(StrictRedisCluster, self).__init__(**kwargs)
-
         # Tweaks to StrictRedis client arguments when running in cluster mode
         if "db" in kwargs:
             raise RedisClusterException("Argument 'db' is not possible to use in cluster mode")
@@ -130,15 +128,16 @@ class StrictRedisCluster(StrictRedis):
             startup_nodes.append({"host": host, "port": port if port else 7000})
 
         connection_pool_cls = ClusterReadOnlyConnectionPool if readonly_mode else ClusterConnectionPool
-        self.connection_pool = connection_pool_cls(
+        pool = connection_pool_cls(
             startup_nodes=startup_nodes,
             init_slot_cache=init_slot_cache,
             max_connections=max_connections,
             **kwargs
         )
 
-        self.refresh_table_asap = False
+        super(StrictRedisCluster, self).__init__(connection_pool=pool, **kwargs)
 
+        self.refresh_table_asap = False
         self.nodes_callbacks = self.__class__.NODES_CALLBACKS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
@@ -764,6 +763,12 @@ class StrictRedisCluster(StrictRedis):
         self.delete(dest)
 
         return self.sadd(dest, *res)
+
+    def pfcount(self, *sources):
+        """
+        pfcount has no working cluster implementation yet.
+        """
+        raise RedisClusterException("No cluster impl exists yet")
 
     def pfmerge(self, dest, *sources):
         """
