@@ -1,6 +1,6 @@
 -r requirements.txt
 
-coverage >= 3.7.1,< 4.0.0
+coverage>=4.0,<5.0
 -e git://github.com/pytest-dev/pytest.git@master#egg=pytest
 testfixtures >= 4.0.1
 mock == 1.0.1
