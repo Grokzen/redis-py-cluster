@@ -4,7 +4,7 @@
     * Add Support for password protected cluster (etng)
     * Removed assertion from code (gmolight)
     * Fixed a bug where a regular connection pool was allocated with each StrictRedisCluster instance.
-    * Blocked pfcount from usage because it is currently broken as of redis-py 2.10.5
+    * Rework pfcount to now work as expected when all arguments points to same hashslot
     * New code and important changes from redis-py 2.10.5 have been added to the codebase.
 
 * 1.1.0
