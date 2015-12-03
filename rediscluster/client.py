@@ -96,7 +96,7 @@ class StrictRedisCluster(StrictRedis):
     )
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, init_slot_cache=True,
-                 pipeline_use_threads=True, readonly_mode=False, reinitialize_steps=None, **kwargs):
+                 readonly_mode=False, reinitialize_steps=None, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -106,8 +106,6 @@ class StrictRedisCluster(StrictRedis):
             Can be used to point to a startup node
         :max_connections:
             Maximum number of connections that should be kept open at one time
-        :pipeline_use_threads:
-            By default, use threads in pipeline if this flag is set to True
         :readonly_mode:
             enable READONLY mode. You can read possibly stale data from slave.
         :**kwargs:
@@ -141,7 +139,6 @@ class StrictRedisCluster(StrictRedis):
         self.nodes_callbacks = self.__class__.NODES_CALLBACKS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
-        self.pipeline_use_threads = pipeline_use_threads
         self.reinitialize_counter = 0
         self.reinitialize_steps = reinitialize_steps or 25
 
@@ -153,7 +150,7 @@ class StrictRedisCluster(StrictRedis):
     def pubsub(self, **kwargs):
         return ClusterPubSub(self.connection_pool, **kwargs)
 
-    def pipeline(self, transaction=None, shard_hint=None, use_threads=None):
+    def pipeline(self, transaction=None, shard_hint=None):
         """
         Cluster impl:
             Pipelines do not work in cluster mode the same way they do in normal mode.
@@ -173,8 +170,7 @@ class StrictRedisCluster(StrictRedis):
             nodes_callbacks=self.nodes_callbacks,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
-            use_threads=self.pipeline_use_threads if use_threads is None else use_threads,
-            reinitialize_steps=self.reinitialize_steps,
+            reinitialize_steps=self.reinitialize_steps
         )
 
     def transaction(self, func, *watches, **kwargs):
@@ -866,7 +862,7 @@ class RedisCluster(StrictRedisCluster):
         }
     )
 
-    def pipeline(self, transaction=True, shard_hint=None, use_threads=None):
+    def pipeline(self, transaction=True, shard_hint=None):
         """
         Return a new pipeline object that can queue multiple commands for
         later execution. ``transaction`` indicates whether all commands
@@ -886,8 +882,7 @@ class RedisCluster(StrictRedisCluster):
             refresh_table_asap=self.refresh_table_asap,
             nodes_callbacks=self.nodes_callbacks,
             result_callbacks=self.result_callbacks,
-            response_callbacks=self.response_callbacks,
-            use_threads=self.pipeline_use_threads if use_threads is None else use_threads
+            response_callbacks=self.response_callbacks
         )
 
     def setex(self, name, value, time):

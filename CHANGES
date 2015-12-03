@@ -6,6 +6,7 @@
     * Fixed a bug where a regular connection pool was allocated with each StrictRedisCluster instance.
     * Rework pfcount to now work as expected when all arguments points to same hashslot
     * New code and important changes from redis-py 2.10.5 have been added to the codebase.
+    * Removed the need for threads inside of pipeline. We write the packed commands all nodes before reading the responses which gives us even better performance than threads, especially as we add more nodes to the cluster.
 
 * 1.1.0
     * Refactored exception handling and exception classes.
