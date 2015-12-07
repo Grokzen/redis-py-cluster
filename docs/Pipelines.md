@@ -4,7 +4,7 @@ Just like in redis-py, redis-py-cluster queues up all the commands inside the cl
 
 Ideally all the commands should be sent to each node in the cluster in parallel so that all the commands can be processed as fast as possible. The naive approach is to iterate through each node and send each batch of commands sequentially to each node. If redis-py supported some sort of non-blocking i/o we could send the network requests first and multiplex the socket responses from each node. Instead, we use threads to send the requests in parallel so that the total execution time only equals the amount of time for the slowest round trip to and from the given set of nodes in the cluster needed to process the commands.
 
-In previous versions of the library there were some bugs associated with threaded operations and pipelining. We were freeing connections back into the connection pool prior to reading the responses from each thread and it caused all kinds of problems. But these issues should now be addressed. If you are worried, you can disable the threaded behavior with a flag so that it only sends the commands to each node sequentially.
+In previous versions of the library there were some bugs associated with threaded operations and pipelining. We were freeing connections back into the connection pool prior to reading the responses from each thread and it caused all kinds of problems. Those issues were fixed but there was a special flag to allow you to turn off threading in case you were worried about it. Since we no longer have to use threads at all to get the performance we want, that flag was removed from the client.
 
 
 # Connection Error handling
@@ -51,7 +51,7 @@ Consider the following example. Create a pipeline and issue 6 commands `A`, `B`,
 
 If we look back at the order we executed the commands we get `[A, F]` for the first node and `[B, E, C, D]` for the second node. At first glance this looks like it is out of order because command `E` is executed before `C` & `D`. Why do this not matter? Because no multi key operations can be done in a pipeline we only have to care the execution order is correct for each slot and in this case it was because `B` & `E` belongs to the same slot and `C` & `D` belongs to the same slot. There should be no possible way to corrupt any data between slots if multi key commands is blocked by the code.
 
-What is good with this pipeline solution? First we can acctually have a pipeline solution that will work in most cases with few commands blocked (only multi key commands). Secondly we can run it in parralell with threads or gevent to increase the performance of the pipeline even further, making the benefits even greater.
+What is good with this pipeline solution? First we can actually have a pipeline solution that will work in most cases with few commands blocked (only multi key commands). Secondly we can run it in parralel to increase the performance of the pipeline even further, making the benefits even greater.
 
 
 
