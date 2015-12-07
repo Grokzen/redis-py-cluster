@@ -109,7 +109,6 @@ More detailed documentation can be found in `docs` folder.
 - [Pipelines](docs/Pipelines.md)
 - [Pubsub](docs/Pubsub.md)
 - [READONLY mode](docs/Readonly_mode.md)
-- [Redisco support (Django ORM)](docs/Redisco.md)
 - [Setup a redis cluster. Manually, Docker & Vagrant](docs/Cluster_Setup.md)
 - [Threaded Pipeline support](docs/Threads.md)
 
