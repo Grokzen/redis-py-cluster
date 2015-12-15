@@ -4,11 +4,9 @@
 import random
 import sys
 import time
-import threading
 
 # rediscluster imports
 from .client import StrictRedisCluster
-from .connection import by_node_context
 from .exceptions import (
     RedisClusterException, AskError, MovedError, ClusterDownError,
 )
@@ -16,8 +14,8 @@ from .utils import clusterdown_wrapper
 
 # 3rd party imports
 from redis import StrictRedis
-from redis.exceptions import ResponseError, ConnectionError
-from redis._compat import imap, unicode, xrange
+from redis.exceptions import ResponseError, ConnectionError, RedisError
+from redis._compat import imap, unicode
 
 
 class StrictClusterPipeline(StrictRedisCluster):
@@ -26,7 +24,7 @@ class StrictClusterPipeline(StrictRedisCluster):
 
     def __init__(self, connection_pool, nodes_callbacks=None, result_callbacks=None,
                  response_callbacks=None, startup_nodes=None, refresh_table_asap=False,
-                 use_threads=True, reinitialize_steps=None):
+                 reinitialize_steps=None):
         self.command_stack = []
         self.connection_pool = connection_pool
         self.nodes_callbacks = nodes_callbacks
@@ -36,7 +34,6 @@ class StrictClusterPipeline(StrictRedisCluster):
         self.response_callbacks = response_callbacks
         self.result_callbacks = result_callbacks
         self.startup_nodes = startup_nodes if startup_nodes else []
-        self.use_threads = use_threads
 
     def __repr__(self):
         return "{}".format(type(self).__name__)
@@ -57,13 +54,14 @@ class StrictClusterPipeline(StrictRedisCluster):
         return self.pipeline_execute_command(*args, **kwargs)
 
     def pipeline_execute_command(self, *args, **options):
-        self.command_stack.append((args, options))
+        self.command_stack.append(PipelineCommand(args, options, len(self.command_stack)))
         return self
 
-    def raise_first_error(self, commands, response):
-        for i, r in enumerate(response):
+    def raise_first_error(self, stack):
+        for c in stack:
+            r = c.result
             if isinstance(r, ResponseError):
-                self.annotate_exception(r, i + 1, commands[i][0])
+                self.annotate_exception(r, c.position + 1, c.args)
                 raise r
 
     def annotate_exception(self, exception, number, command):
@@ -130,25 +128,9 @@ class StrictClusterPipeline(StrictRedisCluster):
 
         ttl = self.RedisClusterRequestTTL
 
-        # this is where we store all the responses to the pipeline execute.
-        # the actual response is a list, not a dict, but because we may be getting
-        # the responses for commands out of order or sometimes retrying them it is important
-        # that we have a way to key the responses by the order they came in so that we can return
-        # the responses as if we did them sequentially.
-        response = {}
-
-        # `attempt` corresponds to the sequence number of commands still left to process or retry.
-        # initially this corresponds exactly to the number of commands we need to run, and if all goes
-        # well, that's where it'll end. Everything will be attempted once, and we end up with an empty
-        # array of commands left to process. But if we need to retry, `attempt` gets repopulated with
-        # the sequence number of the command that is being retried.
-        attempt = xrange(0, len(stack)) if stack else []  # noqa
-
-        # there are different types of retries. redis cluster says if it responds with an ASK error,
-        # you need to handle it differently than a moved error. And if we hit a connection error, we
-        # don't really know what to do for that command so we pick a random other node in the cluster.
-        ask_retry = {}
-        conn_retry = {}
+        # the first time sending the commands we send all of the commands that were queued up.
+        # if we have to run through it again, we only retry the commands that failed.
+        attempt = sorted(stack, key=lambda x: x.position)
 
         # as long as we have commands left to attempt and we haven't overrun the max attempts, keep trying.
         while attempt and ttl > 0:
@@ -164,19 +146,18 @@ class StrictClusterPipeline(StrictRedisCluster):
 
             # as we move through each command that still needs to be processed,
             # we figure out the slot number that command maps to, then from the slot determine the node.
-            for i in attempt:
-                c = stack[i]
-                slot = self._determine_slot(*c[0])
-
+            for c in attempt:
                 # normally we just refer to our internal node -> slot table that tells us where a given
                 # command should route to.
                 # but if we are retrying, the cluster could have told us we were wrong or the node was down.
                 # in that case, we have to try something that contradicts our rules.
-                if i in ask_retry:
-                    node = ask_retry[i]
-                elif i in conn_retry:
-                    node = conn_retry[i]
+                # there are different types of retries. redis cluster says if it responds with an ASK error,
+                # you need to handle it differently than a moved error. And if we hit a connection error, we
+                # don't really know what to do for that command so we pick a random other node in the cluster.
+                if c.node is not None:
+                    node = c.node
                 else:
+                    slot = self._determine_slot(*c.args)
                     if self.refresh_table_asap:  # MOVED
                         node = self.connection_pool.get_master_node_by_slot(slot)
                     else:
@@ -188,167 +169,47 @@ class StrictClusterPipeline(StrictRedisCluster):
                 # now that we know the name of the node ( it's just a string in the form of host:port )
                 # we can build a list of commands for each node.
                 node_name = node['name']
-                nodes[node_name] = node
-                node_commands.setdefault(node_name, {})
-                node_commands[node_name][i] = c
+                if node_name not in nodes:
+                    nodes[node_name] = NodeCommands(self.parse_response, self.connection_pool.get_connection_by_node(node))
 
-            # Get one connection at a time from the pool and basiccly copy the logic from
-            #  _execute_pipeline() below and do what a normal pipeline does.
+                if c.asking:
+                    nodes[node_name].append(PipelineCommand(['ASKING']))
+                nodes[node_name].append(c)
 
-            # now that we've split out the commands by the node we plan to send them to,
-            # we can reset the commands we'll attempt next time around back to nothing.
-            # when we process the response, any commands that need to be retried because of
-            # connection errors, MOVED errors, or ASKING errors will be dumped into here.
-            # most of the time this array will just stay empty.
-            attempt = []
-
-            # only use threads when it makes sense performance-wise to do so.
-            # if you are doing an ask_retry, explicitly disable it.
-            # makes it easier to define the logic of how to do the ASKING command,
-            # and in practice, the server will only be moving one slot at a time,
-            # so there will only be one server that will be recieving these ASKING retries
-            # anyway.
-            if self.use_threads and not ask_retry and len(node_commands) > 1:
-
-                # for each node we query, we need to have one worker.
-                # that way all pipelined commands are issued in parallel.
-                # this could be a problem if you have hundreds of nodes in your cluster.
-                # We should really refactor this to be a thread pool of workers, and allocate up to a
-                # certain max number of threads.
-                workers = dict()
-
-                # allocate all of the redis connections from the connection pool.
-                # each connection gets passed into its own thread so it can query each node in paralle.
-                connections = {
-                    node_name: self.connection_pool.get_connection_by_node(nodes[node_name])
-                    for node_name in node_commands
-                }
-
-                # iterate through each set of commands and pass them into a worker thread so
-                # it can be executed in it's own socket connection from the redis connection pool
-                # in parallel.
-                try:
-
-                    for node_name in node_commands:
-                        node = nodes[node_name]
-                        # build the list of commands to be passed to a particular node.
-                        # we have to do this on each attempt, because the cluster may respond to us
-                        # that a command for a given slot actually should be routed to a different node.
-                        cmds = [node_commands[node_name][i] for i in sorted(node_commands[node_name].keys())]
-
-                        # pass all the commands bound for a particular node into a thread worker object
-                        # along with the redis connection needed to run the commands and parse the response.
-                        workers[node_name] = ThreadedPipelineExecute(
-                            execute=self._execute_pipeline,
-                            conn=connections[node_name],
-                            cmds=cmds)
-
-                        workers[node_name].start()
-
-                    # now that all the queries are running against all the nodes,
-                    # wait for all of them to come back so we can parse the responses.
-                    for node_name, worker in workers.items():
-                        worker.join()
-
-                        # if the worker hit an exception this is really bad.
-                        # that means something completely unexpected happened.
-                        # we have to assume the worst and assume that all the calls against
-                        # that particular node in the cluster failed and will need to be retried.
-                        # maybe that isn't a safe assumption?
-                        if worker.exception:
-                            for i in node_commands[node_name].keys():
-                                response[i] = worker.exception
-                        else:
-                            # we got a valid response back from redis.
-                            # map each response based on the sequence of the original request stack.
-                            # some of these responses may represent redis connection or ask errors etc.
-                            for i, v in zip(sorted(node_commands[node_name].keys()), worker.value):
-                                response[i] = v
-                finally:
-                    # don't need our threads anymore.
-                    # explicitly remove them from the current namespace so they can be garbage collected.
-                    del workers
-
-                    # release all of the redis connections we allocated earlier back into the connection pool.
-                    for conn in connections.values():
-                        self.connection_pool.release(conn)
-                    del connections
-            else:
-                # if we got here, it's because threading is disabled explicitly, or
-                # all the commands map to a single node so we don't need to use different threads to
-                # issue commands in parallel.
-
-                # first, we need to keep track of all the commands and what responses they map to.
-                # this is because we need to interject ASKING commands into the mix. I thought of a little
-                # hack to map these responses back to None instead of the integer sequence id that was the
-                # position number of the command issued in the stack of command requests at the point pipeline
-                # execute was issued.
-                track_cmds = {}
-
+            try:
                 # send the commands in sequence.
-                for node_name in node_commands:
-                    node = nodes[node_name]
-                    cmds = []
-                    track_cmds[node_name] = []
+                # we only write to all the open sockets for each node, we don't read
+                # this allows us to flush all the requests out across the network essentially in parallel
+                # so that we can read them all in parallel as they come back.
+                # we dont' multiplex on the sockets as they come available, but that shouldn't make too much difference.
+                node_commands = nodes.values()
+                for n in node_commands:
+                    n.write()
 
-                    # we've got the commands we need to run for each node,
-                    # sort them to make sure that they are executed in the same order
-                    # they came in on the stack otherwise it changes the logic.
-                    # we make no guarantees about the order of execution of the commands run
-                    # except that we are sure we will always process the commands for a given key
-                    # in a sequential order. If we get an error from the server about a given key,
-                    # that will apply the same for all commands on that key (MOVED, ASKING, etc)
-                    # so we will be resending all of the commands for that key to a new node.
-                    for i in sorted(node_commands[node_name].keys()):
-                        if i in ask_retry:
-                            # put in our fake stub placeholder for the response.
-                            track_cmds[node_name].append(None)
-                            cmds.append((['ASKING'], {}))
+                for n in node_commands:
+                    n.read()
 
-                        # keep track of the sequence number and the mapping of actual commands
-                        # sent to the node. (ASKING SCREWS EVERYTHING UP!!!!!)
-                        track_cmds[node_name].append(i)
-                        cmds.append(node_commands[node_name][i])
+            finally:
+                # release all of the redis connections we allocated earlier back into the connection pool.
+                for n in nodes.values():
+                    self.connection_pool.release(n.connection)
+                del nodes
 
-                    # allocate a connection from the connection pool and send the commands for each node
-                    # as a packed single network request. Since we aren't using threads here, we are
-                    # only able to send each request sequentially and block, waiting for the response.
-                    # After we get the response to one connection, we move on to the next.
-                    with by_node_context(self.connection_pool, node) as connection:
-                        result = zip(
-                            track_cmds[node_name],
-                            self._execute_pipeline(connection, cmds, False))
-
-                        # map the response from the connection to the commands we were running.
-                        for i, v in result:
-
-                            # remember None is a shim value used above as a placeholder for the ASKING
-                            # command. That response is just `OK` and we don't care about that.
-                            # throw it away.
-                            # Map the response here to the original sequence of commands in the stack
-                            # sent to pipeline.
-                            if i is not None:
-                                response[i] = v
-
-            ask_retry = {}
-            conn_retry = {}
+            # if the response isn't an exception it is a valid response from the node
+            # we're all done with that command, YAY!
+            # if we move beyond this point, we've run into problems and we need to retry the command.
+            attempt = sorted([c for c in attempt if isinstance(c.result, Exception)], key=lambda x: x.position)
 
             # now that we have tried to execute all the commands let's see what we have left.
-            for i, v in response.items():
-                # if the response isn't an exception it is a valid response from the node
-                # we're all done with that command, YAY!
-                # if we move beyond this point, we've run into problems and we need to retry the command.
-                if not isinstance(v, Exception):
-                    continue
-
+            for c in attempt:
+                c.node = None
+                c.asking = False
                 # connection errors are tricky because most likely we routed to the right node but it is
                 # down. In that case, the best we can do is randomly try another node in the cluster
                 # and hope that it tells us to try that node again with a MOVED error or tells us the new
                 # master.
-                if isinstance(v, ConnectionError):
-                    conn_retry[i] = random.choice(self.startup_nodes)
-                    attempt.append(i)
-
+                if isinstance(c.result, ConnectionError):
+                    c.node = random.choice(self.startup_nodes)
                     # if we are stuck in a retry loop, slow things down a bit to give the failover
                     # a chance of actually happening.
                     if ttl < self.RedisClusterRequestTTL / 2:
@@ -357,46 +218,45 @@ class StrictClusterPipeline(StrictRedisCluster):
 
                 # If cluster is down it should be raised and bubble up to
                 # utils.clusterdown_wrapper()
-                if isinstance(v, ClusterDownError):
+                if isinstance(c.result, ClusterDownError):
                     self.connection_pool.disconnect()
                     self.connection_pool.reset()
                     self.refresh_table_asap = True
 
-                    raise v
+                    raise c.result
 
                 # A MOVED response from the cluster means that somehow we were misinformed about which node
                 # a given key slot maps to. This can happen during cluster resharding, during master-slave
                 # failover, or if we got a connection error and were forced to re-attempt the command against a
                 # random node.
-                if isinstance(v, MovedError):
+                if isinstance(c.result, MovedError):
                     # Do not perform full cluster refresh on every MOVED error
                     self.reinitialize_counter += 1
 
                     if self.reinitialize_counter % self.reinitialize_steps == 0:
                         self.refresh_table_asap = True
 
-                    node = self.connection_pool.nodes.set_node(v.host, v.port, server_type='master')
-                    self.connection_pool.nodes.slots[v.slot_id][0] = node
-                    attempt.append(i)
+                    node = self.connection_pool.nodes.set_node(c.result.host, c.result.port, server_type='master')
+                    self.connection_pool.nodes.slots[c.result.slot_id][0] = node
                     self._fail_on_redirect(allow_redirections)
 
                 # an ASK error from the server means that only this specific command needs to be tried against
                 # a different server (not every key in the slot). This happens only during cluster re-sharding
                 # and is a major pain in the ass. For it to work correctly, we have to resend the command to
                 # the new node but only after first sending an ASKING command immediately beforehand.
-                elif isinstance(v, AskError):
-                    node = self.connection_pool.nodes.set_node(v.host, v.port, server_type='master')
-                    ask_retry[i] = node
-                    attempt.append(i)
+                elif isinstance(c.result, AskError):
+                    node = self.connection_pool.nodes.set_node(c.result.host, c.result.port, server_type='master')
+                    c.node = node
+                    c.asking = True
                     self._fail_on_redirect(allow_redirections)
 
         # YAY! we made it out of the attempt loop.
         # turn the response back into a simple flat array that corresponds
         # to the sequence of commands issued in the stack in pipeline.execute()
-        response = [response[k] for k in sorted(response.keys())]
+        response = [c.result for c in sorted(stack, key=lambda x: x.position)]
 
         if raise_on_error:
-            self.raise_first_error(stack, response)
+            self.raise_first_error(stack)
 
         return response
 
@@ -405,31 +265,6 @@ class StrictClusterPipeline(StrictRedisCluster):
         """
         if not allow_redirections:
             raise RedisClusterException("ASK & MOVED redirection not allowed in this pipeline")
-
-    def _execute_pipeline(self, connection, commands, raise_on_error):
-        """
-        Code borrowed from StrictRedis so it can be fixed
-        """
-        # build up all commands into a single request to increase network perf
-        all_cmds = connection.pack_commands([args for args, _ in commands])
-
-        try:
-            connection.send_packed_command(all_cmds)
-        except ConnectionError as e:
-            return [e for _ in xrange(len(commands))]  # noqa
-
-        response = []
-
-        for args, options in commands:
-            try:
-                response.append(self.parse_response(connection, args[0], **options))
-            except (ConnectionError, ResponseError):
-                response.append(sys.exc_info()[1])
-
-        if raise_on_error:
-            self.raise_first_error(commands, response)
-
-        return response
 
     def multi(self):
         raise RedisClusterException("method multi() is not implemented")
@@ -498,6 +333,7 @@ StrictClusterPipeline.move = block_pipeline_command(StrictRedis.move)
 StrictClusterPipeline.mset = block_pipeline_command(StrictRedis.mset)
 StrictClusterPipeline.msetnx = block_pipeline_command(StrictRedis.msetnx)
 StrictClusterPipeline.pfmerge = block_pipeline_command(StrictRedis.pfmerge)
+StrictClusterPipeline.pfcount = block_pipeline_command(StrictRedis.pfcount)
 StrictClusterPipeline.ping = block_pipeline_command(StrictRedis.ping)
 StrictClusterPipeline.publish = block_pipeline_command(StrictRedis.publish)
 StrictClusterPipeline.randomkey = block_pipeline_command(StrictRedis.randomkey)
@@ -534,22 +370,45 @@ StrictClusterPipeline.sunionstore = block_pipeline_command(StrictRedis.sunionsto
 StrictClusterPipeline.time = block_pipeline_command(StrictRedis.time)
 
 
-class ThreadedPipelineExecute(threading.Thread):
-    """
-    Threaded pipeline execution.
-    release the connection back into the pool after executing.
-    """
+class PipelineCommand(object):
+    def __init__(self, args, options=None, position=None):
+        self.args = args
+        if options is None:
+            options = {}
+        self.options = options
+        self.position = position
+        self.result = None
+        self.node = None
+        self.asking = False
 
-    def __init__(self, execute, conn, cmds):
-        threading.Thread.__init__(self)
-        self.execute = execute
-        self.conn = conn
-        self.cmds = cmds
-        self.exception = None
-        self.value = None
 
-    def run(self):
+class NodeCommands(object):
+
+    def __init__(self, parse_response, connection):
+        self.parse_response = parse_response
+        self.connection = connection
+        self.commands = []
+
+    def append(self, c):
+        self.commands.append(c)
+
+    def write(self):
+        """
+        Code borrowed from StrictRedis so it can be fixed
+        """
+        # build up all commands into a single request to increase network perf
+        connection = self.connection
+        commands = self.commands
         try:
-            self.value = self.execute(self.conn, self.cmds, False)
-        except Exception as e:
-            self.exception = e
+            connection.send_packed_command(connection.pack_commands([c.args for c in commands]))
+        except ConnectionError as e:
+            for c in commands:
+                c.result = e
+
+    def read(self):
+        connection = self.connection
+        for c in self.commands:
+            try:
+                c.result = self.parse_response(connection, c.args[0], **c.options)
+            except RedisError:
+                c.result = sys.exc_info()[1]

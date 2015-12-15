@@ -1,6 +1,21 @@
 # Upgrading redis-py-cluster
 
-This document will describe what must be done when upgrading between different versions to ensure that code still works.
+This document describes what must be done when upgrading between different versions to ensure that code still works.
+
+## 1.1.0 -> 1.2.0
+
+Discontinue passing `pipeline_use_threads` flag to `rediscluster.StrictRedisCluster` or `rediscluster.RedisCluster`.
+
+Also discontinue passing `use_threads` flag to the pipeline() method. 
+
+
+In 1.1.0 and prior, you could use `pipeline_use_threads` flag to tell the client to perform queries to the different nodes in parallel via threads. We exposed this as a flag because using threads might have been risky and we wanted people to be able to disable it if needed.
+
+With this release we figured out how to get parallelization of the commands without the need for threads. We write to all the nodes before reading from them, essentially multiplexing the connections (but without the need for complicated socket multiplexing). We found this approach to be faster and more scalable as more nodes are added to the cluster.
+
+That means we don't need the `pipeline_use_threads` flag anymore, or the `use_threads` flag that could be passed into the instantiation of the pipeline object itself.
+
+The logic is greatly simplified and the default behavior will now come with a performance boost and no need to use threads.
 
 
 ## 1.0.0 --> 1.1.0

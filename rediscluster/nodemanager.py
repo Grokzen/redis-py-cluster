@@ -16,7 +16,8 @@ from redis import ConnectionError
 class NodeManager(object):
     RedisClusterHashSlots = 16384
 
-    def __init__(self, startup_nodes=None):
+    def __init__(self, startup_nodes=None, **connection_kwargs):
+        self.connection_kwargs = connection_kwargs
         self.nodes = {}
         self.slots = {}
         self.startup_nodes = [] if startup_nodes is None else startup_nodes
@@ -69,7 +70,37 @@ class NodeManager(object):
         return self.nodes[key]
 
     def get_redis_link(self, host, port, decode_responses=False):
-        return StrictRedis(host=host, port=port, decode_responses=decode_responses)
+        allowed_keys = (
+            'host',
+            'port',
+            'db',
+            'password',
+            'socket_timeout',
+            'socket_connect_timeout',
+            'socket_keepalive',
+            'socket_keepalive_options',
+            'connection_pool',
+            'unix_socket_path',
+            'encoding',
+            'encoding_errors',
+            'charset',
+            'errors',
+            'decode_responses',
+            'retry_on_timeout',
+            'ssl',
+            'ssl_keyfile',
+            'ssl_certfile',
+            'ssl_cert_reqs',
+            'ssl_ca_certs',
+            'max_connections',
+        )
+        disabled_keys = (
+            'host',
+            'port',
+            'decode_responses',
+        )
+        connection_kwargs = {k: v for k, v in self.connection_kwargs.items() if k in set(allowed_keys) - set(disabled_keys)}
+        return StrictRedis(host=host, port=port, decode_responses=decode_responses, **connection_kwargs)
 
     def initialize(self):
         """

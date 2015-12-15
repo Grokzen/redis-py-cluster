@@ -96,7 +96,7 @@ class StrictRedisCluster(StrictRedis):
     )
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, init_slot_cache=True,
-                 pipeline_use_threads=True, readonly_mode=False, reinitialize_steps=None, **kwargs):
+                 readonly_mode=False, reinitialize_steps=None, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -106,8 +106,6 @@ class StrictRedisCluster(StrictRedis):
             Can be used to point to a startup node
         :max_connections:
             Maximum number of connections that should be kept open at one time
-        :pipeline_use_threads:
-            By default, use threads in pipeline if this flag is set to True
         :readonly_mode:
             enable READONLY mode. You can read possibly stale data from slave.
         :**kwargs:
@@ -117,32 +115,37 @@ class StrictRedisCluster(StrictRedis):
             Some kwargs is not supported and will raise RedisClusterException
             - db (Redis do not support database SELECT in cluster mode)
         """
-        super(StrictRedisCluster, self).__init__(**kwargs)
-
         # Tweaks to StrictRedis client arguments when running in cluster mode
         if "db" in kwargs:
             raise RedisClusterException("Argument 'db' is not possible to use in cluster mode")
 
-        startup_nodes = [] if startup_nodes is None else startup_nodes
+        if "connection_pool" in kwargs:
+            pool = kwargs.pop('connection_pool')
+        else:
+            startup_nodes = [] if startup_nodes is None else startup_nodes
 
-        # Support host/port as argument
-        if host:
-            startup_nodes.append({"host": host, "port": port if port else 7000})
+            # Support host/port as argument
+            if host:
+                startup_nodes.append({"host": host, "port": port if port else 7000})
 
-        connection_pool_cls = ClusterReadOnlyConnectionPool if readonly_mode else ClusterConnectionPool
-        self.connection_pool = connection_pool_cls(
-            startup_nodes=startup_nodes,
-            init_slot_cache=init_slot_cache,
-            max_connections=max_connections,
-            **kwargs
-        )
+            if readonly_mode:
+                connection_pool_cls = ClusterReadOnlyConnectionPool
+            else:
+                connection_pool_cls = ClusterConnectionPool
+
+            pool = connection_pool_cls(
+                startup_nodes=startup_nodes,
+                init_slot_cache=init_slot_cache,
+                max_connections=max_connections,
+                **kwargs
+            )
+
+        super(StrictRedisCluster, self).__init__(connection_pool=pool, **kwargs)
 
         self.refresh_table_asap = False
-
         self.nodes_callbacks = self.__class__.NODES_CALLBACKS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
-        self.pipeline_use_threads = pipeline_use_threads
         self.reinitialize_counter = 0
         self.reinitialize_steps = reinitialize_steps or 25
 
@@ -154,7 +157,7 @@ class StrictRedisCluster(StrictRedis):
     def pubsub(self, **kwargs):
         return ClusterPubSub(self.connection_pool, **kwargs)
 
-    def pipeline(self, transaction=None, shard_hint=None, use_threads=None):
+    def pipeline(self, transaction=None, shard_hint=None):
         """
         Cluster impl:
             Pipelines do not work in cluster mode the same way they do in normal mode.
@@ -174,8 +177,7 @@ class StrictRedisCluster(StrictRedis):
             nodes_callbacks=self.nodes_callbacks,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
-            use_threads=self.pipeline_use_threads if use_threads is None else use_threads,
-            reinitialize_steps=self.reinitialize_steps,
+            reinitialize_steps=self.reinitialize_steps
         )
 
     def transaction(self, func, *watches, **kwargs):
@@ -765,6 +767,23 @@ class StrictRedisCluster(StrictRedis):
 
         return self.sadd(dest, *res)
 
+    def ensure_same_slot(self, keys):
+        """
+        Returns True if all slots for the list of keys point
+        to the same hash slot.
+        """
+        slots = [self.connection_pool.nodes.keyslot(key) for key in keys]
+        return len(slots) == 1
+
+    def pfcount(self, *sources):
+        """
+        pfcount only works when all sources point to the same hash slot.
+        """
+        if self.ensure_same_slot(sources):
+            return super(self.__class__, self).pfcount(*sources)
+        else:
+            raise RedisClusterException("pfcount can't be used when sources point to different hashslots")
+
     def pfmerge(self, dest, *sources):
         """
         Merge N different HyperLogLogs into a single one.
@@ -850,7 +869,7 @@ class RedisCluster(StrictRedisCluster):
         }
     )
 
-    def pipeline(self, transaction=True, shard_hint=None, use_threads=None):
+    def pipeline(self, transaction=True, shard_hint=None):
         """
         Return a new pipeline object that can queue multiple commands for
         later execution. ``transaction`` indicates whether all commands
@@ -870,8 +889,7 @@ class RedisCluster(StrictRedisCluster):
             refresh_table_asap=self.refresh_table_asap,
             nodes_callbacks=self.nodes_callbacks,
             result_callbacks=self.result_callbacks,
-            response_callbacks=self.response_callbacks,
-            use_threads=self.pipeline_use_threads if use_threads is None else use_threads
+            response_callbacks=self.response_callbacks
         )
 
     def setex(self, name, value, time):

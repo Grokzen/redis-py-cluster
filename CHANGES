@@ -1,3 +1,14 @@
+* Next release
+    * Drop maintained support for python 3.2.
+    * Remove Vagrant file in favor for repo maintained by 72squared
+    * Add Support for password protected cluster (etng)
+    * Removed assertion from code (gmolight)
+    * Fixed a bug where a regular connection pool was allocated with each StrictRedisCluster instance.
+    * Rework pfcount to now work as expected when all arguments points to same hashslot
+    * New code and important changes from redis-py 2.10.5 have been added to the codebase.
+    * Removed the need for threads inside of pipeline. We write the packed commands all nodes before reading the responses which gives us even better performance than threads, especially as we add more nodes to the cluster.
+    * Allow passing in a custom connection pool
+
 * 1.1.0
     * Refactored exception handling and exception classes.
     * Added READONLY mode support, scales reads using slave nodes.

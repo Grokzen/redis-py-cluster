@@ -10,9 +10,9 @@ This project is a port of `redis-rb-cluster` by antirez, with alot of added func
 
 # Project status
 
-The project is not dead but, not much new development is done right now. I do answer issue reports and pull requests as soon as possible. If you have a problem with the code, you can ping me inside the gitter channel that you can find here [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) and i will help you out with problems or usage of this lib.
+If you have a problem with the code or general questions about this lib, you can ping me inside the gitter channel that you can find here [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/Grokzen/redis-py-cluster?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) and i will help you out with problems or usage of this lib.
 
-As of release `0.3.0` this project will be considered stable and usable in production. If you are going to use redis cluster in your project, you should read up on all documentation that you can find in the bottom of this Readme file. It will contain usage examples and descriptions of what is and what is not implemented. It will also describe how and why things work the way they do in this client.
+As of release `1.0.0` this project will be considered stable and usable in production. If you are going to use redis cluster in your project, you should read up on all documentation that you can find in the bottom of this Readme file. It will contain usage examples and descriptions of what is and what is not implemented. It will also describe how and why things work the way they do in this client.
 
 On the topic about porting/moving this code into `redis-py` there is currently work over here https://github.com/andymccurdy/redis-py/pull/604 that will bring cluster support based on this code. But my suggestion is that until that work is completed that you should use this lib.
 
@@ -62,23 +62,23 @@ Please read the [following](docs/Upgrading.md) documentation that will go throug
 
 ## Dependencies & supported python versions
 
-- Python: redis >= `2.10.2` is required
-- Redis server >= `3.0.0` is required
-- Optional Python: hiredis >= `0.1.3`
+- Python: redis >= `2.10.2`, <= `2.10.5` is required.
+  Older versions in the `2.10.x` series can work but using the latest one is allways recommended.
+- Optional Python: hiredis >= `0.2.0`. Older versions might work but is not tested.
+- A working Redis cluster based on version >= `3.0.0` is required. Only `3.0.x` releases is supported.
 
-Hiredis is tested on all supported python versions.
+Latest release of `Hiredis` is tested on all supported python versions.
 
 List of all supported python versions.
 
 - 2.7
-- 3.2
 - 3.3
 - 3.4.1+
 - 3.5
 
 Experimental:
 
-- Python 3.6.0a0 - Currently broken due to `coverage` is not yet compatible with python 3.6
+- Python 3.6.0a0
 
 
 ### Python 3.4.0
@@ -101,17 +101,16 @@ To run all tests in all supported environments with `tox` read this [Tox multien
 
 More detailed documentation can be found in `docs` folder.
 
+- [Authors](docs/Authors)
 - [Benchmarks](docs/Benchmarks.md)
-- [Pubsub](docs/Pubsub.md)
-- [Setup a redis cluster. Manually, Docker & Vagrant](docs/Cluster_Setup.md)
+- [Cluster Management class](docs/ClusterMgt.md)
 - [Command differences](docs/Commands.md)
 - [Limitations and differences](docs/Limits_and_differences.md)
-- [Redisco support (Django ORM)](docs/Redisco.md)
 - [Pipelines](docs/Pipelines.md)
-- [Threaded Pipeline support](docs/Threads.md)
-- [Cluster Management class](docs/ClusterMgt.md)
+- [Pubsub](docs/Pubsub.md)
 - [READONLY mode](docs/Readonly_mode.md)
-- [Authors](docs/Authors)
+- [Setup a redis cluster. Manually, Docker & Vagrant](docs/Cluster_Setup.md)
+- [Threaded Pipeline support](docs/Threads.md)
 
 
 

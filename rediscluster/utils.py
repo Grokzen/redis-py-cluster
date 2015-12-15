@@ -7,15 +7,6 @@ from .exceptions import (
 )
 
 
-def is_dict(d):
-    """
-    Test if variable is a dict or not.
-    """
-    assert isinstance(d, dict)
-
-    return True
-
-
 def string_keys_to_dict(key_strings, callback):
     """
     Maps each string in `key_strings` to `callback` function
@@ -31,7 +22,9 @@ def dict_merge(*dicts):
     merged = {}
 
     for d in dicts:
-        if is_dict(d):
+        if not isinstance(d, dict):
+            raise ValueError('Value should be of dict type')
+        else:
             merged.update(d)
 
     return merged
@@ -51,7 +44,8 @@ def merge_result(command, res):
     This command is used when sending a command to multiple nodes
     and they result from each node should be merged into a single list.
     """
-    is_dict(res)
+    if not isinstance(res, dict):
+        raise ValueError('Value should be of dict type')
 
     result = set([])
 
@@ -68,7 +62,8 @@ def first_key(command, res):
 
     If more then 1 result is returned then a `RedisClusterException` is raised.
     """
-    is_dict(res)
+    if not isinstance(res, dict):
+        raise ValueError('Value should be of dict type')
 
     if len(res.keys()) != 1:
         raise RedisClusterException("More then 1 result from command: {0}".format(command))
