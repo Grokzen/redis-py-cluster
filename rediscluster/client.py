@@ -119,19 +119,26 @@ class StrictRedisCluster(StrictRedis):
         if "db" in kwargs:
             raise RedisClusterException("Argument 'db' is not possible to use in cluster mode")
 
-        startup_nodes = [] if startup_nodes is None else startup_nodes
+        if "connection_pool" in kwargs:
+            pool = kwargs.pop('connection_pool')
+        else:
+            startup_nodes = [] if startup_nodes is None else startup_nodes
 
-        # Support host/port as argument
-        if host:
-            startup_nodes.append({"host": host, "port": port if port else 7000})
+            # Support host/port as argument
+            if host:
+                startup_nodes.append({"host": host, "port": port if port else 7000})
 
-        connection_pool_cls = ClusterReadOnlyConnectionPool if readonly_mode else ClusterConnectionPool
-        pool = connection_pool_cls(
-            startup_nodes=startup_nodes,
-            init_slot_cache=init_slot_cache,
-            max_connections=max_connections,
-            **kwargs
-        )
+            if readonly_mode:
+                connection_pool_cls = ClusterReadOnlyConnectionPool
+            else:
+                connection_pool_cls = ClusterConnectionPool
+
+            pool = connection_pool_cls(
+                startup_nodes=startup_nodes,
+                init_slot_cache=init_slot_cache,
+                max_connections=max_connections,
+                **kwargs
+            )
 
         super(StrictRedisCluster, self).__init__(connection_pool=pool, **kwargs)
 
