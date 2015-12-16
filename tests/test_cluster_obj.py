@@ -22,6 +22,14 @@ import pytest
 pytestmark = skip_if_server_version_lt('2.9.0')
 
 
+class DummyConnectionPool(ClusterConnectionPool):
+    pass
+
+
+class DummyConnection(object):
+    pass
+
+
 def test_representation(r):
     assert re.search('^StrictRedisCluster<[0-9\.\:\,].+>$', str(r))
 
@@ -49,7 +57,7 @@ def test_password_procted_nodes():
     with pytest.raises(RedisClusterException) as ex:
         _get_client(startup_nodes=password_protected_startup_nodes)
     assert unicode(ex.value).startswith("ERROR sending 'cluster slots' command to redis server:")
-    _get_client(startup_nodes=password_protected_startup_nodes,  password='password_is_protected')
+    _get_client(startup_nodes=password_protected_startup_nodes, password='password_is_protected')
 
     with pytest.raises(RedisClusterException) as ex:
         _get_client(startup_nodes=startup_nodes, password='password_is_protected')
@@ -82,6 +90,21 @@ def test_readonly_instance(ro):
     Test that readonly_mode=True instance has ClusterReadOnlyConnectionPool
     """
     assert isinstance(ro.connection_pool, ClusterReadOnlyConnectionPool)
+
+
+def test_custom_connectionpool():
+    """
+    Test that a custom connection pool will be used by StrictRedisCluster
+    """
+    h = "192.168.0.1"
+    p = 7001
+    pool = DummyConnectionPool(host=h, port=p, connection_class=DummyConnection,
+                               startup_nodes=[{'host': h, 'port': p}],
+                               init_slot_cache=False)
+    c = StrictRedisCluster(connection_pool=pool, init_slot_cache=False)
+    assert c.connection_pool is pool
+    assert c.connection_pool.connection_class == DummyConnection
+    assert {"host": h, "port": p} in c.connection_pool.nodes.startup_nodes
 
 
 def test_blocked_commands(r):
