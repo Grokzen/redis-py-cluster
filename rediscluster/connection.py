@@ -69,6 +69,7 @@ class ClusterConnectionPool(ConnectionPool):
                  max_connections=None, max_connections_per_node=False, **connection_kwargs):
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
+        self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
 
         self.nodes = NodeManager(startup_nodes, **connection_kwargs)

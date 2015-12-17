@@ -74,6 +74,10 @@ class TestConnectionPool(object):
         with pytest.raises(RedisClusterException):
             pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
 
+    def test_max_connections_default_setting(self):
+        pool = self.get_pool(max_connections=None)
+        assert pool.max_connections == 2 ** 31
+
     def test_reuse_previously_released_connection(self):
         pool = self.get_pool()
         c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
