@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from socket import gethostbyaddr
+from functools import wraps
 
 # rediscluster imports
 from .exceptions import (
@@ -82,6 +83,7 @@ def clusterdown_wrapper(func):
 
     It will try 3 times to rerun the command and raises ClusterDownException if it continues to fail.
     """
+    @wraps(func)
     def inner(*args, **kwargs):
         for _ in range(0, 3):
             try:
