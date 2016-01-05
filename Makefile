@@ -215,6 +215,10 @@ ifndef REDIS_TRIB_RB
 	REDIS_TRIB_RB=tests/redis-trib.rb
 endif
 
+ifndef REDIS_VERSION
+	REDIS_VERSION=3.0.6
+endif
+
 export REDIS_CLUSTER_NODE1_CONF
 export REDIS_CLUSTER_NODE2_CONF
 export REDIS_CLUSTER_NODE3_CONF
@@ -362,8 +366,12 @@ tox:
 	coverage combine
 	coverage report
 
+clone-redis:
+	[ ! -e redis-git ] && git clone https://github.com/antirez/redis.git redis-git || true
+	cd redis-git && git checkout $(REDIS_VERSION)
+
 redis-install:
-	[ ! -e redis-git ] && git clone --depth 1 https://github.com/antirez/redis.git redis-git || true
+	make clone-redis
 	make -C redis-git -j4
 	gem install redis
 	sleep 3
