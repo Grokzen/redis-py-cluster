@@ -9,6 +9,7 @@
     * Removed the need for threads inside of pipeline. We write the packed commands all nodes before reading the responses which gives us even better performance than threads, especially as we add more nodes to the cluster.
     * Allow passing in a custom connection pool
     * Provide default max_connections value for ClusterConnectionPool (2**31)
+    * Travis now tests both redis 3.0.x and 3.2.x
 
 * 1.1.0
     * Refactored exception handling and exception classes.
