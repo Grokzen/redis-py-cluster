@@ -23,9 +23,9 @@ Discussion on this topic can be found here: https://groups.google.com/forum/?hl=
 The following part is from this discussion https://groups.google.com/forum/?hl=sv#!topic/redis-db/B0_fvfDWLGM and it describes the scalability issue that pubsub has and the performance that goes with it when used in a cluster environment.
 
     according to [1] and [2] PubSub works by broadcasting every publish to every other
-    Redis Cluster node. This limits the PubSub throughput to the bisection bandwidth 
-    of the underlying network infrastructure divided by the number of nodes times 
-    message size. So if a typical message has 1KB, the cluster has 10 nodes and 
+    Redis Cluster node. This limits the PubSub throughput to the bisection bandwidth
+    of the underlying network infrastructure divided by the number of nodes times
+    message size. So if a typical message has 1KB, the cluster has 10 nodes and
     bandwidth is 1 GBit/s, throughput is already limited to 12.5K RPS. If we increase
     the message size to 5 KB and the number of nodes to 50, we only get 500 RPS
     much less than a single Redis instance could service (>100K RPS), while putting
@@ -36,10 +36,10 @@ The following part is from this discussion https://groups.google.com/forum/?hl=s
 
 # How pubsub works in StrictRedisCluster
 
-In `0.2.0` a first solution to pubsub problem was implemented, but it contains some limitations.
+In release `1.2.0` the `pubsub` implementation was removed because of the scalability issue that was described above. Until `redis` fixes these issues and implements a solution that will work well in a cluster environment, the code will be added back.
 
-When a new `StrictRedisCluster` instance is created it will now just after all slots is initialized determine what one node will be the pubsub node. Currently it will use the node with the highest port number.
 
-With this solution, pubsub will work in a cluster without any other major workarounds.
 
-All pubsub tests pass with this setup.
+# Known solutions instead of using StrictredisCluster
+
+The simplest solution is to have a seperate non clustered redis instance that you have a regular `StrictRedis` instance that works with your pubsub code.

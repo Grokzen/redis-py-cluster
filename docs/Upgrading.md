@@ -6,8 +6,7 @@ This document describes what must be done when upgrading between different versi
 
 Discontinue passing `pipeline_use_threads` flag to `rediscluster.StrictRedisCluster` or `rediscluster.RedisCluster`.
 
-Also discontinue passing `use_threads` flag to the pipeline() method. 
-
+Also discontinue passing `use_threads` flag to the pipeline() method.
 
 In 1.1.0 and prior, you could use `pipeline_use_threads` flag to tell the client to perform queries to the different nodes in parallel via threads. We exposed this as a flag because using threads might have been risky and we wanted people to be able to disable it if needed.
 
@@ -16,6 +15,23 @@ With this release we figured out how to get parallelization of the commands with
 That means we don't need the `pipeline_use_threads` flag anymore, or the `use_threads` flag that could be passed into the instantiation of the pipeline object itself.
 
 The logic is greatly simplified and the default behavior will now come with a performance boost and no need to use threads.
+
+Removed all code that implemented `pubsub`. Because the pubsub implementation is broken and not ready to be used in cluster mode, there is no need to have code that tries to partially implement something that is broken. When a better solution of `pubsub` is implemented in redis, the `pubsub` code will come back with a working implementation. The current suggested solutions if you need `pubsub` and want to use `redis` is to use a single non clustered `redis` instance because it do not suffer from the limitations that a cluster has.
+
+Class `ClusterPubSub` can no longer be imported from `rediscluster` package.
+
+File `rediscluster.pubsub` has been removed.
+
+Method `client.pubsub` now raises `RedisClusterException`. (See pubsub note above)
+
+Method `client.publish` now raises `RedisClusterException`. (See pubsub note above)
+
+Method `client.subscribe` now raises `RedisClusterException`. (See pubsub note above)
+
+Method `pipeline.publish` now raises `RedisClusterException`. (See pubsub note above)
+
+Method `pipeline.subscribe` now raises `RedisClusterException`. (See pubsub note above)
+
 
 
 ## 1.0.0 --> 1.1.0

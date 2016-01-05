@@ -7,13 +7,11 @@ import sys
 from .client import StrictRedisCluster, RedisCluster
 from .cluster_mgt import RedisClusterMgt  # NOQA
 from .pipeline import StrictClusterPipeline
-from .pubsub import ClusterPubSub
 
 # Monkey patch RedisCluster class into redis for easy access
 import redis
 setattr(redis, "StrictRedisCluster", StrictRedisCluster)
 setattr(redis, "RedisCluster", RedisCluster)
-setattr(redis, "ClusterPubSub", ClusterPubSub)
 setattr(redis, "StrictClusterPipeline", StrictClusterPipeline)
 
 # Major, Minor, Fix version

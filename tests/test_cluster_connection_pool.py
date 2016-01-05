@@ -152,14 +152,13 @@ class TestConnectionPool(object):
 
     def test_get_connection_blocked(self):
         """
-        Currently get_connection() should only be used by pubsub command.
-        All other commands should be blocked and exception raised.
+        All commands should be blocked and exception raised.
         """
         pool = self.get_pool()
 
         with pytest.raises(RedisClusterException) as ex:
             pool.get_connection("GET")
-        assert unicode(ex.value).startswith("Only 'pubsub' commands can be used by get_connection()")
+        assert unicode(ex.value).startswith('Method "get_connection" is not implemented')
 
     def test_master_node_by_slot(self):
         pool = self.get_pool(connection_kwargs={})
