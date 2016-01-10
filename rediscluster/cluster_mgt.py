@@ -115,7 +115,10 @@ class RedisClusterMgt(object):
             role = flags
 
             if ',' in flags:
-                _, role = flags.split(',')
+                if "slave" in flags:
+                    role = "slave"
+                elif "master" in flags:
+                    role = "master"
 
             host = nslookup(ip_port) if host_required else ip_port
             ret[host] = {
