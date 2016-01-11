@@ -23,5 +23,11 @@ class TestRedisClusterMgt(object):
     def test_nodes(self, rcm):
         nodes = rcm.nodes()
         for host, info in nodes.items():
+            assert 'node_id' in info
             assert 'role' in info
+            assert 'master_id' in info
+            assert 'last_ping_sent' in info
+            assert 'last_pong_rcvd' in info
+            assert 'epoch' in info
+            assert 'status' in info
             assert 'slots' in info
