@@ -63,7 +63,7 @@ class RedisClusterMgt(object):
         res = {}
         for line in self._execute_cluster_commands('info').split('\r\n'):
          if line:
-          for k, v in line.split(':'):
+          for k, v in line.split(':', 2):
            res[k] = v
         return res
 
