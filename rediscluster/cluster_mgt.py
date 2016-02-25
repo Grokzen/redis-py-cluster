@@ -60,15 +60,12 @@ class RedisClusterMgt(object):
         return self._execute_command_on_nodes([node], *args, **kwargs)
 
     def info(self):
-        raw = self._execute_cluster_commands('info')
-
-        def _split(line):
-            k, v = line.split(':')
-            yield k
-            yield v
-
-        return {k: v for k, v in
-                [_split(line) for line in raw.split('\r\n') if line]}
+        res = {}
+        for line in self._execute_cluster_commands('info').split('\r\n'):
+         if line:
+          for k, v in line.split(':', 1):
+           res[k] = v
+        return res
 
     def _make_host(self, host, port):
         return '%s:%s' % (host, port)
