@@ -99,7 +99,10 @@ class NodeManager(object):
             'port',
             'decode_responses',
         )
-        connection_kwargs = {k: v for k, v in self.connection_kwargs.items() if k in set(allowed_keys) - set(disabled_keys)}
+        connection_kwargs = {}
+        for k, v in self.connection_kwargs.items():
+         if k in set(allowed_keys) - set(disabled_keys):
+          connection_kwargs[k] = v
         return StrictRedis(host=host, port=port, decode_responses=decode_responses, **connection_kwargs)
 
     def initialize(self):
