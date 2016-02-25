@@ -67,8 +67,12 @@ class RedisClusterMgt(object):
             yield k
             yield v
 
-        return {k: v for k, v in
-                [_split(line) for line in raw.split('\r\n') if line]}
+        res = {}
+        for line in raw.split('\r\n'):
+         if line:
+          for k, v in _split(line):
+           res[k] = v
+        return res
 
     def _make_host(self, host, port):
         return '%s:%s' % (host, port)
