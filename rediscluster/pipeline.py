@@ -8,13 +8,13 @@ import time
 # rediscluster imports
 from .client import StrictRedisCluster
 from .exceptions import (
-    RedisClusterException, AskError, MovedError, ClusterDownError,
+    RedisClusterException, AskError, MovedError, ClusterDownError, ClusterError
 )
 from .utils import clusterdown_wrapper
 
 # 3rd party imports
 from redis import StrictRedis
-from redis.exceptions import ResponseError, ConnectionError, RedisError
+from redis.exceptions import ResponseError, ConnectionError, RedisError, TimeoutError
 from redis._compat import imap, unicode
 
 
@@ -249,6 +249,15 @@ class StrictClusterPipeline(StrictRedisCluster):
                     c.node = node
                     c.asking = True
                     self._fail_on_redirect(allow_redirections)
+
+                # if it is any other type of exception, retrying won't help.
+                # quit while you are ahead.
+                elif isinstance(c.result, Exception):
+                    break
+
+        # We are done trying. did we get stuck on connection or timeout errors?
+        if [c for c in attempt if isinstance(c.result, (ConnectionError, TimeoutError))] and ttl < 1:
+            raise ClusterError('TTL exhausted.')
 
         # YAY! we made it out of the attempt loop.
         # turn the response back into a simple flat array that corresponds
