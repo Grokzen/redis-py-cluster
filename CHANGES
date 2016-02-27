@@ -10,6 +10,7 @@
     * Allow passing in a custom connection pool
     * Provide default max_connections value for ClusterConnectionPool (2**31)
     * Travis now tests both redis 3.0.x and 3.2.x
+    * Disabled pubsub implementation until it is really fixed inside Redis
 
 * 1.1.0
     * Refactored exception handling and exception classes.

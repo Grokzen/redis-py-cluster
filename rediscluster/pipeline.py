@@ -365,6 +365,7 @@ StrictClusterPipeline.slowlog_len = block_pipeline_command(StrictRedis.slowlog_l
 StrictClusterPipeline.slowlog_reset = block_pipeline_command(StrictRedis.slowlog_reset)
 StrictClusterPipeline.smove = block_pipeline_command(StrictRedis.smove)
 StrictClusterPipeline.sort = block_pipeline_command(StrictRedis.sort)
+StrictClusterPipeline.subscribe = block_pipeline_command(StrictRedis.publish)
 StrictClusterPipeline.sunion = block_pipeline_command(StrictRedis.sunion)
 StrictClusterPipeline.sunionstore = block_pipeline_command(StrictRedis.sunionstore)
 StrictClusterPipeline.time = block_pipeline_command(StrictRedis.time)

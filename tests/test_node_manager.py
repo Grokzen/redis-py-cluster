@@ -215,23 +215,6 @@ def test_random_startup_node_ittr():
         assert node in s
 
 
-def test_determine_pubsub_node():
-    """
-    Given a set of nodes it should determine the same pubsub node each time.
-    """
-    n = NodeManager(startup_nodes=[{}])
-
-    n.nodes = {
-        "127.0.0.1:7001": {"host": "127.0.0.1", "port": 7001, "server_type": "master"},
-        "127.0.0.1:7005": {"host": "127.0.0.1", "port": 7005, "server_type": "master"},
-        "127.0.0.1:7000": {"host": "127.0.0.1", "port": 7000, "server_type": "master"},
-        "127.0.0.1:7002": {"host": "127.0.0.1", "port": 7002, "server_type": "master"},
-    }
-
-    n.determine_pubsub_node()
-    assert n.pubsub_node == {"host": "127.0.0.1", "port": 7005, "server_type": "master", "pubsub": True}
-
-
 def test_cluster_slots_error():
     """
     Check that exception is raised if initialize can't execute

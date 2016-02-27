@@ -12,7 +12,6 @@ from .exceptions import (
     RedisClusterException, AskError, MovedError, ClusterDownError,
     ClusterError, TryAgainError,
 )
-from .pubsub import ClusterPubSub
 from .utils import (
     string_keys_to_dict,
     dict_merge,
@@ -57,9 +56,6 @@ class StrictRedisCluster(StrictRedis):
         string_keys_to_dict([
             "KEYS",
         ], lambda self, command: self.connection_pool.nodes.all_nodes()),
-        string_keys_to_dict([
-            "PUBLISH", "SUBSCRIBE",
-        ], lambda self, command: [self.connection_pool.nodes.pubsub_node]),
         string_keys_to_dict([
             "RANDOMKEY",
         ], lambda self, command: [self.connection_pool.nodes.random_node()]),
@@ -155,7 +151,7 @@ class StrictRedisCluster(StrictRedis):
         return "{}<{}>".format(type(self).__name__, ', '.join(servers))
 
     def pubsub(self, **kwargs):
-        return ClusterPubSub(self.connection_pool, **kwargs)
+        raise RedisClusterException("PubSub object can't be created. Please see docs for how to use pubsub.")
 
     def pipeline(self, transaction=None, shard_hint=None):
         """
@@ -774,6 +770,16 @@ class StrictRedisCluster(StrictRedis):
         """
         slots = [self.connection_pool.nodes.keyslot(key) for key in keys]
         return len(slots) == 1
+
+    def publish(self, channel, message):
+        """
+        """
+        raise RedisClusterException('Method "publish" has been disabled in cluster mode')
+
+    def subscribe(self, *args, **kwargs):
+        """
+        """
+        raise RedisClusterException('Method "subscribe" has been disabled in cluster mode')
 
     def pfcount(self, *sources):
         """

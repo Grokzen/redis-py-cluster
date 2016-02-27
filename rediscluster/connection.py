@@ -102,8 +102,6 @@ class ClusterConnectionPool(ConnectionPool):
         self._created_connections = 0
         self._available_connections = {}  # Dict(Node, List)
         self._in_use_connections = {}  # Dict(Node, Set)
-        self._available_pubsub_connections = []
-        self._in_use_pubsub_connections = set([])
         self._check_lock = threading.Lock()
 
     def _checkpid(self):
@@ -121,15 +119,7 @@ class ClusterConnectionPool(ConnectionPool):
         # TODO: Default method entrypoint.
         Keys, options is not in use by any of the standard code.
         """
-        # Only pubsub command/connection should be allowed here
-        if command_name != "pubsub":
-            raise RedisClusterException("Only 'pubsub' commands can be used by get_connection()")
-
-        # TOOD: Pop existing connection if it exists
-        connection = self.make_connection(self.nodes.pubsub_node)
-        self._in_use_pubsub_connections.add(connection)
-
-        return connection
+        raise RedisClusterException('Method "get_connection" is not implemented')
 
     def make_connection(self, node):
         """
@@ -154,22 +144,15 @@ class ClusterConnectionPool(ConnectionPool):
         if connection.pid != self.pid:
             return
 
-        if connection in self._in_use_pubsub_connections:
-            self._in_use_pubsub_connections.remove(connection)
-            self._available_pubsub_connections.append(connection)
+        i_c = self._in_use_connections.get(connection._node["name"], set())
+
+        if connection in i_c:
+            i_c.remove(connection)
         else:
-            # Remove the current connection from _in_use_connection and add it back to the available pool
-            # There is cases where the connection is to be removed but it will not exist and there
-            # must be a safe way to remove
-            i_c = self._in_use_connections.get(connection._node["name"], set())
+            pass
+            # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
 
-            if connection in i_c:
-                i_c.remove(connection)
-            else:
-                pass
-                # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
-
-            self._available_connections.setdefault(connection._node["name"], []).append(connection)
+        self._available_connections.setdefault(connection._node["name"], []).append(connection)
 
     def disconnect(self):
         """
@@ -183,14 +166,6 @@ class ClusterConnectionPool(ConnectionPool):
         for node_connections in all_conns:
             for connection in node_connections:
                 connection.disconnect()
-
-        all_pubsub_conns = chain(
-            self._available_pubsub_connections,
-            self._in_use_pubsub_connections,
-        )
-
-        for connection in all_pubsub_conns:
-            connection.disconnect()
 
     def count_num_connections(self, node):
         if self.max_connections_per_node:
@@ -242,10 +217,6 @@ class ClusterConnectionPool(ConnectionPool):
         self.nodes.set_node_name(node)
 
         try:
-            # Special case for pubsub node
-            if node == self.nodes.pubsub_node:
-                return self.get_connection("pubsub")
-
             # Try to get connection from existing pool
             connection = self._available_connections.get(node["name"], []).pop()
         except IndexError:
