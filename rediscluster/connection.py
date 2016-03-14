@@ -66,7 +66,7 @@ class ClusterConnectionPool(ConnectionPool):
     RedisClusterDefaultTimeout = None
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
-                 max_connections=None, max_connections_per_node=False, **connection_kwargs):
+                 max_connections=None, max_connections_per_node=False, pub_sub_pool_size = 500, **connection_kwargs):
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
         self.max_connections = max_connections or 2 ** 31
@@ -78,6 +78,7 @@ class ClusterConnectionPool(ConnectionPool):
 
         self.connections = {}
         self.connection_kwargs = connection_kwargs
+        self.pub_sub_pool_size = pub_sub_pool_size
         self.reset()
 
         if "socket_timeout" not in self.connection_kwargs:
@@ -126,7 +127,10 @@ class ClusterConnectionPool(ConnectionPool):
             raise RedisClusterException("Only 'pubsub' commands can be used by get_connection()")
 
         # TOOD: Pop existing connection if it exists
-        connection = self.make_connection(self.nodes.pubsub_node)
+        try:
+            connection = self._available_pubsub_connections.pop()
+        except IndexError:
+            connection = self.make_connection(self.nodes.pubsub_node)
         self._in_use_pubsub_connections.add(connection)
 
         return connection
@@ -153,10 +157,11 @@ class ClusterConnectionPool(ConnectionPool):
         self._checkpid()
         if connection.pid != self.pid:
             return
-
         if connection in self._in_use_pubsub_connections:
             self._in_use_pubsub_connections.remove(connection)
-            self._available_pubsub_connections.append(connection)
+            ### Check max pub_sub_pool_size before appending so as to keep it within desired limits
+            if len(self._available_pubsub_connections) < self.pub_sub_pool_size:
+                self._available_pubsub_connections.append(connection)
         else:
             # Remove the current connection from _in_use_connection and add it back to the available pool
             # There is cases where the connection is to be removed but it will not exist and there

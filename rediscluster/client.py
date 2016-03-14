@@ -139,7 +139,10 @@ class StrictRedisCluster(StrictRedis):
                 max_connections=max_connections,
                 **kwargs
             )
-
+        ###Removing pub_sub_pool_size so that parent class initialization doesnt fail
+        if "pub_sub_pool_size" in kwargs:
+            kwargs.pop("pub_sub_pool_size")
+        
         super(StrictRedisCluster, self).__init__(connection_pool=pool, **kwargs)
 
         self.refresh_table_asap = False
@@ -227,7 +230,6 @@ class StrictRedisCluster(StrictRedis):
             raise RedisClusterException("Unable to determine command to use")
 
         command = args[0]
-
         if command in self.nodes_callbacks:
             return self._execute_command_on_nodes(self.nodes_callbacks[command](self, command), *args, **kwargs)
 
