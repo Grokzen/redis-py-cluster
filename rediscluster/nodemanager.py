@@ -175,7 +175,8 @@ class NodeManager(object):
             # Validate if all slots are covered or if we should try next startup node
             for i in range(0, self.RedisClusterHashSlots):
                 if i not in tmp_slots:
-                    all_slots_covered = False
+                    if not self.is_cluster_up():
+                        all_slots_covered = False
 
             if all_slots_covered:
                 # All slots are covered and application can continue to execute
@@ -194,6 +195,23 @@ class NodeManager(object):
         self.nodes = nodes_cache
 
         self.determine_pubsub_node()
+
+    def is_cluster_up(self):
+        """
+        if exists 'cluster-require-full-coverage no' config on redis servers,
+        then even all slots are not covered, cluster still will be able to
+        respond
+        """
+        # get random node
+        node = self.orig_startup_nodes[0]
+        r = self.get_redis_link(host=node["host"], port=node["port"])
+        # get cluster info
+        cluster_info = r.execute_command("cluster", "info")
+        # parse cluster_state
+        for info in cluster_info.split("\r\n"):
+            if "cluster_state" in info:
+                return info.split(":")[1] == 'ok'
+        return False
 
     def determine_pubsub_node(self):
         """
