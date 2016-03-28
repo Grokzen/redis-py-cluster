@@ -686,6 +686,8 @@ class StrictRedisCluster(StrictRedis):
         res = self.sdiff(keys, *args)
         self.delete(dest)
 
+        if not res:
+            return 0
         return self.sadd(dest, *res)
 
     def sinter(self, keys, *args):
