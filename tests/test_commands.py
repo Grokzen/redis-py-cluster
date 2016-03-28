@@ -1279,10 +1279,10 @@ class TestStrictCommands(object):
 
     def test_eval(self, sr):
         res = sr.eval("return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}", 2, "A{foo}", "B{foo}", "first", "second")
-        assert(res[0] == b('A{foo}'))
-        assert(res[1] == b('B{foo}'))
-        assert(res[2] == b('first'))
-        assert(res[3] == b('second'))
+        assert res[0] == b('A{foo}')
+        assert res[1] == b('B{foo}')
+        assert res[2] == b('first')
+        assert res[3] == b('second')
 
 
 class TestBinarySave(object):

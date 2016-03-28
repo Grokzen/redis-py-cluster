@@ -58,10 +58,10 @@ class TestPipeline(object):
         with r.pipeline(transaction=False) as pipe:
             pipe.eval("return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}", 2, "A{foo}", "B{foo}", "first", "second")
             res = pipe.execute()[0]
-            assert(res[0] == b('A{foo}'))
-            assert(res[1] == b('B{foo}'))
-            assert(res[2] == b('first'))
-            assert(res[3] == b('second'))
+            assert res[0] == b('A{foo}')
+            assert res[1] == b('B{foo}')
+            assert res[2] == b('first')
+            assert res[3] == b('second')
 
     @pytest.mark.xfail(reason="unsupported command: watch")
     def test_pipeline_no_transaction_watch(self, r):
@@ -397,7 +397,7 @@ class TestPipeline(object):
         pipe.get('bar')
         pipe.get('bazz')
         res = pipe.execute()
-        assert(res == [True, True, True, True, True, b'1', b'2', b'3', b'4', b'5'])
+        assert res == [True, True, True, True, True, b'1', b'2', b'3', b'4', b'5']
 
     @pytest.mark.xfail(reson="perform_execute_pipeline is not used any longer")
     def test_connection_error(self, r):
@@ -420,13 +420,13 @@ class TestPipeline(object):
         try:
             pipe.set('foo', 1)
             res = pipe.execute()
-            assert(res, [True])
-            assert(isinstance(test._calls[0]['exception'], ConnectionError))
+            assert res, [True]
+            assert isinstance(test._calls[0]['exception'], ConnectionError)
             if len(test._calls) == 2:
-                assert(test._calls[1] == {'result': [True]})
+                assert test._calls[1] == {'result': [True]}
             else:
-                assert(isinstance(test._calls[1]['result'][0], ResponseError))
-                assert(test._calls[2] == {'result': [True]})
+                assert isinstance(test._calls[1]['result'][0], ResponseError)
+                assert test._calls[2] == {'result': [True]}
         finally:
             pipe.perform_execute_pipeline = orig_perform_execute_pipeline
             del test._calls
@@ -454,12 +454,12 @@ class TestPipeline(object):
             pipe.set('foo', 1)
             pipe.get('foo')
             res = pipe.execute()
-            assert(res == [True, b'1'])
-            assert(isinstance(test._calls[0]['exception'], ResponseError))
-            assert(re.match("ASK", str(test._calls[0]['exception'])))
-            assert(isinstance(test._calls[1]['result'][0], ResponseError))
-            assert(re.match("MOVED", str(test._calls[1]['result'][0])))
-            assert(test._calls[2] == {'result': [True, b'1']})
+            assert res == [True, b'1']
+            assert isinstance(test._calls[0]['exception'], ResponseError)
+            assert re.match("ASK", str(test._calls[0]['exception']))
+            assert isinstance(test._calls[1]['result'][0], ResponseError)
+            assert re.match("MOVED", str(test._calls[1]['result'][0]))
+            assert test._calls[2] == {'result': [True, b'1']}
         finally:
             pipe.perform_execute_pipeline = orig_perform_execute_pipeline
             del test._calls
