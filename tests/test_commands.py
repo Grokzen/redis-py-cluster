@@ -638,7 +638,7 @@ class TestRedisCommands(object):
             keys += partial_keys
         assert set(keys) == set([b('a')])
 
-    def test_iter_scan(self, r):
+    def test_scan_iter(self, r):
         r.set('a', 1)
         r.set('b', 2)
         r.set('c', 3)
@@ -646,6 +646,13 @@ class TestRedisCommands(object):
         assert set(keys) == set([b('a'), b('b'), b('c')])
         keys = list(r.scan_iter(match='a'))
         assert set(keys) == set([b('a')])
+
+        r.set('Xa', 1)
+        r.set('Xb', 2)
+        r.set('Xc', 3)
+        keys = list(r.scan_iter('X*', count=1000))
+        assert len(keys) == 3
+        assert set(keys) == set([b('Xa'), b('Xb'), b('Xc')])
 
     def test_sscan(self, r):
         r.sadd('a', 1, 2, 3)

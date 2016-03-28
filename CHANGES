@@ -12,6 +12,7 @@
     * Travis now tests both redis 3.0.x and 3.2.x
     * Add simple ptpdb debug script to make it easier to test the client
     * Fix a bug in sdiffstore (mt3925)
+    * Fix a bug with scan_iter where duplicate keys would be returned during itteration
 
 * 1.1.0
     * Refactored exception handling and exception classes.

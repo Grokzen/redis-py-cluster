@@ -46,13 +46,13 @@ class StrictRedisCluster(StrictRedis):
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
-            "TIME", "SCAN",
+            "TIME",
         ], lambda self, command: self.connection_pool.nodes.all_nodes()),
         string_keys_to_dict([
             "FLUSHALL", "FLUSHDB",
         ], lambda self, command: self.connection_pool.nodes.all_masters()),
         string_keys_to_dict([
-            "SCRIPT LOAD", "SCRIPT FLUSH", "SCRIPT EXISTS",
+            "SCRIPT LOAD", "SCRIPT FLUSH", "SCRIPT EXISTS", "SCAN",
         ], lambda self, command: self.connection_pool.nodes.all_masters()),
         string_keys_to_dict([
             "KEYS",
