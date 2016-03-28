@@ -245,6 +245,12 @@ def test_refresh_table_asap():
             assert r.refresh_table_asap is False
 
 
+def find_node_ip_based_on_port(cluster_client, port):
+    for node_name, node_data in cluster_client.connection_pool.nodes.nodes.items():
+        if node_name.endswith(port):
+            return node_data['host']
+
+
 def test_ask_redirection():
     """
     Test that the server handles ASK response.
@@ -258,14 +264,16 @@ def test_ask_redirection():
 
     m = Mock(autospec=True)
 
+    host_ip = find_node_ip_based_on_port(r, '7001')
+
     def ask_redirect_effect(connection, command_name, **options):
         def ok_response(connection, command_name, **options):
-            assert connection.host == "127.0.0.1"
+            assert connection.host == host_ip
             assert connection.port == 7001
 
             return "MOCK_OK"
         m.side_effect = ok_response
-        raise AskError("1337 127.0.0.1:7001")
+        raise AskError("1337 {}:7001".format(host_ip))
 
     m.side_effect = ask_redirect_effect
 
