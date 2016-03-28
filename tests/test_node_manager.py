@@ -371,11 +371,6 @@ def test_init_with_down_node():
         return StrictRedis(host=host, port=port, decode_responses=decode_responses)
 
     with patch.object(NodeManager, 'get_redis_link', side_effect=get_redis_link):
-        n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}, {"host": "127.0.0.1", "port": 7001}])
-        n.initialize()
-        assert len(n.slots) == NodeManager.RedisClusterHashSlots
-        assert len(n.nodes) == 6
-
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
         with pytest.raises(RedisClusterException) as e:
             n.initialize()
