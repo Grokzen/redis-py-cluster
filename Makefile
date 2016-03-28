@@ -390,4 +390,7 @@ benchmark:
 	@echo " -- Running Simple benchmark with StrictRedisCluster lib and cluster server"
 	python benchmarks/simple.py --port 7001 --timeit --pipeline
 
+ptp:
+	python ptp-debug.py
+
 .PHONY: test
