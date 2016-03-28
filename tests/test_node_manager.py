@@ -49,15 +49,21 @@ def test_init_slots_cache_not_all_slots(s):
     def get_redis_link_wrapper(host, port, decode_responses=False):
         link = StrictRedis(host="127.0.0.1", port=7000, decode_responses=True)
 
-        # Missing slot 5460
-        bad_slots_resp = [
-            [0, 5459, [b'127.0.0.1', 7000], [b'127.0.0.1', 7003]],
-            [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.1', 7004]],
-            [10923, 16383, [b'127.0.0.1', 7002], [b'127.0.0.1', 7005]],
-        ]
+        orig_exec_method = link.execute_command
+
+        def patch_execute_command(*args, **kwargs):
+            if args == ('cluster', 'slots'):
+                # Missing slot 5460
+                return [
+                    [0, 5459, [b'127.0.0.1', 7000], [b'127.0.0.1', 7003]],
+                    [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.1', 7004]],
+                    [10923, 16383, [b'127.0.0.1', 7002], [b'127.0.0.1', 7005]],
+                ]
+
+            return orig_exec_method(*args, **kwargs)
 
         # Missing slot 5460
-        link.execute_command = lambda *args: bad_slots_resp
+        link.execute_command = patch_execute_command
 
         return link
 
@@ -67,6 +73,41 @@ def test_init_slots_cache_not_all_slots(s):
         s.connection_pool.nodes.initialize()
 
     assert unicode(ex.value).startswith("All slots are not covered after query all startup_nodes.")
+
+
+def test_init_slots_cache_not_all_slots_not_require_full_coverage(s):
+    """
+    Test that if not all slots are covered it should raise an exception
+    """
+    # Create wrapper function so we can inject custom 'CLUSTER SLOTS' command result
+    def get_redis_link_wrapper(host, port, decode_responses=False):
+        link = StrictRedis(host="127.0.0.1", port=7000, decode_responses=True)
+
+        orig_exec_method = link.execute_command
+
+        def patch_execute_command(*args, **kwargs):
+            if args == ('cluster', 'slots'):
+                # Missing slot 5460
+                return [
+                    [0, 5459, [b'127.0.0.1', 7000], [b'127.0.0.1', 7003]],
+                    [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.1', 7004]],
+                    [10923, 16383, [b'127.0.0.1', 7002], [b'127.0.0.1', 7005]],
+                ]
+            elif args == ('CONFIG GET', 'cluster-require-full-coverage'):
+                return {'cluster-require-full-coverage': 'no'}
+            else:
+                return orig_exec_method(*args, **kwargs)
+
+        # Missing slot 5460
+        link.execute_command = patch_execute_command
+
+        return link
+
+    s.connection_pool.nodes.get_redis_link = get_redis_link_wrapper
+
+    s.connection_pool.nodes.initialize()
+
+    assert 5460 not in s.connection_pool.nodes.slots
 
 
 def test_init_slots_cache(s):
@@ -80,7 +121,13 @@ def test_init_slots_cache(s):
     ]
 
     with patch.object(StrictRedis, 'execute_command') as execute_command_mock:
-        execute_command_mock.side_effect = lambda *args: good_slots_resp
+        def patch_execute_command(*args, **kwargs):
+            if args == ('CONFIG GET', 'cluster-require-full-coverage'):
+                return {'cluster-require-full-coverage': 'yes'}
+            else:
+                return good_slots_resp
+
+        execute_command_mock.side_effect = patch_execute_command
 
         s.connection_pool.nodes.initialize()
         assert len(s.connection_pool.nodes.slots) == NodeManager.RedisClusterHashSlots
@@ -151,13 +198,15 @@ def test_init_slots_cache_slots_collision():
         def execute_command(*args, **kwargs):
             if args == ("cluster", "slots"):
                 return result
-            return orig_execute_command(*args, **kwargs)
+            elif args == ('CONFIG GET', 'cluster-require-full-coverage'):
+                return {'cluster-require-full-coverage': 'yes'}
+            else:
+                return orig_execute_command(*args, **kwargs)
 
         r.execute_command = execute_command
         return r
 
     n.get_redis_link = monkey_link
-
     with pytest.raises(RedisClusterException) as ex:
         n.initialize()
     assert unicode(ex.value).startswith("startup_nodes could not agree on a valid slots cache."), unicode(ex.value)
@@ -281,7 +330,15 @@ def test_cluster_one_instance():
     """
     with patch.object(StrictRedis, 'execute_command') as mock_execute_command:
         return_data = [[0, 16383, ['', 7006]]]
-        mock_execute_command.return_value = return_data
+
+        def patch_execute_command(*args, **kwargs):
+            if args == ('CONFIG GET', 'cluster-require-full-coverage'):
+                return {'cluster-require-full-coverage': 'yes'}
+            else:
+                return return_data
+
+        # mock_execute_command.return_value = return_data
+        mock_execute_command.side_effect = patch_execute_command
 
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7006}])
         n.initialize()
@@ -314,11 +371,6 @@ def test_init_with_down_node():
         return StrictRedis(host=host, port=port, decode_responses=decode_responses)
 
     with patch.object(NodeManager, 'get_redis_link', side_effect=get_redis_link):
-        n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}, {"host": "127.0.0.1", "port": 7001}])
-        n.initialize()
-        assert len(n.slots) == NodeManager.RedisClusterHashSlots
-        assert len(n.nodes) == 6
-
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
         with pytest.raises(RedisClusterException) as e:
             n.initialize()
