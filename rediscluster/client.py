@@ -331,7 +331,6 @@ class StrictRedisCluster(StrictRedis):
 
                 node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
                 self.connection_pool.nodes.slots[e.slot_id][0] = node
-                redirect_addr = "%s:%s" % (e.host, e.port)
             except TryAgainError as e:
                 if ttl < self.COMMAND_TTL / 2:
                     time.sleep(0.05)
