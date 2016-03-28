@@ -14,6 +14,7 @@
     * Fix a bug in sdiffstore (mt3925)
     * Fix a bug with scan_iter where duplicate keys would be returned during itteration
     * Implement all "CLUSTER ..." commands as methods in the client class
+    * Client now follows the service side setting 'cluster-require-full-coverage=yes/no' (baranbartu)
 
 * 1.1.0
     * Refactored exception handling and exception classes.
