@@ -7,6 +7,9 @@ from .exceptions import (
     RedisClusterException, ClusterDownError
 )
 
+# 3rd party imports
+from redis._compat import basestring
+
 
 def string_keys_to_dict(key_strings, callback):
     """
