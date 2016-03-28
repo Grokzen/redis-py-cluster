@@ -261,6 +261,12 @@ def test_ask_redirection():
     Important thing to verify is that it tries to talk to the second node.
     """
     r = StrictRedisCluster(host="127.0.0.1", port=7000)
+    r.connection_pool.nodes.nodes['127.0.0.1:7001'] = {
+        'host': u'127.0.0.1',
+        'server_type': 'master',
+        'port': 7001,
+        'name': '127.0.0.1:7001'
+    }
 
     m = Mock(autospec=True)
 

@@ -108,3 +108,84 @@ def nslookup(node_ip):
     ip, port = node_ip.split(':')
 
     return '%s:%s' % (gethostbyaddr(ip)[0], port)
+
+
+def parse_cluster_slots(resp, **options):
+    current_host = options.get('current_host', '')
+    fix_server = lambda host, port: (host or current_host, port)
+
+    slots = {}
+    for slot in resp:
+        start, end, master = slot[:3]
+        slaves = slot[3:]
+        slots[start, end] = {
+            'master': fix_server(master),
+            'slaves': [fix_server(slave) for slave in slaves],
+        }
+
+    return slots
+
+
+def parse_cluster_nodes(resp, **options):
+    """
+    @see: http://redis.io/commands/cluster-nodes  # string
+    @see: http://redis.io/commands/cluster-slaves # list of string
+    """
+    current_host = options.get('current_host', '')
+
+    def parse_slots(s):
+        slots, migrations = [], []
+        for r in s.split(' '):
+            if '->-' in r:
+                slot_id, dst_node_id = r[1:-1].split('->-', 1)
+                migrations.append({
+                    'slot': int(slot_id),
+                    'node_id': dst_node_id,
+                    'state': 'migrating'
+                })
+            elif '-<-' in r:
+                slot_id, src_node_id = r[1:-1].split('-<-', 1)
+                migrations.append({
+                    'slot': int(slot_id),
+                    'node_id': src_node_id,
+                    'state': 'importing'
+                })
+            elif '-' in r:
+                start, end = r.split('-')
+                slots.extend(range(int(start), int(end) + 1))
+            else:
+                slots.append(int(r))
+
+        return slots, migrations
+
+    if isinstance(resp, basestring):
+        resp = resp.splitlines()
+
+    nodes = []
+    for line in resp:
+        parts = line.split(' ', 8)
+        self_id, addr, flags, master_id, ping_sent, \
+            pong_recv, config_epoch, link_state = parts[:8]
+
+        host, port = addr.rsplit(':', 1)
+
+        node = {
+            'id': self_id,
+            'host': host or current_host,
+            'port': int(port),
+            'flags': tuple(flags.split(',')),
+            'master': master_id if master_id != '-' else None,
+            'ping-sent': int(ping_sent),
+            'pong-recv': int(pong_recv),
+            'link-state': link_state,
+            'slots': [],
+            'migrations': [],
+        }
+
+        if len(parts) >= 9:
+            slots, migrations = parse_slots(parts[8])
+            node['slots'], node['migrations'] = tuple(slots), migrations
+
+        nodes.append(node)
+
+    return nodes
