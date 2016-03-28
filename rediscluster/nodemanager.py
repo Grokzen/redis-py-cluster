@@ -43,6 +43,11 @@ class NodeManager(object):
 
         return crc16(k) % self.RedisClusterHashSlots
 
+    def node_from_slot(self, slot):
+        for node in self.slots[slot]:
+            if node['server_type'] == 'master':
+                return node
+
     def all_nodes(self):
         for node in self.nodes.values():
             yield node

@@ -22,12 +22,10 @@ class StrictClusterPipeline(StrictRedisCluster):
     """
     """
 
-    def __init__(self, connection_pool, nodes_callbacks=None, result_callbacks=None,
-                 response_callbacks=None, startup_nodes=None, refresh_table_asap=False,
-                 reinitialize_steps=None):
+    def __init__(self, connection_pool, result_callbacks=None, reinitialize_steps=None,
+                 response_callbacks=None, startup_nodes=None, refresh_table_asap=False):
         self.command_stack = []
         self.connection_pool = connection_pool
-        self.nodes_callbacks = nodes_callbacks
         self.refresh_table_asap = refresh_table_asap
         self.reinitialize_counter = 0
         self.reinitialize_steps = reinitialize_steps or 25
