@@ -716,6 +716,9 @@ class TestRedisCommands(object):
         assert r.sdiffstore('c{foo}', 'a{foo}', 'b{foo}') == 1
         assert r.smembers('c{foo}') == set([b('1')])
 
+        # Diff:s that return empty set should not fail
+        r.sdiffstore('d{foo}', 'e{foo}') == 0
+
     def test_sinter(self, r):
         r.sadd('a{foo}', '1', '2', '3')
         assert r.sinter('a{foo}', 'b{foo}') == set()

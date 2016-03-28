@@ -11,6 +11,7 @@
     * Provide default max_connections value for ClusterConnectionPool (2**31)
     * Travis now tests both redis 3.0.x and 3.2.x
     * Add simple ptpdb debug script to make it easier to test the client
+    * Fix a bug in sdiffstore (mt3925)
 
 * 1.1.0
     * Refactored exception handling and exception classes.
