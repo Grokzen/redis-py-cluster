@@ -172,10 +172,12 @@ class NodeManager(object):
                 self.populate_startup_nodes()
                 self.refresh_table_asap = False
 
+            need_full_slots_coverage = self.cluster_require_full_coverage(nodes_cache)
+
             # Validate if all slots are covered or if we should try next startup node
             for i in range(0, self.RedisClusterHashSlots):
                 if i not in tmp_slots:
-                    if self.cluster_require_full_coverage(nodes_cache):
+                    if need_full_slots_coverage:
                         all_slots_covered = False
 
             if all_slots_covered:
@@ -205,14 +207,11 @@ class NodeManager(object):
         nodes = self.nodes or nodes_cache
 
         def node_require_full_coverage(node):
-            r_node = self.get_redis_link(host=node["host"], port=node["port"],
-                                         decode_responses=True)
-            return "yes" in r_node.config_get(
-                "cluster-require-full-coverage").values()
+            r_node = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
+            return "yes" in r_node.config_get("cluster-require-full-coverage").values()
 
         # at least one node should have cluster-require-full-coverage yes
-        return any(
-            node_require_full_coverage(node) for node in nodes.values())
+        return any(node_require_full_coverage(node) for node in nodes.values())
 
     def determine_pubsub_node(self):
         """
