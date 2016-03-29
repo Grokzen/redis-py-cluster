@@ -1,4 +1,10 @@
-* Next release
+Release Notes
+=============
+
+
+Next release (??? ?, 2016)
+--------------------------
+
     * Drop maintained support for python 3.2.
     * Remove Vagrant file in favor for repo maintained by 72squared
     * Add Support for password protected cluster (etng)
@@ -8,7 +14,7 @@
     * New code and important changes from redis-py 2.10.5 have been added to the codebase.
     * Removed the need for threads inside of pipeline. We write the packed commands all nodes before reading the responses which gives us even better performance than threads, especially as we add more nodes to the cluster.
     * Allow passing in a custom connection pool
-    * Provide default max_connections value for ClusterConnectionPool (2**31)
+    * Provide default max_connections value for ClusterConnectionPool *(2**31)*
     * Travis now tests both redis 3.0.x and 3.2.x
     * Add simple ptpdb debug script to make it easier to test the client
     * Fix a bug in sdiffstore (mt3925)
@@ -20,7 +26,9 @@
       subscription that do not work properly because a pattern can't know all the possible channel names in advance.
     * Convert all docs to ReadTheDocs
 
-* 1.1.0
+1.1.0 (??? ?, ????)
+-------------------
+
     * Refactored exception handling and exception classes.
     * Added READONLY mode support, scales reads using slave nodes.
     * Fix __repr__ for ClusterConnectionPool and ClusterReadOnlyConnectionPool
@@ -33,10 +41,14 @@
     * Fix ASKING error handling so now it really sends ASKING to next node during a reshard operation. This improvement was also made to pipelined commands.
     * Improved thread safety in pipelined commands, along better explanation of the logic inside pipelining with code comments.
 
-* 1.0.0
+1.0.0 (??? ?, ????)
+-------------------
+
     * No change to anything just a bump to 1.0.0 because the lib is now considered stable/production ready.
 
-* 0.3.0
+0.3.0 (??? ?, ????)
+-------------------
+
     * simple benchmark now uses docopt for cli parsing
     * New make target to run some benchmarks 'make benchmark'
     * simple benchmark now support pipelines tests
@@ -45,7 +57,9 @@
     * Added comprehensive documentation regarding pipelines
     * Meta retrieval commands(slots, nodes, info) for Redis Cluster. (iandyh)
 
-* 0.2.0
+0.2.0 (??? ?, ????)
+-------------------
+
     * Moved pipeline code into new file.
     * Code now uses a proper cluster connection pool class that handles
       all nodes and connections similar to how redis-py do.
@@ -60,6 +74,8 @@
     * Added vagrant support for testing and development. (72squared)
     * Improve stability of client during resharding operations (72squared)
 
-* 0.1.0
+0.1.0 (??? ?, ????)
+-------------------
+
     * Initial release
     * First release uploaded to pypi

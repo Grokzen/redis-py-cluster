@@ -1,4 +1,7 @@
-# Limitations and differences with redis-py
+Limitations and differences
+===========================
+
+This will compare against `redis-py`
 
 There is alot of differences that have to be taken into consideration when using redis cluster.
 
@@ -10,8 +13,8 @@ Alot of methods will behave very different when using RedisCluster. Some methods
 
 Some of the commands are only partially supported when using RedisCluster.  The commands ``zinterstore`` and ``zunionstore`` are only supported if all the keys map to the same key slot in the cluster. This can be achieved by namespacing related keys with a prefix followed by a bracketed common key. Example: 
 
-```python
-r.zunionstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'])
-```
+.. code-block:: python
+
+    r.zunionstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'])
 
 This corresponds to how redis behaves in cluster mode. Eventually these commands will likely be more fully supported by implementing the logic in the client library at the expense of atomicity and performance.

@@ -92,10 +92,10 @@ The Usage Guide
    :glob:
 
    cluster-mgt
-   command-differences
+   commands
    limitations-and-differences
    pipelines
-   threaded-pipelines
+   threads
    pubsub
    readonly-mode
 
@@ -106,7 +106,7 @@ The Usage Guide
    :maxdepth: 2
    :glob:
 
-   setup-redis-cluster
+   cluster-setup
    benchmarks
 
 
@@ -117,11 +117,13 @@ The Community Guide
 .. _community-guide:
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
     :glob:
 
+    project-status
     testing
-    upgrade-instructions
+    upgrading
     release-notes
     authors
     license
+    disclaimer

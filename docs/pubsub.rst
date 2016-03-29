@@ -1,8 +1,9 @@
-# Pubsub
+Pubsub
+======
 
 After testing pubsub in cluster mode one big problem was discovered with the `PUBLISH` command.
 
-According to the current official redis documentation on `PUBLISH`:
+According to the current official redis documentation on `PUBLISH`::
 
     Integer reply: the number of clients that received the message.
 
@@ -22,7 +23,8 @@ Discussion on this topic can be found here: https://groups.google.com/forum/?hl=
 
 
 
-# Scalability issues
+Scalability issues
+------------------
 
 The following part is from this discussion https://groups.google.com/forum/?hl=sv#!topic/redis-db/B0_fvfDWLGM and it describes the scalability issue that pubsub has and the performance that goes with it when used in a cluster environment.
 
@@ -38,7 +40,8 @@ The following part is from this discussion https://groups.google.com/forum/?hl=s
 
 
 
-# How pubsub works in StrictRedisCluster
+How pubsub works in StrictRedisCluster
+--------------------------------------
 
 In release `1.2.0` the pubsub was code was reworked to now work like this.
 
@@ -54,7 +57,8 @@ This new solution is probably future safe and it will probably be a similar solu
 
 
 
-## Known limitations with pubsub
+Known limitations with pubsub
+-----------------------------
 
 Pattern subscribe and publish do not work properly because if we hash a pattern like `fo*` we will get a keyslot for that string but there is a endless posiblity of channel names based on that pattern that we can't know in advance. This feature is not limited but the commands is not recommended to use right now.
 
@@ -62,6 +66,7 @@ The implemented solution will only work if other clients use/adopt the same beha
 
 
 
-## Known other solutions
+Other solutions
+---------------
 
 The simplest solution is to have a seperate non clustered redis instance that you have a regular `StrictRedis` instance that works with your pubsub code. It is not recommended to use pubsub until `redis` fixes the implementation in the server itself.
