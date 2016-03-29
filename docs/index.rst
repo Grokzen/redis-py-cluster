@@ -91,7 +91,7 @@ The Usage Guide
    :maxdepth: 2
    :glob:
 
-   cluster-management-class
+   cluster-mgt
    command-differences
    limitations-and-differences
    pipelines
