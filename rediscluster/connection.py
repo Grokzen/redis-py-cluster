@@ -125,8 +125,15 @@ class ClusterConnectionPool(ConnectionPool):
         if command_name != "pubsub":
             raise RedisClusterException("Only 'pubsub' commands can be used by get_connection()")
 
+        channel = options.pop('channel', None)
+
+        if not channel:
+            return self.get_random_connection()
+
+        slot = self.nodes.keyslot(channel)
+
         # TOOD: Pop existing connection if it exists
-        connection = self.make_connection(self.nodes.pubsub_node)
+        connection = self.make_connection(self.get_master_node_by_slot(slot))
         self._in_use_pubsub_connections.add(connection)
 
         return connection
@@ -242,10 +249,6 @@ class ClusterConnectionPool(ConnectionPool):
         self.nodes.set_node_name(node)
 
         try:
-            # Special case for pubsub node
-            if node == self.nodes.pubsub_node:
-                return self.get_connection("pubsub")
-
             # Try to get connection from existing pool
             connection = self._available_connections.get(node["name"], []).pop()
         except IndexError:

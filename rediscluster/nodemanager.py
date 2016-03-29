@@ -22,7 +22,6 @@ class NodeManager(object):
         self.slots = {}
         self.startup_nodes = [] if startup_nodes is None else startup_nodes
         self.orig_startup_nodes = [node for node in self.startup_nodes]
-        self.pubsub_node = None
 
         if len(self.startup_nodes) == 0:
             raise RedisClusterException("No startup nodes provided")
@@ -182,7 +181,6 @@ class NodeManager(object):
 
             if all_slots_covered:
                 # All slots are covered and application can continue to execute
-                # Parse and determine what node will be pubsub node
                 break
 
         if not startup_nodes_reachable:
@@ -195,8 +193,6 @@ class NodeManager(object):
         # Set the tmp variables to the real variables
         self.slots = tmp_slots
         self.nodes = nodes_cache
-
-        self.determine_pubsub_node()
 
     def cluster_require_full_coverage(self, nodes_cache):
         """
@@ -212,25 +208,6 @@ class NodeManager(object):
 
         # at least one node should have cluster-require-full-coverage yes
         return any(node_require_full_coverage(node) for node in nodes.values())
-
-    def determine_pubsub_node(self):
-        """
-        Determine what node object should be used for pubsub commands.
-
-        All clients in the cluster will talk to the same pubsub node to ensure
-        all code stay compatible. See pubsub doc for more details why.
-
-        Allways use the server with highest port number
-        """
-        highest = -1
-        node = None
-
-        for n in self.nodes.values():
-            if n["port"] > highest:
-                highest = n["port"]
-                node = n
-
-        self.pubsub_node = {"host": node["host"], "port": node["port"], "server_type": node["server_type"], "pubsub": True}
 
     def set_node_name(self, n):
         """

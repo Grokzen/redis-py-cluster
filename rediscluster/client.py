@@ -60,9 +60,6 @@ class StrictRedisCluster(StrictRedis):
         string_keys_to_dict([
             "CLUSTER COUNTKEYSINSLOT",
         ], 'slot-id'),
-        string_keys_to_dict([
-            'PUBLISH', 'SUBSCRIBE',
-        ], 'pubsub')
     )
 
     RESULT_CALLBACKS = dict_merge(
@@ -251,8 +248,6 @@ class StrictRedisCluster(StrictRedis):
             return self.connection_pool.nodes.all_nodes()
         elif node_flag == 'slot-id':
             return [self.connection_pool.nodes.node_from_slot(args[1])]
-        elif node_flag == 'pubsub':
-            return [self.connection_pool.nodes.pubsub_node]
         else:
             return None
 

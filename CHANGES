@@ -15,6 +15,9 @@
     * Fix a bug with scan_iter where duplicate keys would be returned during itteration
     * Implement all "CLUSTER ..." commands as methods in the client class
     * Client now follows the service side setting 'cluster-require-full-coverage=yes/no' (baranbartu)
+    * Change the pubsub implementation (PUBLISH/SUBSCRIBE commands) from using one single node to now determine the hashslot for the channel name and use that to connect to
+      a node in the cluster. Other clients that do not use this pattern will not be fully compatible with this client. Known limitations is pattern 
+      subscription that do not work properly because a pattern can't know all the possible channel names in advance.
 
 * 1.1.0
     * Refactored exception handling and exception classes.
