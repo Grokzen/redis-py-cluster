@@ -1,12 +1,14 @@
-# Implemented commands
+Implemented commands
+====================
 
-This document will describe all changes that StrictRedisCluster have done to make a command to work.
+This will describe all changes that StrictRedisCluster have done to make a command to work in a cluster environment.
 
-If a command is not listed here then the default implementation in 'StrictRedis' is used.
+If a command is not listed here then the default implementation from `StrictRedis` in the `redis-py` library is used.
 
 
 
-# Fanout Commands
+Fanout Commands
+---------------
 
 The following commands will send the same request to all nodes in the cluster. Results is returned as a dict with k,v pair (NodeID, Result).
 
@@ -41,7 +43,6 @@ The following commands will only be send to the master nodes in the cluster. Res
  - flushdb
  - scan
 
-
 This command will sent to a random node in the cluster.
 
  - publish
@@ -69,7 +70,8 @@ The following commands will be sent to the sever that matches the specefied key.
 
 
 
-# Blocked commands
+Blocked commands
+----------------
 
 The following commands is blocked from use.
 
@@ -96,7 +98,8 @@ Either because they do not work, there is no working implementation or it is not
 
 
 
-# Overridden methods
+Overridden methods
+------------------
 
 The following methods is overridden from StrictRedis with a custom implementation.
 

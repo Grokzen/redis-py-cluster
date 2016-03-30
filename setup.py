@@ -15,7 +15,7 @@ if os.getenv('USER', '').lower() == 'vagrant':
 
 with open('README.md') as f:
     readme = f.read()
-with open('CHANGES') as f:
+with open(os.path.join('docs', 'release-notes.rst')) as f:
     history = f.read()
 
 setup(

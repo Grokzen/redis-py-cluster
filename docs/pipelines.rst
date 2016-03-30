@@ -1,13 +1,20 @@
-# How pipelining works
+Pipelines
+=========
 
-Just like in redis-py, redis-py-cluster queues up all the commands inside the client until execute is called. But, once execute is called, redis-py-cluster internals work slightly differently. It still packs the commands to efficiently transmit multiple commands across the network. But since different keys may be mapped to different nodes, redis-py-cluster must first map each key to the expected node. It then packs all the commands destined for each node in the cluster into its own packed sequence of commands. It uses the redis-py library to communicate with each node in the cluster.
+
+How pipelining works
+--------------------
+
+Just like in `redis-py`, `redis-py-cluster` queues up all the commands inside the client until execute is called. But, once execute is called, `redis-py-cluster` internals work slightly differently. It still packs the commands to efficiently transmit multiple commands across the network. But since different keys may be mapped to different nodes, redis-py-cluster must first map each key to the expected node. It then packs all the commands destined for each node in the cluster into its own packed sequence of commands. It uses the redis-py library to communicate with each node in the cluster.
 
 Ideally all the commands should be sent to each node in the cluster in parallel so that all the commands can be processed as fast as possible. The naive approach is to iterate through each node and send each batch of commands sequentially to each node. If redis-py supported some sort of non-blocking i/o we could send the network requests first and multiplex the socket responses from each node. Instead, we use threads to send the requests in parallel so that the total execution time only equals the amount of time for the slowest round trip to and from the given set of nodes in the cluster needed to process the commands.
 
 In previous versions of the library there were some bugs associated with threaded operations and pipelining. We were freeing connections back into the connection pool prior to reading the responses from each thread and it caused all kinds of problems. Those issues were fixed but there was a special flag to allow you to turn off threading in case you were worried about it. Since we no longer have to use threads at all to get the performance we want, that flag was removed from the client.
 
 
-# Connection Error handling
+
+Connection Error handling
+-------------------------
 
 The other way pipelines differ in `redis-py-cluster` from `redis-py` is in error handling and retries. With the normal `redis-py` client, if you hit a connection error during a pipeline command it raises the error right there. But we expect redis-cluster to be more resilient to failures.
 
@@ -25,7 +32,9 @@ In previous versions of `redis-py-cluster` treated `ASKED` and `MOVED` errors th
 An `ASK` error means the slot is only partially migrated and that the client can only successfully issue that command to the new server if it prefixes the request with an `ASKING¨ ` command first. This lets the new node taking over that slot know that the original server said it was okay to run that command for the given key against the new node even though the slot is not yet completely migrated. Our current implementation now handles this case correctly.
 
 
-# The philosophy on pipelines
+
+The philosophy on pipelines
+---------------------------
 
 After playing around with pipelines and thinking about possible solutions that could be used in a cluster setting this document will describe how pipelines work, strengths and weaknesses with the implementation that was chosen.
 
@@ -55,7 +64,8 @@ What is good with this pipeline solution? First we can actually have a pipeline 
 
 
 
-## Transactions and WATCH
+Transactions and WATCH
+----------------------
 
 Support for transactions and WATCH:es in pipelines. If we look on the entire pipeline across all nodes in the cluster there is no possible way to have a complete transaction across all nodes because if we need to issue commands to 3 servers, each server is handled by its own and there is no way to tell other nodes to abort a transaction if only one of the nodes fail but not the others. A possible solution for that could be to implement a 2 step commit process. The 2 steps would consist of building 2 batches of commands for each node where the first batch would consist of validating the state of each slot that the pipeline wants to operate on. If any of the slots is migrating or moved then the client can correct its slots cache and issue a more correct pipeline batch. The second step would be to issue the acctuall commands and the data would be commited to redis. The big problem with this is that 99% of the time this would work really well if you have a very stable cluster with no migrations/resharding/servers down. But there can be times where a slot has begun migration in between the 2 steps of the pipeline and that would cause a race condition where the client thinks it has corrected the pipeline and wants to commit the data but when it does it will still fail.
 
@@ -69,84 +79,116 @@ Currently `WATCH` requires more studying if it possible to use or not, but sinc 
 
 
 
-## MULTI/EXEC cluster test code
+MULTI/EXEC cluster test code
+----------------------------
 
 This code do NOT wrap `MULTI/EXEC` around the commands when packed
 
-```python
->>> from rediscluster import StrictRedisCluster as s
->>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
->>> # Simulate that a slot is migrating to another node
->>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}
->>> p = r.pipeline()
->>> p.command_stack = []
->>> p.command_stack.append((["SET", "ert", "tre"], {}))
->>> p.command_stack.append((["SET", "wer", "rew"], {}))
->>> p.execute()
+.. code-block:: python
 
-ClusterConnection<host=127.0.0.1,port=7001>
-[True, ResponseError('MOVED 14226 127.0.0.1:7002',)]
-ClusterConnection<host=127.0.0.1,port=7002>
-[True]
-```
+    >>> from rediscluster import StrictRedisCluster as s
+    >>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
+    >>> # Simulate that a slot is migrating to another node
+    >>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}
+    >>> p = r.pipeline()
+    >>> p.command_stack = []
+    >>> p.command_stack.append((["SET", "ert", "tre"], {}))
+    >>> p.command_stack.append((["SET", "wer", "rew"], {}))
+    >>> p.execute()
 
-
+    ClusterConnection<host=127.0.0.1,port=7001>
+    [True, ResponseError('MOVED 14226 127.0.0.1:7002',)]
+    ClusterConnection<host=127.0.0.1,port=7002>
+    [True]
 
 This code DO wrap MULTI/EXEC around the commands when packed
 
-```python
->>> from rediscluster import StrictRedisCluster as s
->>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
->>> # Simulate that a slot is migrating to another node
->>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}
->>> p = r.pipeline()
->>> p.command_stack = []
->>> p.command_stack.append((["SET", "ert", "tre"], {}))
->>> p.command_stack.append((["SET", "wer", "rew"], {}))
->>> p.execute()
-ClusterConnection<host=127.0.0.1,port=7001>
-[True, False]
-```
+.. code-block:: python
+
+    >>> from rediscluster import StrictRedisCluster as s
+    >>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
+    >>> # Simulate that a slot is migrating to another node
+    >>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}
+    >>> p = r.pipeline()
+    >>> p.command_stack = []
+    >>> p.command_stack.append((["SET", "ert", "tre"], {}))
+    >>> p.command_stack.append((["SET", "wer", "rew"], {}))
+    >>> p.execute()
+    ClusterConnection<host=127.0.0.1,port=7001>
+    [True, False]
 
 
 
-## Different pipeline solutions
+Different pipeline solutions
+----------------------------
 
 This section will describe different types of pipeline solutions. It will list their main benefits and weaknesses.
 
-Note: This section is mostly random notes and thoughts and not that well written and cleaned up right now. It will be done at some point in the future.
+.. note:: 
 
+    This section is mostly random notes and thoughts and not that well written and cleaned up right now. It will be done at some point in the future.
+
+
+
+Suggestion one
+**************
 
 Simple but yet sequential pipeline. This solution acts more like an interface for the already existing pipeline implementation and only provides a simple backwards compatible interface to ensure that code that sexists still will work withouth any major modifications. The good this with this implementation is that because all commands is runned in sequence it will handle `MOVED` or `ASK` redirections very good and withouth any problems. The major downside to this solution is that no commands is ever batched and runned in parralell and thus you do not get any major performance boost from this approach. Other plus is that execution order is preserved across the entire cluster but a major downside is that thte commands is no longer atomic on the cluster scale because they are sent in multiple commands to different nodes.
 
-+ Sequential execution of the entire pipeline
-- No batching of commands aka. no execution speedup
-+ Easy `ASK` or `MOVED` handling
+**Good**
+
+ - Sequential execution of the entire pipeline
+ - Easy `ASK` or `MOVED` handling
+
+**Bad**
+
+ - No batching of commands aka. no execution speedup
 
 
 
+Suggestion two
+**************
 
 Current pipeline implementation. This implementation is rather good and works well because it combines the existing pipeline interface and functionality and it also provides a basic handling of `ASK` or `MOVED` errors inside the client. One major downside to this is that execution order is not preserved across the cluster. Altho the execution order is somewhat broken if you look at the entire cluster level becuase commands can be splitted so that cmd1, cmd3, cmd5 get sent to one server and cmd2, cmd4 gets sent to another server. The order is then broken globally but locally for each server it is preserved and maintained correctly. On the other hand i guess that there can't be any commands that can affect different hashslots within the same command so it maybe do not really matter if the execution order is not correct because for each slot/key the order is valid.
 There might be some issues with rebuilding the correct response ordering from the scattered data because each command might be in different sub pipelines. But i think that our current code still handles this correctly. I think i have to figure out some wierd case where the execution order acctually matters. There might be some issues with the nonsupported mget/mset commands that acctually performs different sub commands then it currently supports.
 
-+ Sequential execution per node
-- Not sequential execution on the entire pipeline
-- Medium difficult `ASK` or `MOVED` handling
+**Good**
+
+ - Sequential execution per node
+
+**Bad**
+
+ - Not sequential execution on the entire pipeline
+ - Medium difficult `ASK` or `MOVED` handling
 
 
 
+Suggestion three
+****************
 
 There is a even simpler form of pipelines that can be made where all commands is supported as long as they conform to the same hashslot because redis supports that mode of operation. The good thing with this is that sinc all keys must belong to the same slot there can't be very few `ASK` or `MOVED` errors that happens and if they happen they will be very easy to handle because the entire pipeline is kinda atomic because you talk to the same server and only 1 server. There can't be any multiple server communication happening.
 
-+ Super simple `ASK` or `MOVED` handling
-+ Sequential execution per slot and through the entire pipeline
-- Single slot per pipeline
+**Good**
+
+ - Super simple `ASK` or `MOVED` handling
+ - Sequential execution per slot and through the entire pipeline
+
+**Bad**
+
+ - Single slot per pipeline
 
 
 
+Suggestion four
+**************
 
 One other solution is the 2 step commit solution where you send for each server 2 batches of commands. The first command should somehow establish that each keyslot is in the correct state and able to handle the data. After the client have recieved OK from all nodes that all data slots is good to use then it will acctually send the real pipeline with all data and commands. The big problem with this approach is that ther eis a gap between the checking of the slots and the acctual sending of the data where things can happen to the already established slots setup. But at the same time there is no possibility of merging these 2 steps because if step 2 is automatically runned if step 1 is Ok then the pipeline for the first node that will fail will fail but for the other nodes it will suceed but when it should not because if one command gets `ASK` or `MOVED` redirection then all pipeline objects must be rebuilt to match the new specs/setup and then reissued by the client. The major advantage of this solution is that if you have total controll of the redis server and do controlled upgrades when no clients is talking to the server then it can acctually work really well because there is no possibility that `ASK` or `MOVED` will triggered by migrations in between the 2 batches.
 
-- Big possibility of race conditions that can cause problems
-+ Still rather safe because of the 2 step commit solution
-+ Handles `ASK` or `MOVED` before commiting the data
+**Good**
+
+ - Still rather safe because of the 2 step commit solution
+ - Handles `ASK` or `MOVED` before commiting the data
+
+**Bad**
+
+ - Big possibility of race conditions that can cause problems

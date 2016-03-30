@@ -1,14 +1,9 @@
-All authors of this library
-===========================
+Project Authors
+===============
 
 Added in the order they contributed.
 
 If you are mentioned in this document and want your row changed for any reason, open a new PR with changes.
-
-
-
-Authors
-=======
 
 Lead author and maintainer: Grokzen - https://github.com/Grokzen
 
