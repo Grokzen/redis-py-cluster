@@ -144,7 +144,6 @@ class ClusterConnectionPool(ConnectionPool):
 
         try:
             connection = self._available_connections.get(node["name"], []).pop()
-            print("Getting existing connection")
         except IndexError:
             connection = self.make_connection(node)
         self._in_use_connections[node['name']].add(connection)
@@ -157,7 +156,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         if self.count_all_num_connections(node) >= self.max_connections:
             if self.max_connections_per_node:
-                raise RedisClusterException("Too many connection ({}) for node: {}".format(self.count_all_num_connections(node), node['name']))
+                raise RedisClusterException("Too many connection ({0}) for node: {1}".format(self.count_all_num_connections(node), node['name']))
 
             raise RedisClusterException("Too many connections")
 
@@ -181,7 +180,7 @@ class ClusterConnectionPool(ConnectionPool):
         # Remove the current connection from _in_use_connection and add it back to the available pool
         # There is cases where the connection is to be removed but it will not exist and there
         # must be a safe way to remove
-        i_c = self._in_use_connections.get(connection._node["name"], set())
+        i_c = self._in_use_connections.get(connection.node["name"], set())
 
         if connection in i_c:
             i_c.remove(connection)
@@ -189,7 +188,7 @@ class ClusterConnectionPool(ConnectionPool):
             pass
             # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
 
-        self._available_connections.setdefault(connection._node["name"], []).append(connection)
+        self._available_connections.setdefault(connection.node["name"], []).append(connection)
 
     def disconnect(self):
         """
