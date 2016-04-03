@@ -26,7 +26,7 @@ Next release (??? ?, 2016)
       subscription that do not work properly because a pattern can't know all the possible channel names in advance.
     * Convert all docs to ReadTheDocs
 
-1.1.0 (??? ?, ????)
+1.1.0 (Oct 27, 2015)
 -------------------
 
     * Refactored exception handling and exception classes.
@@ -41,12 +41,12 @@ Next release (??? ?, 2016)
     * Fix ASKING error handling so now it really sends ASKING to next node during a reshard operation. This improvement was also made to pipelined commands.
     * Improved thread safety in pipelined commands, along better explanation of the logic inside pipelining with code comments.
 
-1.0.0 (??? ?, ????)
+1.0.0 (Jun 10, 2015)
 -------------------
 
     * No change to anything just a bump to 1.0.0 because the lib is now considered stable/production ready.
 
-0.3.0 (??? ?, ????)
+0.3.0 (Jun 9, 2015)
 -------------------
 
     * simple benchmark now uses docopt for cli parsing
@@ -57,7 +57,7 @@ Next release (??? ?, 2016)
     * Added comprehensive documentation regarding pipelines
     * Meta retrieval commands(slots, nodes, info) for Redis Cluster. (iandyh)
 
-0.2.0 (??? ?, ????)
+0.2.0 (Dec 26, 2014)
 -------------------
 
     * Moved pipeline code into new file.
@@ -74,7 +74,7 @@ Next release (??? ?, 2016)
     * Added vagrant support for testing and development. (72squared)
     * Improve stability of client during resharding operations (72squared)
 
-0.1.0 (??? ?, ????)
+0.1.0 (Sep 29, 2014)
 -------------------
 
     * Initial release
