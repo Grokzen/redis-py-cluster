@@ -12,7 +12,6 @@ Discontinue passing `pipeline_use_threads` flag to `rediscluster.StrictRedisClus
 
 Also discontinue passing `use_threads` flag to the pipeline() method.
 
-
 In 1.1.0 and prior, you could use `pipeline_use_threads` flag to tell the client to perform queries to the different nodes in parallel via threads. We exposed this as a flag because using threads might have been risky and we wanted people to be able to disable it if needed.
 
 With this release we figured out how to get parallelization of the commands without the need for threads. We write to all the nodes before reading from them, essentially multiplexing the connections (but without the need for complicated socket multiplexing). We found this approach to be faster and more scalable as more nodes are added to the cluster.
@@ -21,8 +20,13 @@ That means we don't need the `pipeline_use_threads` flag anymore, or the `use_th
 
 The logic is greatly simplified and the default behavior will now come with a performance boost and no need to use threads.
 
-
 Publish and subscribe no longer connects to a single instance. It now hashes the channel name and uses that to determine what node to connect to. More work will be done in the future when `redis-server` improves the pubsub implementation. Please read up on the documentation about pubsub in the `docs/pubsub.md` file about the problems and limitations on using a pubsub in a cluster.
+
+Commands Publish and Subscribe now uses the same connections as any other commands. If you are using any pubsub commands you need to test it through thoroughly to ensure that your implementation still works.
+
+To use less strict cluster slots discovery you can add the following config to your redis-server config file "cluster-require-full-coverage=no" and this client will honour that setting and not fail if not all slots is covered.
+
+A bug was fixed in 'sdiffstore', if you are using this, verify that your code still works as expected.
 
 
 
