@@ -167,11 +167,15 @@ class StrictRedisCluster(StrictRedis):
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
 
     def __repr__(self):
-        servers = list(set(['{}:{}'.format(nativestr(info['host']), info['port']) for info in self.connection_pool.nodes.startup_nodes]))
+        """
+        """
+        servers = list({'{0}:{1}'.format(nativestr(info['host']), info['port']) for info in self.connection_pool.nodes.startup_nodes})
         servers.sort()
-        return "{}<{}>".format(type(self).__name__, ', '.join(servers))
+        return "{0}<{1}>".format(type(self).__name__, ', '.join(servers))
 
     def pubsub(self, **kwargs):
+        """
+        """
         return ClusterPubSub(self.connection_pool, **kwargs)
 
     def pipeline(self, transaction=None, shard_hint=None):
@@ -196,7 +200,7 @@ class StrictRedisCluster(StrictRedis):
             reinitialize_steps=self.reinitialize_steps
         )
 
-    def transaction(self, func, *watches, **kwargs):
+    def transaction(self, *args, **kwargs):
         """
         Transaction is not implemented in cluster mode yet.
         """
@@ -213,11 +217,9 @@ class StrictRedisCluster(StrictRedis):
         if command in ['EVAL', 'EVALSHA']:
             numkeys = args[2]
             keys = args[3: 3 + numkeys]
-            slots = set([self.connection_pool.nodes.keyslot(key) for key in keys])
+            slots = {self.connection_pool.nodes.keyslot(key) for key in keys}
             if len(slots) != 1:
-                raise RedisClusterException(
-                    "%s - all keys must map to the same key slot" % command
-                )
+                raise RedisClusterException("{0} - all keys must map to the same key slot".format(command))
             return slots.pop()
 
         key = args[1]
@@ -235,6 +237,8 @@ class StrictRedisCluster(StrictRedis):
         return first_key(command, res)
 
     def determine_node(self, *args, **kwargs):
+        """
+        """
         command = args[0]
         node_flag = self.nodes_flags.get(command)
 
@@ -256,7 +260,7 @@ class StrictRedisCluster(StrictRedis):
         """
         Send a command to a node in the cluster
         """
-        if len(args) == 0:
+        if not args:
             raise RedisClusterException("Unable to determine command to use")
 
         command = args[0]
@@ -330,7 +334,7 @@ class StrictRedisCluster(StrictRedis):
                 if ttl < self.COMMAND_TTL / 2:
                     time.sleep(0.05)
             except AskError as e:
-                redirect_addr, asking = "%s:%s" % (e.host, e.port), True
+                redirect_addr, asking = "{0}:{1}".format(e.host, e.port), True
             finally:
                 self.connection_pool.release(r)
 
@@ -436,15 +440,15 @@ class StrictRedisCluster(StrictRedis):
         return self.execute_command('CLUSTER SET-CONFIG-EPOCH', epoch, node_id=node_id)
 
     # Send to specefied node_id
+    # TODO: Determine what the purpose of bind_to_node_ip is going to be
     def cluster_setslot(self, node_id, slot_id, state, bind_to_node_id=None):
         """Bind an hash slot to a specific node"""
-        if state.upper() in ('IMPORTING', 'MIGRATING', 'NODE'):
-            if node_id is not None:
-                return self.execute_command('CLUSTER SETSLOT', slot_id, Token(state), node_id)
+        if state.upper() in ('IMPORTING', 'MIGRATING', 'NODE') and node_id is not None:
+            return self.execute_command('CLUSTER SETSLOT', slot_id, Token(state), node_id)
         elif state.upper() == 'STABLE':
             return self.execute_command('CLUSTER SETSLOT', slot_id, Token('STABLE'))
         else:
-            raise RedisError('Invalid slot state: %s' % state)
+            raise RedisError('Invalid slot state: {0}'.format(state))
 
     # Specefied node
     def cluster_slaves(self, target_node_id):
@@ -677,7 +681,7 @@ class StrictRedisCluster(StrictRedis):
             elif data_type == b("list"):
                 data = self.lrange(name, 0, -1)
             else:
-                raise RedisClusterException("Unable to sort data type : {}".format(data_type))
+                raise RedisClusterException("Unable to sort data type : {0}".format(data_type))
             if by is not None:
                 # _sort_using_by_arg mutates data so we don't
                 # need need a return value.
@@ -702,7 +706,7 @@ class StrictRedisCluster(StrictRedis):
                     self.delete(store)
                     self.rpush(store, *data)
                 else:
-                    raise RedisClusterException("Unable to store sorted data for data type : {}".format(data_type))
+                    raise RedisClusterException("Unable to store sorted data for data type : {0}".format(data_type))
 
                 return len(data)
 
@@ -842,7 +846,7 @@ class StrictRedisCluster(StrictRedis):
         res = self.sinter(keys, *args)
         self.delete(dest)
 
-        if len(res) != 0:
+        if res:
             self.sadd(dest, *res)
             return len(res)
         else:
@@ -969,7 +973,7 @@ class StrictRedisCluster(StrictRedis):
         Generate a good random key with a low probability of collision between any other key.
         """
         # TODO: Check if the key exists or not. continue to randomize until a empty key is found
-        random_id = "{%s}%s" % (hashslot, self._random_id())
+        random_id = "{{0}}{1}".format(hashslot, self._random_id())
         return random_id
 
     def _random_id(self, size=16, chars=string.ascii_uppercase + string.digits):

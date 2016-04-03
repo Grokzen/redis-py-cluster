@@ -22,7 +22,7 @@ pytestmark = skip_if_server_version_lt('2.9.0')
 
 def redis_server_time(client):
     seconds, milliseconds = list(client.time().values())[0]
-    timestamp = float('%s.%s' % (seconds, milliseconds))
+    timestamp = float('{0}.{1}'.format(seconds, milliseconds))
     return datetime.datetime.fromtimestamp(timestamp)
 
 
@@ -303,8 +303,8 @@ class TestRedisCommands(object):
         keys = keys_with_underscores.union(set(['testc']))
         for key in keys:
             r[key] = 1
-        assert set(r.keys(pattern='test_*')) == set([b(k) for k in keys_with_underscores])
-        assert set(r.keys(pattern='test*')) == set([b(k) for k in keys])
+        assert set(r.keys(pattern='test_*')) == {b(k) for k in keys_with_underscores}
+        assert set(r.keys(pattern='test*')) == {b(k) for k in keys}
 
     def test_mget(self, r):
         assert r.mget(['a', 'b']) == [None, None]
@@ -1330,7 +1330,7 @@ class TestBinarySave(object):
         for key, value in iteritems(mapping):
             assert r.lrange(key, 0, -1) == value
 
-    def test_22_info(self, r):
+    def test_22_info(self):
         """
         Older Redis versions contained 'allocation_stats' in INFO that
         was the cause of a number of bugs when parsing.

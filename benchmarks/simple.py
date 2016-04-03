@@ -48,7 +48,7 @@ def timeit(rc, itterations=50000):
         rc.get(s)
 
     t1 = time.time() - t0
-    print("{}k SET/GET operations took: {} seconds... {} operations per second".format((itterations / 1000) * 2, t1, (itterations / t1) * 2))
+    print("{0}k SET/GET operations took: {1} seconds... {2} operations per second".format((itterations / 1000) * 2, t1, (itterations / t1) * 2))
 
 
 def timeit_pipeline(rc, itterations=50000):
@@ -65,7 +65,7 @@ def timeit_pipeline(rc, itterations=50000):
         p.execute()
 
     t1 = time.time() - t0
-    print("{}k SET/GET operations inside pipelines took: {} seconds... {} operations per second".format(
+    print("{0}k SET/GET operations inside pipelines took: {1} seconds... {2} operations per second".format(
         (itterations / 1000) * 2, t1, (itterations / t1) * 2)
     )
 
