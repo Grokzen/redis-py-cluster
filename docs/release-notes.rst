@@ -2,8 +2,8 @@ Release Notes
 =============
 
 
-Next release (??? ?, 2016)
---------------------------
+1.2.0 (Apr ??, 2016)
+--------------------
 
     * Drop maintained support for python 3.2.
     * Remove Vagrant file in favor for repo maintained by 72squared
