@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import warnings
 from collections import defaultdict
 
 from .connection import ClusterConnectionPool
@@ -18,6 +19,8 @@ class RedisClusterMgt(object):
     )
 
     def __init__(self, startup_nodes=None, **kwargs):
+        warnings.warn('RedisClusterMgt class will be removed in release 1.3.0. All CLUSTER commands is now implemented as commands in StrictRedisCluster class', FutureWarning)
+
         self.connection_pool = ClusterConnectionPool(
             startup_nodes=startup_nodes,
             init_slot_cache=True, **kwargs

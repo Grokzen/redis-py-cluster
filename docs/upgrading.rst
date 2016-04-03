@@ -4,6 +4,12 @@ Upgrading redis-py-cluster
 This document describes what must be done when upgrading between different versions to ensure that code still works.
 
 
+1.2.0 --> Next release
+----------------------
+
+Class RedisClusterMgt will be removed.
+
+
 
 1.1.0 --> 1.2.0
 --------------
@@ -27,6 +33,8 @@ Commands Publish and Subscribe now uses the same connections as any other comman
 To use less strict cluster slots discovery you can add the following config to your redis-server config file "cluster-require-full-coverage=no" and this client will honour that setting and not fail if not all slots is covered.
 
 A bug was fixed in 'sdiffstore', if you are using this, verify that your code still works as expected.
+
+Class RedisClusterMgt is now deprecated and will be removed in next release in favor of all cluster commands implemented in the client in this release.
 
 
 
