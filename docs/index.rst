@@ -41,6 +41,7 @@ Small sample script that shows how to get started with RedisCluster. It can also
 
     >>> from rediscluster import StrictRedisCluster
 
+    >>> # Requires at least one node for cluster discovery. Multiple nodes is recommended.
     >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
     >>> # Note: decode_responses must be set to True when used with python3
