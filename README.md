@@ -14,6 +14,8 @@ All documentation can be found at http://redis-py-cluster.readthedocs.org/en/mas
 
 This Readme contains a reduced version of the full documentation.
 
+Upgrading instructions between each released version can be found [docs/upgrading.rst](Here)
+
 
 
 ## Installation
