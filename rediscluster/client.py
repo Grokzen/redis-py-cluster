@@ -111,7 +111,7 @@ class StrictRedisCluster(StrictRedis):
         'READWRITE': bool_ok,
     }
 
-    def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, init_slot_cache=True,
+    def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, max_connections_per_node=False, init_slot_cache=True,
                  readonly_mode=False, reinitialize_steps=None, **kwargs):
         """
         :startup_nodes:
@@ -153,6 +153,7 @@ class StrictRedisCluster(StrictRedis):
                 startup_nodes=startup_nodes,
                 init_slot_cache=init_slot_cache,
                 max_connections=max_connections,
+                max_connections_per_node=max_connections_per_node,
                 **kwargs
             )
 

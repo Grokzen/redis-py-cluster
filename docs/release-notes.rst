@@ -25,6 +25,8 @@ Release Notes
       a node in the cluster. Other clients that do not use this pattern will not be fully compatible with this client. Known limitations is pattern 
       subscription that do not work properly because a pattern can't know all the possible channel names in advance.
     * Convert all docs to ReadTheDocs
+    * Rework connection pool logic to be more similar to redis-py. This also fixes an issue with pubsub and that connections
+      was never release back to the pool of available connections.
 
 1.1.0 (Oct 27, 2015)
 -------------------

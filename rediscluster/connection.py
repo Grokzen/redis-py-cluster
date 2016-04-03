@@ -106,10 +106,9 @@ class ClusterConnectionPool(ConnectionPool):
         """
         self.pid = os.getpid()
         self._created_connections = 0
+        self._created_connections_per_node = {}  # Dict(Node, Int)
         self._available_connections = {}  # Dict(Node, List)
         self._in_use_connections = {}  # Dict(Node, Set)
-        self._available_pubsub_connections = []
-        self._in_use_pubsub_connections = set([])
         self._check_lock = threading.Lock()
 
     def _checkpid(self):
@@ -139,10 +138,16 @@ class ClusterConnectionPool(ConnectionPool):
             return self.get_random_connection()
 
         slot = self.nodes.keyslot(channel)
+        node = self.get_master_node_by_slot(slot)
 
-        # TOOD: Pop existing connection if it exists
-        connection = self.make_connection(self.get_master_node_by_slot(slot))
-        self._in_use_pubsub_connections.add(connection)
+        self._checkpid()
+
+        try:
+            connection = self._available_connections.get(node["name"], []).pop()
+            print("Getting existing connection")
+        except IndexError:
+            connection = self.make_connection(node)
+        self._in_use_connections[node['name']].add(connection)
 
         return connection
 
@@ -150,10 +155,14 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Create a new connection
         """
-        if self.count_num_connections(node) >= self.max_connections:
+        if self.count_all_num_connections(node) >= self.max_connections:
+            if self.max_connections_per_node:
+                raise RedisClusterException("Too many connection ({}) for node: {}".format(self.count_all_num_connections(node), node['name']))
+
             raise RedisClusterException("Too many connections")
 
-        self._created_connections += 1
+        self._created_connections_per_node.setdefault(node['name'], 0)
+        self._created_connections_per_node[node['name']] += 1
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
 
         # Must store node in the connection to make it eaiser to track
@@ -169,22 +178,18 @@ class ClusterConnectionPool(ConnectionPool):
         if connection.pid != self.pid:
             return
 
-        if connection in self._in_use_pubsub_connections:
-            self._in_use_pubsub_connections.remove(connection)
-            self._available_pubsub_connections.append(connection)
+        # Remove the current connection from _in_use_connection and add it back to the available pool
+        # There is cases where the connection is to be removed but it will not exist and there
+        # must be a safe way to remove
+        i_c = self._in_use_connections.get(connection._node["name"], set())
+
+        if connection in i_c:
+            i_c.remove(connection)
         else:
-            # Remove the current connection from _in_use_connection and add it back to the available pool
-            # There is cases where the connection is to be removed but it will not exist and there
-            # must be a safe way to remove
-            i_c = self._in_use_connections.get(connection.node["name"], set())
+            pass
+            # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
 
-            if connection in i_c:
-                i_c.remove(connection)
-            else:
-                pass
-                # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
-
-            self._available_connections.setdefault(connection.node["name"], []).append(connection)
+        self._available_connections.setdefault(connection._node["name"], []).append(connection)
 
     def disconnect(self):
         """
@@ -199,26 +204,13 @@ class ClusterConnectionPool(ConnectionPool):
             for connection in node_connections:
                 connection.disconnect()
 
-        all_pubsub_conns = chain(
-            self._available_pubsub_connections,
-            self._in_use_pubsub_connections,
-        )
-
-        for connection in all_pubsub_conns:
-            connection.disconnect()
-
-    def count_num_connections(self, node):
+    def count_all_num_connections(self, node):
         """
         """
         if self.max_connections_per_node:
-            return len(self._in_use_connections.get(node['name'], []))
+            return self._created_connections_per_node.get(node['name'], 0)
 
-        i = 0
-
-        for _, connections in self._in_use_connections.items():
-            i += len(connections)
-
-        return i
+        return sum([i for i in self._created_connections_per_node.values()])
 
     def get_random_connection(self):
         """

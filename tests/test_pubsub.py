@@ -2,7 +2,11 @@
 
 # python std lib
 from __future__ import with_statement
+import threading
 import time
+
+# rediscluster imports
+from rediscluster.client import StrictRedisCluster
 
 # 3rd party imports
 import pytest
@@ -429,3 +433,48 @@ class TestPubSubRedisDown(object):
         p = r.pubsub()
         with pytest.raises(ConnectionError):
             p.subscribe('foo')
+
+
+class TestPubSubThreadedPublish(object):
+
+    def test_pubsub_thread_publish(self):
+        """
+        This test will never fail but it will still show and be viable to use
+        and to test the threading capability of the connectionpool and the publish
+        mechanism.
+        """
+        startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
+
+        r = StrictRedisCluster(
+            startup_nodes=startup_nodes,
+            decode_responses=True,
+            max_connections=16,
+            max_connections_per_node=16,
+        )
+
+        p = r.pubsub()
+
+        def t_run(rc, pub):
+            for i in range(0, 50):
+                rc.publish('foo', 'bar')
+                rc.publish('bar', 'foo')
+                rc.publish('asd', 'dsa')
+                rc.publish('dsa', 'asd')
+                rc.publish('qwe', 'bar')
+                rc.publish('ewq', 'foo')
+                rc.publish('wer', 'dsa')
+                rc.publish('rew', 'asd')
+
+            # Use this for debugging
+            # print(rc.connection_pool._available_connections)
+            # print(rc.connection_pool._in_use_connections)
+            # print(rc.connection_pool._created_connections)
+
+        try:
+            threads = []
+            for i in range(10):
+                t = threading.Thread(target=t_run, args=(r, p))
+                threads.append(t)
+                t.start()
+        except:
+            print("Error: unable to start thread")
