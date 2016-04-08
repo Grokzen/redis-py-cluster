@@ -21,6 +21,8 @@ _REDIS_VERSIONS = {}
 
 
 def get_versions(**kwargs):
+    """
+    """
     key = json.dumps(kwargs)
     if key not in _REDIS_VERSIONS:
         client = _get_client(**kwargs)
@@ -29,15 +31,25 @@ def get_versions(**kwargs):
 
 
 def _get_client(cls=None, **kwargs):
+    """
+    """
     if not cls:
         cls = RedisCluster
 
-    params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}], 'socket_timeout': 10, 'decode_responses': False}
+    params = {
+        'startup_nodes': [{
+            'host': '127.0.0.1', 'port': 7000
+        }],
+        'socket_timeout': 10,
+        'decode_responses': False,
+    }
     params.update(kwargs)
     return cls(**params)
 
 
 def _init_client(request, cls=None, **kwargs):
+    """
+    """
     client = _get_client(cls=cls, **kwargs)
     client.flushdb()
     if request:
@@ -49,6 +61,8 @@ def _init_client(request, cls=None, **kwargs):
 
 
 def _init_mgt_client(request, cls=None, **kwargs):
+    """
+    """
     client = _get_client(cls=cls, **kwargs)
     if request:
         def teardown():
@@ -58,10 +72,14 @@ def _init_mgt_client(request, cls=None, **kwargs):
 
 
 def skip_if_not_password_protected_nodes():
+    """
+    """
     return pytest.mark.skipif('TEST_PASSWORD_PROTECTED' not in os.environ, reason="")
 
 
 def skip_if_server_version_lt(min_version):
+    """
+    """
     versions = get_versions()
     for version in versions.values():
         if StrictVersion(version) < StrictVersion(min_version):
@@ -70,6 +88,8 @@ def skip_if_server_version_lt(min_version):
 
 
 def skip_if_redis_py_version_lt(min_version):
+    """
+    """
     import redis
     version = redis.__version__
     if StrictVersion(version) < StrictVersion(min_version):
@@ -78,16 +98,15 @@ def skip_if_redis_py_version_lt(min_version):
 
 
 @pytest.fixture()
-def o(request, **kwargs):
+def o(request, *args, **kwargs):
     """
     Create a StrictRedisCluster instance with decode_responses set to True.
     """
-    return _init_client(request, cls=StrictRedisCluster, decode_responses=True,
-                        **kwargs)
+    return _init_client(request, cls=StrictRedisCluster, decode_responses=True, **kwargs)
 
 
 @pytest.fixture()
-def r(request, **kwargs):
+def r(request, *args, **kwargs):
     """
     Create a StrictRedisCluster instance with default settings.
     """
@@ -95,7 +114,7 @@ def r(request, **kwargs):
 
 
 @pytest.fixture()
-def ro(request, **kwargs):
+def ro(request, *args, **kwargs):
     """
     Create a StrictRedisCluster instance with readonly mode
     """
@@ -105,7 +124,7 @@ def ro(request, **kwargs):
 
 
 @pytest.fixture()
-def s(request, **kwargs):
+def s(*args, **kwargs):
     """
     Create a StrictRedisCluster instance with 'init_slot_cache' set to false
     """
@@ -116,7 +135,7 @@ def s(request, **kwargs):
 
 
 @pytest.fixture()
-def t(request, *args, **kwargs):
+def t(*args, **kwargs):
     """
     Create a regular StrictRedis object instance
     """
@@ -136,5 +155,4 @@ def rcm(request, *args, **kwargs):
     """
     Returns a instance of RedisClusterMgt
     """
-    return _init_mgt_client(request, cls=RedisClusterMgt, decode_responses=True,
-                            **kwargs)
+    return _init_mgt_client(request, cls=RedisClusterMgt, decode_responses=True, **kwargs)

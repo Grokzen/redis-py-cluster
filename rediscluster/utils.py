@@ -38,7 +38,7 @@ def blocked_command(self, command):
     """
     Raises a `RedisClusterException` mentioning the command is blocked.
     """
-    raise RedisClusterException("Command: {} is blocked in redis cluster mode".format(command))
+    raise RedisClusterException("Command: {0} is blocked in redis cluster mode".format(command))
 
 
 def merge_result(command, res):
@@ -102,17 +102,23 @@ def clusterdown_wrapper(func):
 
 
 def nslookup(node_ip):
+    """
+    """
     if ':' not in node_ip:
         return gethostbyaddr(node_ip)[0]
 
     ip, port = node_ip.split(':')
 
-    return '%s:%s' % (gethostbyaddr(ip)[0], port)
+    return '{0}:{1}'.format(gethostbyaddr(ip)[0], port)
 
 
 def parse_cluster_slots(resp, **options):
+    """
+    """
     current_host = options.get('current_host', '')
-    fix_server = lambda host, port: (host or current_host, port)
+
+    def fix_server(host, port):
+        return (host or current_host, port)
 
     slots = {}
     for slot in resp:

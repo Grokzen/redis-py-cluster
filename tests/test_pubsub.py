@@ -54,13 +54,12 @@ def make_subscribe_test_data(pubsub, type):
             'unsub_func': pubsub.punsubscribe,
             'keys': ['f*', 'b*', u('uni') + unichr(4456) + u('*')]
         }
-    assert False, 'invalid subscribe type: %s' % type
+    assert False, 'invalid subscribe type: {0}'.format(type)
 
 
 class TestPubSubSubscribeUnsubscribe(object):
 
-    def _test_subscribe_unsubscribe(self, p, sub_type, unsub_type, sub_func,
-                                    unsub_func, keys):
+    def _test_subscribe_unsubscribe(self, p, sub_type, unsub_type, sub_func, unsub_func, keys):
         for key in keys:
             assert sub_func(key) is None
 
@@ -85,9 +84,7 @@ class TestPubSubSubscribeUnsubscribe(object):
         kwargs = make_subscribe_test_data(r.pubsub(), 'pattern')
         self._test_subscribe_unsubscribe(**kwargs)
 
-    def _test_resubscribe_on_reconnection(self, p, sub_type, unsub_type,
-                                          sub_func, unsub_func, keys):
-
+    def _test_resubscribe_on_reconnection(self, p, sub_type, sub_func, keys, *args, **kwargs):
         for key in keys:
             assert sub_func(key) is None
 
@@ -102,7 +99,7 @@ class TestPubSubSubscribeUnsubscribe(object):
         # note, we may not re-subscribe to channels in exactly the same order
         # so we have to do some extra checks to make sure we got them all
         messages = []
-        for i in range(len(keys)):
+        for i, _ in enumerate(keys):
             messages.append(wait_for_message(p))
 
         unique_channels = set()
@@ -126,9 +123,7 @@ class TestPubSubSubscribeUnsubscribe(object):
         kwargs = make_subscribe_test_data(r.pubsub(), 'pattern')
         self._test_resubscribe_on_reconnection(**kwargs)
 
-    def _test_subscribed_property(self, p, sub_type, unsub_type, sub_func,
-                                  unsub_func, keys):
-
+    def _test_subscribed_property(self, p, sub_type, unsub_type, sub_func, unsub_func, keys):
         assert p.subscribed is False
         sub_func(keys[0])
         # we're now subscribed even though we haven't processed the
@@ -228,7 +223,7 @@ class TestPubSubMessages(object):
     def get_strict_redis_node(self, port, host="127.0.0.1"):
         return StrictRedis(port=port, host=host)
 
-    def setup_method(self, method):
+    def setup_method(self, *args):
         self.message = None
 
     def message_handler(self, message):
@@ -344,7 +339,7 @@ class TestPubSubAutoDecoding(object):
             'data': data
         }
 
-    def setup_method(self, method):
+    def setup_method(self, *args):
         self.message = None
 
     def message_handler(self, message):

@@ -6,26 +6,38 @@ from redis.exceptions import (
 
 
 class RedisClusterException(Exception):
+    """
+    """
     pass
 
 
 class RedisClusterError(Exception):
+    """
+    """
     pass
 
 
 class ClusterDownException(Exception):
+    """
+    """
     pass
 
 
 class ClusterError(RedisError):
+    """
+    """
     pass
 
 
 class ClusterCrossSlotError(ResponseError):
+    """
+    """
     message = "Keys in request don't hash to the same slot"
 
 
 class ClusterDownError(ClusterError, ResponseError):
+    """
+    """
     def __init__(self, resp):
         self.args = (resp, )
         self.message = resp
@@ -52,9 +64,13 @@ class AskError(ResponseError):
 
 
 class TryAgainError(ResponseError):
-    def __init__(self, resp):
+    """
+    """
+    def __init__(self, *args, **kwargs):
         pass
 
 
 class MovedError(AskError):
+    """
+    """
     pass

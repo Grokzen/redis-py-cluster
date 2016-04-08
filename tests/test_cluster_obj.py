@@ -75,7 +75,7 @@ def test_host_port_startup_node():
     assert {"host": h, "port": p} in c.connection_pool.nodes.startup_nodes
 
 
-def test_empty_startup_nodes(s):
+def test_empty_startup_nodes():
     """
     Test that exception is raised when empty providing empty startup_nodes
     """
@@ -123,7 +123,7 @@ def test_blocked_commands(r):
         except RedisClusterException:
             pass
         else:
-            raise AssertionError("'RedisClusterException' not raised for method : {}".format(command))
+            raise AssertionError("'RedisClusterException' not raised for method : {0}".format(command))
 
 
 def test_blocked_transaction(r):
@@ -272,14 +272,14 @@ def test_ask_redirection():
 
     host_ip = find_node_ip_based_on_port(r, '7001')
 
-    def ask_redirect_effect(connection, command_name, **options):
-        def ok_response(connection, command_name, **options):
+    def ask_redirect_effect(connection, *args, **options):
+        def ok_response(connection, *args, **options):
             assert connection.host == host_ip
             assert connection.port == 7001
 
             return "MOCK_OK"
         m.side_effect = ok_response
-        raise AskError("1337 {}:7001".format(host_ip))
+        raise AskError("1337 {0}:7001".format(host_ip))
 
     m.side_effect = ask_redirect_effect
 
@@ -301,8 +301,8 @@ def test_pipeline_ask_redirection():
 
     m = Mock(autospec=True)
 
-    def ask_redirect_effect(connection, command_name, **options):
-        def ok_response(connection, command_name, **options):
+    def ask_redirect_effect(connection, *args, **options):
+        def ok_response(connection, *args, **options):
             assert connection.host == "127.0.0.1"
             assert connection.port == 7001
 
@@ -329,8 +329,8 @@ def test_moved_redirection():
     r = StrictRedisCluster(host="127.0.0.1", port=7000)
     m = Mock(autospec=True)
 
-    def ask_redirect_effect(connection, command_name, **options):
-        def ok_response(connection, command_name, **options):
+    def ask_redirect_effect(connection, *args, **options):
+        def ok_response(connection, *args, **options):
             assert connection.host == "127.0.0.1"
             assert connection.port == 7002
 
@@ -358,8 +358,8 @@ def test_moved_redirection_pipeline():
 
     m = Mock(autospec=True)
 
-    def moved_redirect_effect(connection, command_name, **options):
-        def ok_response(connection, command_name, **options):
+    def moved_redirect_effect(connection, *args, **options):
+        def ok_response(connection, *args, **options):
             assert connection.host == "127.0.0.1"
             assert connection.port == 7002
 

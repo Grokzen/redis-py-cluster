@@ -46,7 +46,7 @@ def test_init_slots_cache_not_all_slots(s):
     Test that if not all slots are covered it should raise an exception
     """
     # Create wrapper function so we can inject custom 'CLUSTER SLOTS' command result
-    def get_redis_link_wrapper(host, port, decode_responses=False):
+    def get_redis_link_wrapper(*args, **kwargs):
         link = StrictRedis(host="127.0.0.1", port=7000, decode_responses=True)
 
         orig_exec_method = link.execute_command
@@ -80,7 +80,7 @@ def test_init_slots_cache_not_all_slots_not_require_full_coverage(s):
     Test that if not all slots are covered it should raise an exception
     """
     # Create wrapper function so we can inject custom 'CLUSTER SLOTS' command result
-    def get_redis_link_wrapper(host, port, decode_responses=False):
+    def get_redis_link_wrapper(*args, **kwargs):
         link = StrictRedis(host="127.0.0.1", port=7000, decode_responses=True)
 
         orig_exec_method = link.execute_command
@@ -177,7 +177,7 @@ def test_init_slots_cache_slots_collision():
         {"host": "127.0.0.1", "port": 7001},
     ])
 
-    def monkey_link(host=None, port=None, decode_responses=False):
+    def monkey_link(host=None, port=None, *args, **kwargs):
         """
         Helper function to return custom slots cache data from different redis nodes
         """

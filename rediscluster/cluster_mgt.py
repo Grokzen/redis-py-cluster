@@ -10,7 +10,8 @@ from redis.exceptions import ConnectionError, TimeoutError
 
 
 class RedisClusterMgt(object):
-
+    """
+    """
     blocked_args = (
         'addslots', 'count_failure_reports',
         'countkeysinslot', 'delslots', 'failover', 'forget',
@@ -19,6 +20,8 @@ class RedisClusterMgt(object):
     )
 
     def __init__(self, startup_nodes=None, **kwargs):
+        """
+        """
         warnings.warn('RedisClusterMgt class will be removed in release 1.3.0. All CLUSTER commands is now implemented as commands in StrictRedisCluster class', FutureWarning)
 
         self.connection_pool = ClusterConnectionPool(
@@ -27,13 +30,17 @@ class RedisClusterMgt(object):
         )
 
     def __getattr__(self, attr):
+        """
+        """
         if attr in self.blocked_args:
-            raise RedisClusterException('%s is currently not supported' % attr)
+            raise RedisClusterException('{0} is currently not supported'.format(attr))
 
-        raise RedisClusterException('%s is not a valid Redis cluster argument' % attr)
+        raise RedisClusterException('{0} is not a valid Redis cluster argument'.format(attr))
 
     @clusterdown_wrapper
     def _execute_command_on_nodes(self, nodes, *args, **kwargs):
+        """
+        """
         command = args[0]
         res = {}
 
@@ -57,12 +64,16 @@ class RedisClusterMgt(object):
         return first_key(command, res)
 
     def _execute_cluster_commands(self, *args, **kwargs):
+        """
+        """
         args = ('cluster',) + args
         node = self.connection_pool.nodes.random_node()
 
         return self._execute_command_on_nodes([node], *args, **kwargs)
 
     def info(self):
+        """
+        """
         raw = self._execute_cluster_commands('info')
 
         def _split(line):
@@ -74,9 +85,13 @@ class RedisClusterMgt(object):
                 [_split(line) for line in raw.split('\r\n') if line]}
 
     def _make_host(self, host, port):
-        return '%s:%s' % (host, port)
+        """
+        """
+        return '{0}:{1}'.format(host, port)
 
     def slots(self, host_required=False):
+        """
+        """
         slots_info = self._execute_cluster_commands('slots')
         master_slots = defaultdict(list)
         slave_slots = defaultdict(list)
@@ -98,6 +113,8 @@ class RedisClusterMgt(object):
         }
 
     def _parse_node_line(self, line):
+        """
+        """
         line_items = line.split(' ')
         ret = line_items[:8]
         slots = [sl.split('-') for sl in line_items[8:]]
@@ -106,6 +123,8 @@ class RedisClusterMgt(object):
         return ret
 
     def nodes(self, host_required=False):
+        """
+        """
         raw = self._execute_cluster_commands('nodes')
         ret = {}
 

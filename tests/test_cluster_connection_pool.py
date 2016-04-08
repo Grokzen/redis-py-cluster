@@ -30,6 +30,7 @@ class DummyConnection(object):
         self.pid = os.getpid()
         self.host = host
         self.port = port
+        self.socket_timeout = socket_timeout
 
 
 class TestConnectionPool(object):

@@ -22,8 +22,9 @@ from redis._compat import unicode
 
 
 def test_string_keys_to():
-    l = lambda: True
-    assert string_keys_to_dict(["FOO", "BAR"], l) == {"FOO": l, "BAR": l}
+    def mock_true():
+        return True
+    assert string_keys_to_dict(["FOO", "BAR"], mock_true) == {"FOO": mock_true, "BAR": mock_true}
 
 
 def test_dict_merge():

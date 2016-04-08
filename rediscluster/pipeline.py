@@ -24,6 +24,8 @@ class StrictClusterPipeline(StrictRedisCluster):
 
     def __init__(self, connection_pool, result_callbacks=None, reinitialize_steps=None,
                  response_callbacks=None, startup_nodes=None, refresh_table_asap=False):
+        """
+        """
         self.command_stack = []
         self.connection_pool = connection_pool
         self.refresh_table_asap = refresh_table_asap
@@ -34,28 +36,44 @@ class StrictClusterPipeline(StrictRedisCluster):
         self.startup_nodes = startup_nodes if startup_nodes else []
 
     def __repr__(self):
-        return "{}".format(type(self).__name__)
+        """
+        """
+        return "{0}".format(type(self).__name__)
 
     def __enter__(self):
+        """
+        """
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        """
+        """
         self.reset()
 
     def __del__(self):
+        """
+        """
         self.reset()
 
     def __len__(self):
+        """
+        """
         return len(self.command_stack)
 
     def execute_command(self, *args, **kwargs):
+        """
+        """
         return self.pipeline_execute_command(*args, **kwargs)
 
     def pipeline_execute_command(self, *args, **options):
+        """
+        """
         self.command_stack.append(PipelineCommand(args, options, len(self.command_stack)))
         return self
 
     def raise_first_error(self, stack):
+        """
+        """
         for c in stack:
             r = c.result
             if isinstance(r, ResponseError):
@@ -63,12 +81,16 @@ class StrictClusterPipeline(StrictRedisCluster):
                 raise r
 
     def annotate_exception(self, exception, number, command):
+        """
+        """
         cmd = unicode(' ').join(imap(unicode, command))
-        msg = unicode('Command # %d (%s) of pipeline caused error: %s') % (
+        msg = unicode('Command # {0} ({1}) of pipeline caused error: {2}').format(
             number, cmd, unicode(exception.args[0]))
         exception.args = (msg,) + exception.args[1:]
 
     def execute(self, raise_on_error=True):
+        """
+        """
         stack = self.command_stack
 
         if not stack:
@@ -274,24 +296,38 @@ class StrictClusterPipeline(StrictRedisCluster):
             raise RedisClusterException("ASK & MOVED redirection not allowed in this pipeline")
 
     def multi(self):
+        """
+        """
         raise RedisClusterException("method multi() is not implemented")
 
     def immediate_execute_command(self, *args, **options):
+        """
+        """
         raise RedisClusterException("method immediate_execute_command() is not implemented")
 
-    def _execute_transaction(self, connection, commands, raise_on_error):
+    def _execute_transaction(self, *args, **kwargs):
+        """
+        """
         raise RedisClusterException("method _execute_transaction() is not implemented")
 
     def load_scripts(self):
+        """
+        """
         raise RedisClusterException("method load_scripts() is not implemented")
 
     def watch(self, *names):
+        """
+        """
         raise RedisClusterException("method watch() is not implemented")
 
     def unwatch(self):
+        """
+        """
         raise RedisClusterException("method unwatch() is not implemented")
 
-    def script_load_for_pipeline(self, script):
+    def script_load_for_pipeline(self, *args, **kwargs):
+        """
+        """
         raise RedisClusterException("method script_load_for_pipeline() is not implemented")
 
     def delete(self, *names):
@@ -309,7 +345,7 @@ def block_pipeline_command(func):
     Prints error because some pipelined commands should be blocked when running in cluster-mode
     """
     def inner(*args, **kwargs):
-        raise RedisClusterException("ERROR: Calling pipelined function {} is blocked when running redis in cluster mode...".format(func.__name__))
+        raise RedisClusterException("ERROR: Calling pipelined function {0} is blocked when running redis in cluster mode...".format(func.__name__))
 
     return inner
 
@@ -378,6 +414,9 @@ StrictClusterPipeline.time = block_pipeline_command(StrictRedis.time)
 
 
 class PipelineCommand(object):
+    """
+    """
+
     def __init__(self, args, options=None, position=None):
         self.args = args
         if options is None:
@@ -390,13 +429,19 @@ class PipelineCommand(object):
 
 
 class NodeCommands(object):
+    """
+    """
 
     def __init__(self, parse_response, connection):
+        """
+        """
         self.parse_response = parse_response
         self.connection = connection
         self.commands = []
 
     def append(self, c):
+        """
+        """
         self.commands.append(c)
 
     def write(self):
@@ -413,6 +458,8 @@ class NodeCommands(object):
                 c.result = e
 
     def read(self):
+        """
+        """
         connection = self.connection
         for c in self.commands:
             try:

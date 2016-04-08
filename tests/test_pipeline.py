@@ -17,6 +17,9 @@ from redis.exceptions import WatchError, ResponseError, ConnectionError
 
 
 class TestPipeline(object):
+    """
+    """
+
     def test_pipeline(self, r):
         with r.pipeline() as pipe:
             pipe.set('a', 'a1').get('a').zadd('z', z1=1).zadd('z', z2=4)
@@ -244,8 +247,7 @@ class TestPipeline(object):
             with pytest.raises(ResponseError) as ex:
                 pipe.execute()
 
-            expected = unicode('Command # 1 (LLEN %s) of pipeline caused '
-                               'error: ') % key
+            expected = unicode('Command # 1 (LLEN {0}) of pipeline caused error: ').format(key)
             assert unicode(ex.value).startswith(expected)
 
         assert r[key] == b('1')
@@ -496,7 +498,7 @@ class TestReadOnlyPipeline(object):
             with patch.object(ClusterConnectionPool, 'get_master_node_by_slot') as return_master_mock:
                 def get_mock_node(role, port):
                     return {
-                        'name': '127.0.0.1:%d' % port,
+                        'name': '127.0.0.1:{0}'.format(port),
                         'host': '127.0.0.1',
                         'port': port,
                         'server_type': role,
@@ -520,7 +522,7 @@ class TestReadOnlyPipeline(object):
             StrictRedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
         )
 
-    def test_moved_redirection_on_slave_with_readonly_mode_client(self, sr):
+    def test_moved_redirection_on_slave_with_readonly_mode_client(self):
         """
         Ditto with READONLY mode.
         """
