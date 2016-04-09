@@ -15,9 +15,9 @@ install:
   - pip install -e .
   - "if [[ $HIREDIS == '1' ]]; then pip install hiredis; fi"
 env:
-  # Redis 3.0.6
+  # Redis 3.0.7
   - HIREDIS=0 REDIS_VERSION=3.0
-  # Redis 3.0.6 and HIREDIS
+  # Redis 3.0.7 and HIREDIS
   - HIREDIS=1 REDIS_VERSION=3.0
   # Redis 3.2.0-rc3
   - HIREDIS=0 REDIS_VERSION=3.2
