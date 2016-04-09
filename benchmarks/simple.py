@@ -5,6 +5,7 @@ import time
 
 # 3rd party imports
 from docopt import docopt
+from redis._compat import xrange
 
 
 def loop(rc, reset_last_key=None):
