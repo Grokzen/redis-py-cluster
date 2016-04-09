@@ -92,7 +92,6 @@ The Usage Guide
    :maxdepth: 2
    :glob:
 
-   cluster-mgt
    commands
    limitations-and-differences
    pipelines
