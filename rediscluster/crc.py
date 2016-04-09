@@ -3,8 +3,7 @@
 # python std lib
 import sys
 
-
-XMODEMCRC16Lookup = [
+x_mode_m_crc16_lookup = [
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
     0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
     0x1231, 0x0210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
@@ -41,16 +40,20 @@ XMODEMCRC16Lookup = [
 
 
 def _crc16_py3(data):
+    """
+    """
     crc = 0
     for byte in data.encode("utf-8"):
-        crc = ((crc << 8) & 0xff00) ^ XMODEMCRC16Lookup[((crc >> 8) & 0xff) ^ byte]
+        crc = ((crc << 8) & 0xff00) ^ x_mode_m_crc16_lookup[((crc >> 8) & 0xff) ^ byte]
     return crc & 0xffff
 
 
 def _crc16_py2(data):
+    """
+    """
     crc = 0
     for byte in data.encode("utf-8"):
-        crc = ((crc << 8) & 0xff00) ^ XMODEMCRC16Lookup[((crc >> 8) & 0xff) ^ ord(byte)]
+        crc = ((crc << 8) & 0xff00) ^ x_mode_m_crc16_lookup[((crc >> 8) & 0xff) ^ ord(byte)]
     return crc & 0xffff
 
 

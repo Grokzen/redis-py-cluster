@@ -22,11 +22,22 @@ pytestmark = skip_if_server_version_lt('2.9.0')
 
 def redis_server_time(client):
     seconds, milliseconds = list(client.time().values())[0]
-    timestamp = float('%s.%s' % (seconds, milliseconds))
+    timestamp = float('{0}.{1}'.format(seconds, milliseconds))
     return datetime.datetime.fromtimestamp(timestamp)
 
 
 class TestRedisCommands(object):
+
+    @skip_if_server_version_lt('2.9.9')
+    def test_zrevrangebylex(self, r):
+        r.zadd('a', a=0, b=0, c=0, d=0, e=0, f=0, g=0)
+        assert r.zrevrangebylex('a', '[c', '-') == [b('c'), b('b'), b('a')]
+        assert r.zrevrangebylex('a', '(c', '-') == [b('b'), b('a')]
+        assert r.zrevrangebylex('a', '(g', '[aaa') == \
+            [b('f'), b('e'), b('d'), b('c'), b('b')]
+        assert r.zrevrangebylex('a', '+', '[f') == [b('g'), b('f')]
+        assert r.zrevrangebylex('a', '+', '-', start=3, num=2) == \
+            [b('d'), b('c')]
 
     def test_command_on_invalid_key_type(self, r):
         r.lpush('a', '1')
@@ -75,7 +86,7 @@ class TestRedisCommands(object):
         r['a'] = 'foo'
         assert isinstance(r.object('refcount', 'a'), int)
         # assert isinstance(r.object('idletime', 'a'), int)
-        # assert r.object('encoding', 'a') == b('raw')
+        # assert r.object('encoding', 'a') in (b('raw'), b('embstr'))
         assert r.object('idletime', 'invalid-key') is None
 
     def test_ping(self, r):
@@ -292,8 +303,8 @@ class TestRedisCommands(object):
         keys = keys_with_underscores.union(set(['testc']))
         for key in keys:
             r[key] = 1
-        assert set(r.keys(pattern='test_*')) == set([b(k) for k in keys_with_underscores])
-        assert set(r.keys(pattern='test*')) == set([b(k) for k in keys])
+        assert set(r.keys(pattern='test_*')) == {b(k) for k in keys_with_underscores}
+        assert set(r.keys(pattern='test*')) == {b(k) for k in keys}
 
     def test_mget(self, r):
         assert r.mget(['a', 'b']) == [None, None]
@@ -627,7 +638,7 @@ class TestRedisCommands(object):
             keys += partial_keys
         assert set(keys) == set([b('a')])
 
-    def test_iter_scan(self, r):
+    def test_scan_iter(self, r):
         r.set('a', 1)
         r.set('b', 2)
         r.set('c', 3)
@@ -635,6 +646,13 @@ class TestRedisCommands(object):
         assert set(keys) == set([b('a'), b('b'), b('c')])
         keys = list(r.scan_iter(match='a'))
         assert set(keys) == set([b('a')])
+
+        r.set('Xa', 1)
+        r.set('Xb', 2)
+        r.set('Xc', 3)
+        keys = list(r.scan_iter('X*', count=1000))
+        assert len(keys) == 3
+        assert set(keys) == set([b('Xa'), b('Xb'), b('Xc')])
 
     def test_sscan(self, r):
         r.sadd('a', 1, 2, 3)
@@ -704,6 +722,9 @@ class TestRedisCommands(object):
         r.sadd('b{foo}', '2', '3')
         assert r.sdiffstore('c{foo}', 'a{foo}', 'b{foo}') == 1
         assert r.smembers('c{foo}') == set([b('1')])
+
+        # Diff:s that return empty set should not fail
+        r.sdiffstore('d{foo}', 'e{foo}') == 0
 
     def test_sinter(self, r):
         r.sadd('a{foo}', '1', '2', '3')
@@ -1012,10 +1033,16 @@ class TestRedisCommands(object):
         assert r.pfadd('a', *members) == 0
         assert r.pfcount('a') == len(members)
 
+    @pytest.mark.xfail(reason="New pfcount in 2.10.5 currently breaks in cluster")
+    @skip_if_server_version_lt('2.8.9')
     def test_pfcount(self, r):
         members = set([b('1'), b('2'), b('3')])
         r.pfadd('a', *members)
         assert r.pfcount('a') == len(members)
+        members_b = set([b('2'), b('3'), b('4')])
+        r.pfadd('b', *members_b)
+        assert r.pfcount('b') == len(members_b)
+        assert r.pfcount('a', 'b') == len(members_b.union(members))
 
     def test_pfmerge(self, r):
         mema = set([b('1'), b('2'), b('3')])
@@ -1262,10 +1289,10 @@ class TestStrictCommands(object):
 
     def test_eval(self, sr):
         res = sr.eval("return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}", 2, "A{foo}", "B{foo}", "first", "second")
-        assert(res[0] == b('A{foo}'))
-        assert(res[1] == b('B{foo}'))
-        assert(res[2] == b('first'))
-        assert(res[3] == b('second'))
+        assert res[0] == b('A{foo}')
+        assert res[1] == b('B{foo}')
+        assert res[2] == b('first')
+        assert res[3] == b('second')
 
 
 class TestBinarySave(object):
@@ -1303,7 +1330,7 @@ class TestBinarySave(object):
         for key, value in iteritems(mapping):
             assert r.lrange(key, 0, -1) == value
 
-    def test_22_info(self, r):
+    def test_22_info(self):
         """
         Older Redis versions contained 'allocation_stats' in INFO that
         was the cause of a number of bugs when parsing.

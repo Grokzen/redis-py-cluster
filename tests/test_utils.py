@@ -22,8 +22,9 @@ from redis._compat import unicode
 
 
 def test_string_keys_to():
-    l = lambda: True
-    assert string_keys_to_dict(["FOO", "BAR"], l) == {"FOO": l, "BAR": l}
+    def mock_true():
+        return True
+    assert string_keys_to_dict(["FOO", "BAR"], mock_true) == {"FOO": mock_true, "BAR": mock_true}
 
 
 def test_dict_merge():
@@ -32,7 +33,9 @@ def test_dict_merge():
     c = {"c": 3}
     assert dict_merge(a, b, c) == {"a": 1, "b": 2, "c": 3}
 
-    with pytest.raises(AssertionError):
+
+def test_dict_merge_value_error():
+    with pytest.raises(ValueError):
         dict_merge([])
 
 
@@ -46,7 +49,9 @@ def test_merge_result():
     assert merge_result("foobar", {"a": [1, 2, 3], "b": [4, 5, 6]}) == [1, 2, 3, 4, 5, 6]
     assert merge_result("foobar", {"a": [1, 2, 3], "b": [1, 2, 3]}) == [1, 2, 3]
 
-    with pytest.raises(AssertionError):
+
+def test_merge_result_value_error():
+    with pytest.raises(ValueError):
         merge_result("foobar", [])
 
 
@@ -57,7 +62,9 @@ def test_first_key():
         first_key("foobar", {"foo": 1, "bar": 2})
     assert unicode(ex.value).startswith("More then 1 result from command: foobar")
 
-    with pytest.raises(AssertionError):
+
+def test_first_key_value_error():
+    with pytest.raises(ValueError):
         first_key("foobar", None)
 
 

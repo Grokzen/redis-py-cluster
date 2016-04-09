@@ -1,14 +1,9 @@
-All authors of this library
-===========================
+Project Authors
+===============
 
 Added in the order they contributed.
 
 If you are mentioned in this document and want your row changed for any reason, open a new PR with changes.
-
-
-
-Authors
-=======
 
 Lead author and maintainer: Grokzen - https://github.com/Grokzen
 
@@ -21,3 +16,6 @@ Authors who contributed code or testing:
  - mumumu - https://github.com/mumumu
  - awestendorf - https://github.com/awestendorf
  - Ali-Akber Saifee - https://github.com/alisaifee
+ - etng - https://github.com/etng
+ - gmolight - https://github.com/gmolight
+ - baranbartu - https://github.com/baranbartu

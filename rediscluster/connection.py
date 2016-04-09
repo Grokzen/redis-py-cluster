@@ -22,6 +22,8 @@ from redis.exceptions import ConnectionError
 
 
 class ClusterParser(DefaultParser):
+    """
+    """
     EXCEPTION_CLASSES = dict_merge(
         DefaultParser.EXCEPTION_CLASSES, {
             'ASK': AskError,
@@ -56,6 +58,8 @@ class ClusterConnection(Connection):
 
 
 class UnixDomainSocketConnection(Connection):
+    """
+    """
     description_format = "ClusterUnixDomainSocketConnection<path=%(path)s>"
 
 
@@ -67,11 +71,14 @@ class ClusterConnectionPool(ConnectionPool):
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
                  max_connections=None, max_connections_per_node=False, **connection_kwargs):
+        """
+        """
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
+        self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
 
-        self.nodes = NodeManager(startup_nodes)
+        self.nodes = NodeManager(startup_nodes, **connection_kwargs)
         if init_slot_cache:
             self.nodes.initialize()
 
@@ -88,7 +95,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         nodes = [{'host': i['host'], 'port': i['port']} for i in self.nodes.startup_nodes]
 
-        return "%s<%s>" % (
+        return "{0}<{1}>".format(
             type(self).__name__,
             ", ".join([self.connection_class.description_format % dict(node, **self.connection_kwargs) for node in nodes])
         )
@@ -99,13 +106,14 @@ class ClusterConnectionPool(ConnectionPool):
         """
         self.pid = os.getpid()
         self._created_connections = 0
+        self._created_connections_per_node = {}  # Dict(Node, Int)
         self._available_connections = {}  # Dict(Node, List)
         self._in_use_connections = {}  # Dict(Node, Set)
-        self._available_pubsub_connections = []
-        self._in_use_pubsub_connections = set([])
         self._check_lock = threading.Lock()
 
     def _checkpid(self):
+        """
+        """
         if self.pid != os.getpid():
             with self._check_lock:
                 if self.pid == os.getpid():
@@ -124,9 +132,21 @@ class ClusterConnectionPool(ConnectionPool):
         if command_name != "pubsub":
             raise RedisClusterException("Only 'pubsub' commands can be used by get_connection()")
 
-        # TOOD: Pop existing connection if it exists
-        connection = self.make_connection(self.nodes.pubsub_node)
-        self._in_use_pubsub_connections.add(connection)
+        channel = options.pop('channel', None)
+
+        if not channel:
+            return self.get_random_connection()
+
+        slot = self.nodes.keyslot(channel)
+        node = self.get_master_node_by_slot(slot)
+
+        self._checkpid()
+
+        try:
+            connection = self._available_connections.get(node["name"], []).pop()
+        except IndexError:
+            connection = self.make_connection(node)
+        self._in_use_connections[node['name']].add(connection)
 
         return connection
 
@@ -134,14 +154,18 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Create a new connection
         """
-        if self.count_num_connections(node) >= self.max_connections:
+        if self.count_all_num_connections(node) >= self.max_connections:
+            if self.max_connections_per_node:
+                raise RedisClusterException("Too many connection ({0}) for node: {1}".format(self.count_all_num_connections(node), node['name']))
+
             raise RedisClusterException("Too many connections")
 
-        self._created_connections += 1
+        self._created_connections_per_node.setdefault(node['name'], 0)
+        self._created_connections_per_node[node['name']] += 1
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
 
         # Must store node in the connection to make it eaiser to track
-        connection._node = node
+        connection.node = node
 
         return connection
 
@@ -153,22 +177,18 @@ class ClusterConnectionPool(ConnectionPool):
         if connection.pid != self.pid:
             return
 
-        if connection in self._in_use_pubsub_connections:
-            self._in_use_pubsub_connections.remove(connection)
-            self._available_pubsub_connections.append(connection)
+        # Remove the current connection from _in_use_connection and add it back to the available pool
+        # There is cases where the connection is to be removed but it will not exist and there
+        # must be a safe way to remove
+        i_c = self._in_use_connections.get(connection.node["name"], set())
+
+        if connection in i_c:
+            i_c.remove(connection)
         else:
-            # Remove the current connection from _in_use_connection and add it back to the available pool
-            # There is cases where the connection is to be removed but it will not exist and there
-            # must be a safe way to remove
-            i_c = self._in_use_connections.get(connection._node["name"], set())
+            pass
+            # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
 
-            if connection in i_c:
-                i_c.remove(connection)
-            else:
-                pass
-                # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
-
-            self._available_connections.setdefault(connection._node["name"], []).append(connection)
+        self._available_connections.setdefault(connection.node["name"], []).append(connection)
 
     def disconnect(self):
         """
@@ -183,24 +203,13 @@ class ClusterConnectionPool(ConnectionPool):
             for connection in node_connections:
                 connection.disconnect()
 
-        all_pubsub_conns = chain(
-            self._available_pubsub_connections,
-            self._in_use_pubsub_connections,
-        )
-
-        for connection in all_pubsub_conns:
-            connection.disconnect()
-
-    def count_num_connections(self, node):
+    def count_all_num_connections(self, node):
+        """
+        """
         if self.max_connections_per_node:
-            return len(self._in_use_connections.get(node['name'], []))
+            return self._created_connections_per_node.get(node['name'], 0)
 
-        i = 0
-
-        for _, connections in self._in_use_connections.items():
-            i += len(connections)
-
-        return i
+        return sum([i for i in self._created_connections_per_node.values()])
 
     def get_random_connection(self):
         """
@@ -217,6 +226,8 @@ class ClusterConnectionPool(ConnectionPool):
         raise Exception("Cant reach a single startup node.")
 
     def get_connection_by_key(self, key):
+        """
+        """
         if not key:
             raise RedisClusterException("No way to dispatch this command to Redis Cluster.")
 
@@ -241,10 +252,6 @@ class ClusterConnectionPool(ConnectionPool):
         self.nodes.set_node_name(node)
 
         try:
-            # Special case for pubsub node
-            if node == self.nodes.pubsub_node:
-                return self.get_connection("pubsub")
-
             # Try to get connection from existing pool
             connection = self._available_connections.get(node["name"], []).pop()
         except IndexError:
@@ -255,9 +262,13 @@ class ClusterConnectionPool(ConnectionPool):
         return connection
 
     def get_master_node_by_slot(self, slot):
+        """
+        """
         return self.nodes.slots[slot][0]
 
     def get_node_by_slot(self, slot):
+        """
+        """
         return self.get_master_node_by_slot(slot)
 
 
@@ -268,6 +279,8 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
                  max_connections=None, **connection_kwargs):
+        """
+        """
         super(ClusterReadOnlyConnectionPool, self).__init__(
             startup_nodes=startup_nodes,
             init_slot_cache=init_slot_cache,
@@ -277,6 +290,8 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
             **connection_kwargs)
 
     def get_node_by_slot(self, slot):
+        """
+        """
         return random.choice(self.nodes.slots[slot])
 
 

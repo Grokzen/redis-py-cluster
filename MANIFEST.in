@@ -1,6 +1,7 @@
 exclude *.py
+include docs/authors.rst
 include docs/License.txt
+include docs/release-notes.rst
 include CHANGES
 include setup.py
 include README.md
-include docs/Authors

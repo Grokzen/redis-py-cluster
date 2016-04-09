@@ -12,7 +12,7 @@ from rediscluster.exceptions import (
     RedisClusterException, MovedError, AskError, ClusterDownError,
 )
 from rediscluster.nodemanager import NodeManager
-from tests.conftest import _get_client, skip_if_server_version_lt
+from tests.conftest import _get_client, skip_if_server_version_lt, skip_if_not_password_protected_nodes
 
 # 3rd party imports
 from mock import patch, Mock
@@ -20,6 +20,14 @@ from redis._compat import b, unicode
 import pytest
 
 pytestmark = skip_if_server_version_lt('2.9.0')
+
+
+class DummyConnectionPool(ClusterConnectionPool):
+    pass
+
+
+class DummyConnection(object):
+    pass
 
 
 def test_representation(r):
@@ -39,6 +47,24 @@ def test_blocked_strict_redis_args():
     assert unicode(ex.value).startswith("Argument 'db' is not possible to use in cluster mode")
 
 
+@skip_if_not_password_protected_nodes()
+def test_password_procted_nodes():
+    """
+    Test that it is possible to connect to password protected nodes
+    """
+    startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
+    password_protected_startup_nodes = [{"host": "127.0.0.1", "port": "7100"}]
+    with pytest.raises(RedisClusterException) as ex:
+        _get_client(startup_nodes=password_protected_startup_nodes)
+    assert unicode(ex.value).startswith("ERROR sending 'cluster slots' command to redis server:")
+    _get_client(startup_nodes=password_protected_startup_nodes, password='password_is_protected')
+
+    with pytest.raises(RedisClusterException) as ex:
+        _get_client(startup_nodes=startup_nodes, password='password_is_protected')
+    assert unicode(ex.value).startswith("ERROR sending 'cluster slots' command to redis server:")
+    _get_client(startup_nodes=startup_nodes)
+
+
 def test_host_port_startup_node():
     """
     Test that it is possible to use host & port arguments as startup node args
@@ -49,7 +75,7 @@ def test_host_port_startup_node():
     assert {"host": h, "port": p} in c.connection_pool.nodes.startup_nodes
 
 
-def test_empty_startup_nodes(s):
+def test_empty_startup_nodes():
     """
     Test that exception is raised when empty providing empty startup_nodes
     """
@@ -64,6 +90,21 @@ def test_readonly_instance(ro):
     Test that readonly_mode=True instance has ClusterReadOnlyConnectionPool
     """
     assert isinstance(ro.connection_pool, ClusterReadOnlyConnectionPool)
+
+
+def test_custom_connectionpool():
+    """
+    Test that a custom connection pool will be used by StrictRedisCluster
+    """
+    h = "192.168.0.1"
+    p = 7001
+    pool = DummyConnectionPool(host=h, port=p, connection_class=DummyConnection,
+                               startup_nodes=[{'host': h, 'port': p}],
+                               init_slot_cache=False)
+    c = StrictRedisCluster(connection_pool=pool, init_slot_cache=False)
+    assert c.connection_pool is pool
+    assert c.connection_pool.connection_class == DummyConnection
+    assert {"host": h, "port": p} in c.connection_pool.nodes.startup_nodes
 
 
 def test_blocked_commands(r):
@@ -82,7 +123,7 @@ def test_blocked_commands(r):
         except RedisClusterException:
             pass
         else:
-            raise AssertionError("'RedisClusterException' not raised for method : {}".format(command))
+            raise AssertionError("'RedisClusterException' not raised for method : {0}".format(command))
 
 
 def test_blocked_transaction(r):
@@ -204,6 +245,12 @@ def test_refresh_table_asap():
             assert r.refresh_table_asap is False
 
 
+def find_node_ip_based_on_port(cluster_client, port):
+    for node_name, node_data in cluster_client.connection_pool.nodes.nodes.items():
+        if node_name.endswith(port):
+            return node_data['host']
+
+
 def test_ask_redirection():
     """
     Test that the server handles ASK response.
@@ -214,17 +261,25 @@ def test_ask_redirection():
     Important thing to verify is that it tries to talk to the second node.
     """
     r = StrictRedisCluster(host="127.0.0.1", port=7000)
+    r.connection_pool.nodes.nodes['127.0.0.1:7001'] = {
+        'host': u'127.0.0.1',
+        'server_type': 'master',
+        'port': 7001,
+        'name': '127.0.0.1:7001'
+    }
 
     m = Mock(autospec=True)
 
-    def ask_redirect_effect(connection, command_name, **options):
-        def ok_response(connection, command_name, **options):
-            assert connection.host == "127.0.0.1"
+    host_ip = find_node_ip_based_on_port(r, '7001')
+
+    def ask_redirect_effect(connection, *args, **options):
+        def ok_response(connection, *args, **options):
+            assert connection.host == host_ip
             assert connection.port == 7001
 
             return "MOCK_OK"
         m.side_effect = ok_response
-        raise AskError("1337 127.0.0.1:7001")
+        raise AskError("1337 {0}:7001".format(host_ip))
 
     m.side_effect = ask_redirect_effect
 
@@ -246,8 +301,8 @@ def test_pipeline_ask_redirection():
 
     m = Mock(autospec=True)
 
-    def ask_redirect_effect(connection, command_name, **options):
-        def ok_response(connection, command_name, **options):
+    def ask_redirect_effect(connection, *args, **options):
+        def ok_response(connection, *args, **options):
             assert connection.host == "127.0.0.1"
             assert connection.port == 7001
 
@@ -274,8 +329,8 @@ def test_moved_redirection():
     r = StrictRedisCluster(host="127.0.0.1", port=7000)
     m = Mock(autospec=True)
 
-    def ask_redirect_effect(connection, command_name, **options):
-        def ok_response(connection, command_name, **options):
+    def ask_redirect_effect(connection, *args, **options):
+        def ok_response(connection, *args, **options):
             assert connection.host == "127.0.0.1"
             assert connection.port == 7002
 
@@ -303,8 +358,8 @@ def test_moved_redirection_pipeline():
 
     m = Mock(autospec=True)
 
-    def moved_redirect_effect(connection, command_name, **options):
-        def ok_response(connection, command_name, **options):
+    def moved_redirect_effect(connection, *args, **options):
+        def ok_response(connection, *args, **options):
             assert connection.host == "127.0.0.1"
             assert connection.port == 7002
 

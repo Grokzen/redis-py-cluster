@@ -15,12 +15,12 @@ if os.getenv('USER', '').lower() == 'vagrant':
 
 with open('README.md') as f:
     readme = f.read()
-with open('CHANGES') as f:
+with open(os.path.join('docs', 'release-notes.rst')) as f:
     history = f.read()
 
 setup(
     name="redis-py-cluster",
-    version="1.1.0",
+    version="1.2.0",
     description="Cluster library for redis 3.0.0 built on top of redis-py lib",
     long_description=readme + '\n\n' + history,
     author="Johan Andersson",
@@ -50,9 +50,9 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Environment :: Web Environment',
         'Operating System :: POSIX',
     )

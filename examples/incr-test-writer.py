@@ -1,3 +1,4 @@
+from redis._compat import xrange
 from rediscluster import RedisCluster
 
 startup_nodes = [{"host": "127.0.0.1", "port": 7000}]

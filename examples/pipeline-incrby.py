@@ -1,3 +1,4 @@
+from redis._compat import xrange
 from rediscluster import RedisCluster
 
 startup_nodes = [{"host": "127.0.0.1", "port": 7000}]
@@ -11,10 +12,10 @@ for i in xrange(1000000):
     pipe.execute()
 
     pipe = r.pipeline(transaction=False)
-    pipe.set("foo-%s" % d, d)
-    pipe.incrby("foo-%s" % d, 1)
-    pipe.set("bar-%s" % d, d)
-    pipe.incrby("bar-%s" % d, 1)
-    pipe.set("bazz-%s" % d, d)
-    pipe.incrby("bazz-%s" % d, 1)
+    pipe.set("foo-{0}".format(d, d))
+    pipe.incrby("foo-{0}".format(d, 1))
+    pipe.set("bar-{0}".format(d, d))
+    pipe.incrby("bar-{0}".format(d, 1))
+    pipe.set("bazz-{0}".format(d, d))
+    pipe.incrby("bazz-{0}".format(d, 1))
     pipe.execute()
