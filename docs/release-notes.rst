@@ -2,7 +2,7 @@ Release Notes
 =============
 
 
-1.2.0 (Apr ??, 2016)
+1.2.0 (Apr 09, 2016)
 --------------------
 
     * Drop maintained support for python 3.2.
