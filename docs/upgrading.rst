@@ -7,7 +7,7 @@ This document describes what must be done when upgrading between different versi
 1.2.0 --> Next release
 ----------------------
 
-Class RedisClusterMgt will be removed.
+Class RedisClusterMgt has been removed. You should use the `CLUSTER ...` methods that exists in the `StrictRedisCluster` client class.
 
 
 
