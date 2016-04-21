@@ -146,8 +146,13 @@ class ClusterConnectionPool(ConnectionPool):
             connection = self._available_connections.get(node["name"], []).pop()
         except IndexError:
             connection = self.make_connection(node)
-        self._in_use_connections[node['name']].add(connection)
-
+        
+        try:
+            self._in_use_connections[node['name']].add(connection)
+        except KeyError:
+            self._in_use_connections[node['name']] = set()
+            self._in_use_connections[node['name']].add(connection)
+            
         return connection
 
     def make_connection(self, node):
