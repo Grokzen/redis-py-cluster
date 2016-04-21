@@ -6,7 +6,7 @@ import sys
 import json
 
 # rediscluster imports
-from rediscluster import StrictRedisCluster, RedisCluster, RedisClusterMgt
+from rediscluster import StrictRedisCluster, RedisCluster
 
 # 3rd party imports
 import pytest
@@ -148,11 +148,3 @@ def sr(request, *args, **kwargs):
     Returns a instance of StrictRedisCluster
     """
     return _init_client(request, reinitialize_steps=1, cls=StrictRedisCluster, **kwargs)
-
-
-@pytest.fixture()
-def rcm(request, *args, **kwargs):
-    """
-    Returns a instance of RedisClusterMgt
-    """
-    return _init_mgt_client(request, cls=RedisClusterMgt, decode_responses=True, **kwargs)
