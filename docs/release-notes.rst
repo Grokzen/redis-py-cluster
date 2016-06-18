@@ -7,6 +7,7 @@ Release Notes
     * Removed RedisClusterMgt class and file
     * Fixed a bug when using pipelines with RedisCluster class (Ozahata)
     * Bump redis-server during travis tests to 3.0.7
+    * Added docs about same module name in another python redis cluster project.
 
 
 1.2.0 (Apr 09, 2016)
