@@ -8,6 +8,7 @@ import re
 from rediscluster.client import StrictRedisCluster
 from rediscluster.connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
 from rediscluster.exceptions import RedisClusterException
+from tests.conftest import _get_client
 
 # 3rd party imports
 import pytest
@@ -297,6 +298,14 @@ class TestPipeline(object):
             r.pipeline(shard_hint=True)
 
         assert unicode(ex.value).startswith("shard_hint is deprecated in cluster mode"), True
+
+    def test_redis_cluster_pipeline(self):
+        """
+        Test that we can use a pipeline with the RedisCluster class
+        """
+        r = _get_client(cls=None)
+        with r.pipeline(transaction=False) as pipe:
+            pipe.get("foobar")
 
     def test_mget_disabled(self, r):
         with r.pipeline(transaction=False) as pipe:

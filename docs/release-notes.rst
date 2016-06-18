@@ -5,6 +5,7 @@ Release Notes
 1.3.0 (??? ??, ????)
 
     * Removed RedisClusterMgt class and file
+    * Fixed a bug when using pipelines with RedisCluster class (Ozahata)
 
 
 1.2.0 (Apr 09, 2016)
