@@ -13,6 +13,8 @@ Release Notes
     * Fixed a bug with "CLUSTER ..." commands when a node_id argument was needed and the return type
       was supposed to be converted to bool with bool_ok in redis._compat.
     * Add back gitter chat room link
+    * Add new client commands
+      - cluster_reset_all_nodes
 
 
 1.2.0 (Apr 09, 2016)

@@ -431,6 +431,22 @@ class StrictRedisCluster(StrictRedis):
         """
         return self.execute_command('CLUSTER RESET', Token('SOFT' if soft else 'HARD'), node_id=node_id)
 
+    def cluster_reset_all_nodes(self, soft=True):
+        """
+        Send CLUSTER RESET to all nodes in the cluster.
+
+        If 'soft' is True then it will send 'SOFT' argument
+        If 'soft' is False then it will send 'HARD' argument
+        """
+        return [
+            self.execute_command(
+                'CLUSTER RESET',
+                Token('SOFT' if soft else 'HARD'),
+                node_id=node['id'],
+            )
+            for node in self.cluster_nodes()
+        ]
+
     # Send to all nodes
     def cluster_save_config(self):
         """Forces the node to save cluster state on disk"""
