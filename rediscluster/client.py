@@ -371,72 +371,106 @@ class StrictRedisCluster(StrictRedis):
     ##########
     # Cluster management commands
 
-    # Send to specefied node
     def cluster_addslots(self, node_id, *slots):
-        """Assign new hash slots to receiving node"""
+        """
+        Assign new hash slots to receiving node
+
+        Sends to specefied node
+        """
         return self.execute_command('CLUSTER ADDSLOTS', *slots, node_id=node_id)
 
-    # Send to node based on slot_id
     def cluster_countkeysinslot(self, slot_id):
-        """Return the number of local keys in the specified hash slot"""
+        """
+        Return the number of local keys in the specified hash slot
+
+        Send to node based on specefied slot_id
+        """
         return self.execute_command('CLUSTER COUNTKEYSINSLOT', slot_id)
 
-    # Send to specefied node
     def cluster_count_failure_report(self, node_id):
-        """Return the number of failure reports active for a given node"""
+        """
+        Return the number of failure reports active for a given node
+
+        Sends to specefied node
+        """
         return self.execute_command('CLUSTER COUNT-FAILURE-REPORTS', node_id=node_id)
 
-    # Send to specefied node
     def cluster_delslots(self, node_id, *slots):
-        """Set hash slots as unbound in receiving node"""
+        """
+        Set hash slots as unbound in receiving node
+
+        Sends to specefied node
+        """
         return self.execute_command('CLUSTER DELSLOTS', *slots, node_id=node_id)
 
-    # Send to specefied node
     def cluster_failover(self, node_id, option):
-        """Forces a slave to perform a manual failover of its master."""
+        """
+        Forces a slave to perform a manual failover of its master
+
+        Sends to specefied node
+        """
         assert option.upper() in ('FORCE', 'TAKEOVER')  # TODO: change this option handling
         return self.execute_command('CLUSTER FAILOVER', Token(option))
 
-    # Send to random node
     def cluster_info(self):
-        """Provides info about Redis Cluster node state"""
+        """
+        Provides info about Redis Cluster node state
+
+        Sends to random node in the cluster
+        """
         return self.execute_command('CLUSTER INFO')
 
-    # Send to random node
     def cluster_keyslot(self, name):
-        """Returns the hash slot of the specified key"""
+        """
+        Returns the hash slot of the specified key
+
+        Sends to random node in the cluster
+        """
         return self.execute_command('CLUSTER KEYSLOT', name)
 
-    # Send to specefied node
     def cluster_meet(self, node_id, host, port):
-        """Force a node cluster to handshake with another node"""
+        """
+        Force a node cluster to handshake with another node.
+
+        Sends to specefied node
+        """
         return self.execute_command('CLUSTER MEET', host, port, node_id=node_id)
 
-    # Send to random node
     def cluster_nodes(self):
-        """Force a node cluster to handshake with another node"""
+        """
+        Force a node cluster to handshake with another node
+
+        Sends to random node in the cluster
+        """
         return self.execute_command('CLUSTER NODES')
 
-    # Send to specefied node
     def cluster_replicate(self, target_node_id):
-        """Reconfigure a node as a slave of the specified master node"""
+        """
+        Reconfigure a node as a slave of the specified master node
+
+        Sends to specefied node
+        """
         return self.execute_command('CLUSTER REPLICATE', target_node_id)
 
-    # Send to specific node
     def cluster_reset(self, node_id, soft=True):
         """
-        Reset a Redis Cluster node.
+        Reset a Redis Cluster node
+
         If 'soft' is True then it will send 'SOFT' argument
         If 'soft' is False then it will send 'HARD' argument
+
+        Sends to specefied node
         """
         return self.execute_command('CLUSTER RESET', Token('SOFT' if soft else 'HARD'), node_id=node_id)
 
     def cluster_reset_all_nodes(self, soft=True):
         """
-        Send CLUSTER RESET to all nodes in the cluster.
+        Send CLUSTER RESET to all nodes in the cluster
 
         If 'soft' is True then it will send 'SOFT' argument
         If 'soft' is False then it will send 'HARD' argument
+
+        Sends to all nodes in the cluster
         """
         return [
             self.execute_command(
@@ -447,20 +481,29 @@ class StrictRedisCluster(StrictRedis):
             for node in self.cluster_nodes()
         ]
 
-    # Send to all nodes
     def cluster_save_config(self):
-        """Forces the node to save cluster state on disk"""
+        """
+        Forces the node to save cluster state on disk
+
+        Sends to all nodes in the cluster
+        """
         return self.execute_command('CLUSTER SAVECONFIG')
 
-    # Send to specefied node_id
     def cluster_set_config_epoch(self, node_id, epoch):
-        """Set the configuration epoch in a new node"""
+        """
+        Set the configuration epoch in a new node
+
+        Sends to specefied node
+        """
         return self.execute_command('CLUSTER SET-CONFIG-EPOCH', epoch, node_id=node_id)
 
-    # Send to specefied node_id
     # TODO: Determine what the purpose of bind_to_node_ip is going to be
     def cluster_setslot(self, node_id, slot_id, state, bind_to_node_id=None):
-        """Bind an hash slot to a specific node"""
+        """
+        Bind an hash slot to a specific node
+
+        Sends to specefied node
+        """
         if state.upper() in ('IMPORTING', 'MIGRATING', 'NODE') and node_id is not None:
             return self.execute_command('CLUSTER SETSLOT', slot_id, Token(state), node_id)
         elif state.upper() == 'STABLE':
@@ -468,14 +511,20 @@ class StrictRedisCluster(StrictRedis):
         else:
             raise RedisError('Invalid slot state: {0}'.format(state))
 
-    # Specefied node
     def cluster_slaves(self, target_node_id):
-        """Force a node cluster to handshake with another node"""
+        """
+        Force a node cluster to handshake with another node
+
+        Sends to targeted cluster node
+        """
         return self.execute_command('CLUSTER SLAVES', target_node_id)
 
-    # Random node
     def cluster_slots(self):
-        """Get array of Cluster slot to node mappings"""
+        """
+        Get array of Cluster slot to node mappings
+
+        Sends to random node in the cluster
+        """
         return self.execute_command('CLUSTER SLOTS')
 
     ##########
