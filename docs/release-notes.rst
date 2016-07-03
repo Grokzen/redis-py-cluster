@@ -8,6 +8,8 @@ Release Notes
     * Fixed a bug when using pipelines with RedisCluster class (Ozahata)
     * Bump redis-server during travis tests to 3.0.7
     * Added docs about same module name in another python redis cluster project.
+    * Fix a bug when a connection was to be tracked for a node but the node either do not yet exists or
+      was removed because of resharding was done in another thread. (ashishbaghudana)
 
 
 1.2.0 (Apr 09, 2016)

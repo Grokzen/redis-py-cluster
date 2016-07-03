@@ -46,6 +46,15 @@ class TestConnectionPool(object):
             **connection_kwargs)
         return pool
 
+    def test_in_use_not_exists(self):
+        """
+        Test that if for some reason, the node that it tries to get the connectino for
+        do not exists in the _in_use_connection variable.
+        """
+        pool = self.get_pool()
+        pool._in_use_connections = {}
+        pool.get_connection("pubsub", channel="foobar")
+
     def test_connection_creation(self):
         connection_kwargs = {'foo': 'bar', 'biz': 'baz'}
         pool = self.get_pool(connection_kwargs=connection_kwargs)
