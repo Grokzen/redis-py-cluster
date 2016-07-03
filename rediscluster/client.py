@@ -14,6 +14,7 @@ from .exceptions import (
 )
 from .pubsub import ClusterPubSub
 from .utils import (
+    bool_ok,
     string_keys_to_dict,
     dict_merge,
     blocked_command,
@@ -25,7 +26,7 @@ from .utils import (
 )
 # 3rd party imports
 from redis import StrictRedis
-from redis.client import list_or_args, bool_ok, parse_info
+from redis.client import list_or_args, parse_info
 from redis.connection import Token
 from redis._compat import iteritems, basestring, b, izip, nativestr
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
