@@ -133,8 +133,8 @@ def parse_cluster_slots(resp, **options):
         start, end, master = slot[:3]
         slaves = slot[3:]
         slots[start, end] = {
-            'master': fix_server(master),
-            'slaves': [fix_server(slave) for slave in slaves],
+            'master': fix_server(*master),
+            'slaves': [fix_server(*slave) for slave in slaves],
         }
 
     return slots
