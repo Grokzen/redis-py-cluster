@@ -11,6 +11,8 @@ Class RedisClusterMgt has been removed. You should use the `CLUSTER ...` methods
 
 Method `cluster_delslots` changed argument specification from `self, node_id, *slots` to `self, *slots` and changed the behaviour of the method to now automatically determine the slot_id based on the current cluster structure and where each slot that you want to delete is loated.
 
+Method pfcount no longer has custom logic and exceptions to prevent CROSSSLOT errors. If method is used with different slots then a regular CROSSSLOT error (rediscluster.exceptions.ClusterCrossSlotError) will be returned.
+
 
 
 1.1.0 --> 1.2.0

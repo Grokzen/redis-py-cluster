@@ -987,22 +987,11 @@ class StrictRedisCluster(StrictRedis):
 
         return self.sadd(dest, *res)
 
-    def ensure_same_slot(self, keys):
-        """
-        Returns True if all slots for the list of keys point
-        to the same hash slot.
-        """
-        slots = [self.connection_pool.nodes.keyslot(key) for key in keys]
-        return len(slots) == 1
-
     def pfcount(self, *sources):
         """
         pfcount only works when all sources point to the same hash slot.
         """
-        if self.ensure_same_slot(sources):
-            return super(self.__class__, self).pfcount(*sources)
-        else:
-            raise RedisClusterException("pfcount can't be used when sources point to different hashslots")
+        return super(self.__class__, self).pfcount(*sources)
 
     def pfmerge(self, dest, *sources):
         """
