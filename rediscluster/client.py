@@ -371,6 +371,21 @@ class StrictRedisCluster(StrictRedis):
     ##########
     # Cluster management commands
 
+    def _nodes_slots_to_slots_nodes(self, mapping):
+        """
+        Converts a mapping of
+        {id: <node>, slots: (slot1, slot2)}
+        to
+        {slot1: <node>, slot2: <node>}
+
+        Operation is expensive so use with caution
+        """
+        out = {}
+        for node in mapping:
+            for slot in node['slots']:
+                out[str(slot)] = node['id']
+        return out
+
     def cluster_addslots(self, node_id, *slots):
         """
         Assign new hash slots to receiving node
@@ -395,13 +410,19 @@ class StrictRedisCluster(StrictRedis):
         """
         return self.execute_command('CLUSTER COUNT-FAILURE-REPORTS', node_id=node_id)
 
-    def cluster_delslots(self, node_id, *slots):
+    def cluster_delslots(self, node_id=None, *slots):
         """
-        Set hash slots as unbound in receiving node
+        Set hash slots as unbound in the cluster.
+        It determines by it self what node the slot is in and sends it there
 
-        Sends to specefied node
+        Returns a list of the results for each processed slot.
         """
-        return self.execute_command('CLUSTER DELSLOTS', *slots, node_id=node_id)
+        cluster_nodes = self._nodes_slots_to_slots_nodes(self.cluster_nodes())
+
+        return [
+            self.execute_command('CLUSTER DELSLOTS', slot, node_id=cluster_nodes[slot])
+            for slot in slots
+        ]
 
     def cluster_failover(self, node_id, option):
         """

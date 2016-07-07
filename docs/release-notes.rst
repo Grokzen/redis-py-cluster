@@ -15,6 +15,8 @@ Release Notes
     * Add back gitter chat room link
     * Add new client commands
       - cluster_reset_all_nodes
+    * Command cluster_delslots now determines what cluster shard each slot is on and sends each slot deletion
+      command to the correct node. Command have changed argument spec (Read Upgrading.rst for details)
 
 
 1.2.0 (Apr 09, 2016)
