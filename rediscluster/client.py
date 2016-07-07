@@ -410,7 +410,7 @@ class StrictRedisCluster(StrictRedis):
         """
         return self.execute_command('CLUSTER COUNT-FAILURE-REPORTS', node_id=node_id)
 
-    def cluster_delslots(self, node_id=None, *slots):
+    def cluster_delslots(self, *slots):
         """
         Set hash slots as unbound in the cluster.
         It determines by it self what node the slot is in and sends it there

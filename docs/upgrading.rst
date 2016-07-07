@@ -9,7 +9,7 @@ This document describes what must be done when upgrading between different versi
 
 Class RedisClusterMgt has been removed. You should use the `CLUSTER ...` methods that exists in the `StrictRedisCluster` client class.
 
-Method `cluster_delslots` changed argument specification from `self, node_id, *slots` to `self, node_id=None, *slots` and changed the behaviour of the method to now automatically determine the slot_id based on the current cluster structure and where each slot that you want to delete is loated.
+Method `cluster_delslots` changed argument specification from `self, node_id, *slots` to `self, *slots` and changed the behaviour of the method to now automatically determine the slot_id based on the current cluster structure and where each slot that you want to delete is loated.
 
 
 
