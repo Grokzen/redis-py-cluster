@@ -2,6 +2,7 @@
 
 # python std lib
 import random
+import sys
 
 # rediscluster imports
 from .crc import crc16
@@ -9,7 +10,7 @@ from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import StrictRedis
-from redis._compat import unicode
+# from redis._compat import unicode
 from redis import ConnectionError
 
 
@@ -36,7 +37,13 @@ class NodeManager(object):
 
         This also works for binary keys that is used in python 3.
         """
-        k = unicode(key)
+        if sys.version_info[0] < 3:
+            k = unicode(key)
+        else:
+            try:
+                k = str(key, encoding='utf-8')  # bytes
+            except TypeError:  # Convert others to str.
+                k = str(key)
         start = k.find("{")
 
         if start > -1:
