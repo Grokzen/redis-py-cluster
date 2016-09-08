@@ -19,3 +19,4 @@ Authors who contributed code or testing:
  - etng - https://github.com/etng
  - gmolight - https://github.com/gmolight
  - baranbartu - https://github.com/baranbartu
+ - monklof - https://github.com/monklof

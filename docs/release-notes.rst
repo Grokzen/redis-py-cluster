@@ -18,6 +18,7 @@ Release Notes
     * Command cluster_delslots now determines what cluster shard each slot is on and sends each slot deletion
       command to the correct node. Command have changed argument spec (Read Upgrading.rst for details)
     * Fixed a bug when hashing the key it if was a python 3 byte string and it would cause it to route to wrong slot in the cluster (fossilet, Grokzen)
+    * Fixed a bug when reinitialize the nodemanager it would use the old nodes_cache instead of the new one that was just parsed (monklof)
 
 
 1.2.0 (Apr 09, 2016)
