@@ -215,7 +215,7 @@ class NodeManager(object):
         then even all slots are not covered, cluster still will be able to
         respond
         """
-        nodes = self.nodes or nodes_cache
+        nodes = nodes_cache or self.nodes
 
         def node_require_full_coverage(node):
             r_node = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
