@@ -3,6 +3,12 @@ Upgrading redis-py-cluster
 
 This document describes what must be done when upgrading between different versions to ensure that code still works.
 
+1.3.0 --> 1.3.1
+---------------
+
+Method `scan_iter` was rebuilt becuase it was broken and did not perform as expected. If you are using this method you should be carefull with this new implementation and test it through before using it. The expanded testing for that method indicates it should work without problems. If you find any issues with the new method please open a issue on github.
+
+
 
 1.2.0 --> Next release
 ----------------------

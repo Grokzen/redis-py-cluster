@@ -2,6 +2,12 @@ Release Notes
 =============
 
 
+Next release (??? ??, ????)
+---------------------------
+
+    * Rebuilt broken method scan_iter. Previous tests was to small to detect the problem but is not corrected to work on a bigger dataset during the test of that method. (korvus81, Grokzen, RedWhiteMiko)
+
+
 1.3.0 (Sep 11, 2016)
 --------------------
 
