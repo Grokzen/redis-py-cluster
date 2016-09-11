@@ -39,6 +39,9 @@ def test_keyslot():
     assert n.keyslot("{foo}bar") == 12182
     assert n.keyslot("{foo}") == 12182
     assert n.keyslot(1337) == 4314
+    assert n.keyslot(b"abc") == n.keyslot("abc")
+    assert n.keyslot("abc") == n.keyslot(unicode("abc"))
+    assert n.keyslot(unicode("abc")) == n.keyslot(b"abc")
 
 
 def test_init_slots_cache_not_all_slots(s):

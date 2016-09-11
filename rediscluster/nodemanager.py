@@ -2,6 +2,7 @@
 
 # python std lib
 import random
+import sys
 
 # rediscluster imports
 from .crc import crc16
@@ -30,13 +31,41 @@ class NodeManager(object):
         if not self.startup_nodes:
             raise RedisClusterException("No startup nodes provided")
 
-    def keyslot(self, key):
+        # Minor performance tweak to avoid having to check inside the method
+        # for each call to keyslot method.
+        if sys.version_info[0] < 3:
+            self.keyslot = self.keyslot_py_2
+        else:
+            self.keyslot = self.keyslot_py_3
+
+    def keyslot_py_2(self, key):
         """
         Calculate keyslot for a given key.
-
-        This also works for binary keys that is used in python 3.
+        Tuned for compatibility with python 2.7.x
         """
         k = unicode(key)
+
+        start = k.find("{")
+
+        if start > -1:
+            end = k.find("}", start + 1)
+            if end > -1 and end != start + 1:
+                k = k[start + 1:end]
+
+        return crc16(k) % self.RedisClusterHashSlots
+
+    def keyslot_py_3(self, key):
+        """
+        Calculate keyslot for a given key.
+        Tuned for compatibility with supported python 3.x versions
+        """
+        try:
+            # Handle bytes case
+            k = str(key, encoding='utf-8')
+        except TypeError:
+            # Convert others to str.
+            k = str(key)
+
         start = k.find("{")
 
         if start > -1:
@@ -215,7 +244,7 @@ class NodeManager(object):
         then even all slots are not covered, cluster still will be able to
         respond
         """
-        nodes = self.nodes or nodes_cache
+        nodes = nodes_cache or self.nodes
 
         def node_require_full_coverage(node):
             r_node = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)

@@ -2,6 +2,26 @@ Release Notes
 =============
 
 
+1.3.0 (Sep 11, 2016)
+--------------------
+
+    * Removed RedisClusterMgt class and file
+    * Fixed a bug when using pipelines with RedisCluster class (Ozahata)
+    * Bump redis-server during travis tests to 3.0.7
+    * Added docs about same module name in another python redis cluster project.
+    * Fix a bug when a connection was to be tracked for a node but the node either do not yet exists or
+      was removed because of resharding was done in another thread. (ashishbaghudana)
+    * Fixed a bug with "CLUSTER ..." commands when a node_id argument was needed and the return type
+      was supposed to be converted to bool with bool_ok in redis._compat.
+    * Add back gitter chat room link
+    * Add new client commands
+      - cluster_reset_all_nodes
+    * Command cluster_delslots now determines what cluster shard each slot is on and sends each slot deletion
+      command to the correct node. Command have changed argument spec (Read Upgrading.rst for details)
+    * Fixed a bug when hashing the key it if was a python 3 byte string and it would cause it to route to wrong slot in the cluster (fossilet, Grokzen)
+    * Fixed a bug when reinitialize the nodemanager it would use the old nodes_cache instead of the new one that was just parsed (monklof)
+
+
 1.2.0 (Apr 09, 2016)
 --------------------
 

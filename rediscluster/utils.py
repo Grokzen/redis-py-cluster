@@ -8,7 +8,15 @@ from .exceptions import (
 )
 
 # 3rd party imports
-from redis._compat import basestring
+from redis._compat import basestring, nativestr
+
+
+def bool_ok(response, *args, **kwargs):
+    """
+    Borrowed from redis._compat becuase that method to not support extra arguments
+    when used in a cluster environment.
+    """
+    return nativestr(response) == 'OK'
 
 
 def string_keys_to_dict(key_strings, callback):
@@ -125,8 +133,8 @@ def parse_cluster_slots(resp, **options):
         start, end, master = slot[:3]
         slaves = slot[3:]
         slots[start, end] = {
-            'master': fix_server(master),
-            'slaves': [fix_server(slave) for slave in slaves],
+            'master': fix_server(*master),
+            'slaves': [fix_server(*slave) for slave in slaves],
         }
 
     return slots

@@ -5,7 +5,6 @@ import sys
 
 # Import shortcut
 from .client import StrictRedisCluster, RedisCluster
-from .cluster_mgt import RedisClusterMgt  # NOQA
 from .pipeline import StrictClusterPipeline
 from .pubsub import ClusterPubSub
 
@@ -17,7 +16,7 @@ setattr(redis, "ClusterPubSub", ClusterPubSub)
 setattr(redis, "StrictClusterPipeline", StrictClusterPipeline)
 
 # Major, Minor, Fix version
-__version__ = (1, 2, 0)
+__version__ = (1, 3, 0)
 
 if sys.version_info[0:3] == (3, 4, 0):
     raise RuntimeError("CRITICAL: rediscluster do not work with python 3.4.0. Please use 3.4.1 or higher.")

@@ -83,6 +83,28 @@ Experimental:
 
 
 
+Regarding duplicate pypi and python naming
+------------------------------------------
+
+It has been found that the python module name that is used in this library (rediscluster) is already shared with a similar but older project.
+
+This lib will not change the naming of the module to something else to prevent collisions between the libs.
+
+My reasoning for this is the following
+
+ - Changing the namespace is a major task and probably should only be done in a complete rewrite of the lib, or if the lib had plans for a version 2.0.0 where this kind of backwards incompatibility could be introduced.
+ - This project is more up to date, the last merged PR in the other project was 3 years ago.
+ - This project is aimed for implement support for the cluster support in 3.0+, the other lib do not have that right now, but they implement almost the same cluster solution as the 3.0+ but in much more in the client side.
+ - The 2 libs is not compatible to be run at the same time even if the name would not collide. It is not recommended to run both in the same python interpreter.
+
+An issue has been raised in each repository to have tracking of the problem.
+
+redis-py-cluster: https://github.com/Grokzen/redis-py-cluster/issues/150
+
+rediscluster: https://github.com/salimane/rediscluster-py/issues/11
+
+
+
 The Usage Guide
 ---------------
 
@@ -92,7 +114,6 @@ The Usage Guide
    :maxdepth: 2
    :glob:
 
-   cluster-mgt
    commands
    limitations-and-differences
    pipelines
