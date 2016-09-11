@@ -28,7 +28,7 @@ from .utils import (
 from redis import StrictRedis
 from redis.client import list_or_args, parse_info
 from redis.connection import Token
-from redis._compat import iteritems, basestring, b, izip, nativestr
+from redis._compat import iteritems, basestring, b, izip, nativestr, long
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
 
 
@@ -551,6 +551,13 @@ class StrictRedisCluster(StrictRedis):
     ##########
     # All methods that must have custom implementation
 
+    def _parse_scan(self, response, **options):
+        """
+        Borrowed from redis-py::client.py
+        """
+        cursor, r = response
+        return long(cursor), r
+
     def scan_iter(self, match=None, count=None):
         """
         Make an iterator using the SCAN command so that the client doesn't
@@ -562,13 +569,36 @@ class StrictRedisCluster(StrictRedis):
         Cluster impl:
             Result from SCAN is different in cluster mode.
         """
-        cursor = '0'
-        while cursor != 0:
-            for _, node_data in self.scan(cursor=cursor, match=match, count=count).items():
-                cursor, data = node_data
+        cursors = {}
+        nodeData = {}
+        for master_node in self.connection_pool.nodes.all_masters():
+            cursors[master_node["name"]] = "0"
+            nodeData[master_node["name"]] = master_node
 
-                for item in data:
-                    yield item
+        while not all(cursors[node] == 0 for node in cursors):
+            for node in cursors:
+                if cursors[node] == 0:
+                    continue
+
+                conn = self.connection_pool.get_connection_by_node(nodeData[node])
+
+                pieces = ['SCAN', cursors[node]]
+                if match is not None:
+                    pieces.extend([Token('MATCH'), match])
+                if count is not None:
+                    pieces.extend([Token('COUNT'), count])
+
+                conn.send_command(*pieces)
+
+                raw_resp = conn.read_response()
+
+                # if you don't release the connection, the driver will make another, and you will hate your life
+                self.connection_pool.release(conn)
+                cur, resp = self._parse_scan(raw_resp)
+                cursors[node] = cur
+
+                for r in resp:
+                    yield r
 
     def mget(self, keys, *args):
         """
