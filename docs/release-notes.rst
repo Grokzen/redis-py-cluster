@@ -6,6 +6,8 @@ Next release (??? ??, ????)
 ---------------------------
 
     * Rebuilt broken method scan_iter. Previous tests was to small to detect the problem but is not corrected to work on a bigger dataset during the test of that method. (korvus81, Grokzen, RedWhiteMiko)
+    * Errors in pipeline that should be retried, like connection errors, moved, errors and ask errors now fall back to single operation logic in StrictRedisCluster.execute_command. (72squared).
+    * Moved reinitialize_steps and counter into nodemanager so it can be correctly counted across pipeline operations (72squared).
 
 
 1.3.0 (Sep 11, 2016)
