@@ -28,16 +28,12 @@ class StrictClusterPipeline(StrictRedisCluster):
         """
         """
         self.command_stack = []
-        self.connection_pool = connection_pool
-        self.response_callbacks = response_callbacks
-        self.result_callbacks = result_callbacks
-        self.startup_nodes = startup_nodes if startup_nodes else []
-
         self.refresh_table_asap = False
+        self.connection_pool = connection_pool
+        self.result_callbacks = result_callbacks or self.__class__.RESULT_CALLBACKS.copy()
+        self.startup_nodes = startup_nodes if startup_nodes else []
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
-        self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
-        self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
-        self.response_callbacks = dict_merge(self.response_callbacks,
+        self.response_callbacks = dict_merge(response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy(),
                                              self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
 
     def __repr__(self):
@@ -201,11 +197,29 @@ class StrictClusterPipeline(StrictRedisCluster):
         # if the response isn't an exception it is a valid response from the node
         # we're all done with that command, YAY!
         # if we have more commands to attempt, we've run into problems.
+        # collect all the commands we are allowed to retry.
+        # (MOVED, ASK, or connection errors or timeout errors)
         attempt = sorted([c for c in attempt if isinstance(c.result, ERRORS_ALLOW_RETRY)], key=lambda x: x.position)
         if attempt and allow_redirections:
+            # RETRY MAGIC HAPPENS HERE!
+            # send these remaing comamnds one at a time using `execute_command`
+            # in the main client. This keeps our retry logic in one place mostly,
+            # and allows us to be more confident in correctness of behavior.
+            # at this point any speed gains from pipelining have been lost
+            # anyway, so we might as well make the best attempt to get the correct
+            # behavior.
+            #
+            # The client command will handle retries for each individual command
+            # sequentially as we pass each one into `execute_command`. Any exceptions
+            # that bubble out should only appear once all retries have been exhausted.
+            #
+            # If a lot of commands have failed, we'll be setting the
+            # flag to rebuild the slots table from scratch. So MOVED errors should
+            # correct themselves fairly quickly.
             self.connection_pool.nodes.increment_reinitialize_counter(len(attempt))
             for c in attempt:
                 try:
+                    # send each command individually like we do in the main client.
                     c.result = super(StrictClusterPipeline, self).execute_command(*c.args, **c.options)
                 except RedisError as e:
                     c.result = e
@@ -378,15 +392,17 @@ class NodeCommands(object):
         """
         Code borrowed from StrictRedis so it can be fixed
         """
-        # build up all commands into a single request to increase network perf
         connection = self.connection
         commands = self.commands
-        try:
-            # We are going to clobber the commands with the write, so go ahead
-            # and ensure that nothing is sitting there from a previous run.
-            for c in commands:
-                c.result = None
 
+        # We are going to clobber the commands with the write, so go ahead
+        # and ensure that nothing is sitting there from a previous run.
+        for c in commands:
+            c.result = None
+
+        # build up all commands into a single request to increase network perf
+        # send all the commands and catch connection and timeout errors.
+        try:
             connection.send_packed_command(connection.pack_commands([c.args for c in commands]))
         except (ConnectionError, TimeoutError) as e:
             for c in commands:
