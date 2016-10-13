@@ -189,17 +189,6 @@ def test_cluster_of_one_instance():
             rc = StrictRedisCluster(host='127.0.0.1', port=7006)
             rc.set("foo", "bar")
 
-            #####
-            # Test that CLUSTERDOWN is handled the same way when used via pipeline
-
-            parse_response_mock.side_effect = side_effect
-            init_mock.side_effect = side_effect_rebuild_slots_cache
-
-            rc = StrictRedisCluster(host='127.0.0.1', port=7006)
-            p = rc.pipeline()
-            p.set("bar", "foo")
-            p.execute()
-
 
 def test_execute_command_errors(r):
     """
@@ -267,24 +256,23 @@ def test_ask_redirection():
         'port': 7001,
         'name': '127.0.0.1:7001'
     }
+    with patch.object(StrictRedisCluster,
+                      'parse_response') as parse_response:
 
-    m = Mock(autospec=True)
+        host_ip = find_node_ip_based_on_port(r, '7001')
 
-    host_ip = find_node_ip_based_on_port(r, '7001')
+        def ask_redirect_effect(connection, *args, **options):
+            def ok_response(connection, *args, **options):
+                assert connection.host == host_ip
+                assert connection.port == 7001
 
-    def ask_redirect_effect(connection, *args, **options):
-        def ok_response(connection, *args, **options):
-            assert connection.host == host_ip
-            assert connection.port == 7001
+                return "MOCK_OK"
+            parse_response.side_effect = ok_response
+            raise AskError("1337 {0}:7001".format(host_ip))
 
-            return "MOCK_OK"
-        m.side_effect = ok_response
-        raise AskError("1337 {0}:7001".format(host_ip))
+        parse_response.side_effect = ask_redirect_effect
 
-    m.side_effect = ask_redirect_effect
-
-    r.parse_response = m
-    assert r.execute_command("SET", "foo", "bar") == "MOCK_OK"
+        assert r.execute_command("SET", "foo", "bar") == "MOCK_OK"
 
 
 def test_pipeline_ask_redirection():
@@ -297,24 +285,27 @@ def test_pipeline_ask_redirection():
     Important thing to verify is that it tries to talk to the second node.
     """
     r = StrictRedisCluster(host="127.0.0.1", port=7000)
-    p = r.pipeline()
+    with patch.object(StrictRedisCluster,
+                      'parse_response') as parse_response:
 
-    m = Mock(autospec=True)
+        def response(connection, *args, **options):
+            def response(connection, *args, **options):
+                def response(connection, *args, **options):
+                    assert connection.host == "127.0.0.1"
+                    assert connection.port == 7001
+                    return "MOCK_OK"
 
-    def ask_redirect_effect(connection, *args, **options):
-        def ok_response(connection, *args, **options):
-            assert connection.host == "127.0.0.1"
-            assert connection.port == 7001
+                parse_response.side_effect = response
+                raise AskError("12182 127.0.0.1:7001")
 
-            return "MOCK_OK"
-        m.side_effect = ok_response
-        raise AskError("12182 127.0.0.1:7001")
+            parse_response.side_effect = response
+            raise AskError("12182 127.0.0.1:7001")
 
-    m.side_effect = ask_redirect_effect
+        parse_response.side_effect = response
 
-    p.parse_response = m
-    p.set("foo", "bar")
-    assert p.execute() == ["MOCK_OK"]
+        p = r.pipeline()
+        p.set("foo", "bar")
+        assert p.execute() == ["MOCK_OK"]
 
 
 def test_moved_redirection():
@@ -353,25 +344,22 @@ def test_moved_redirection_pipeline():
 
     Important thing to verify is that it tries to talk to the second node.
     """
-    r = StrictRedisCluster(host="127.0.0.1", port=7000)
-    p = r.pipeline()
+    with patch.object(StrictRedisCluster, 'parse_response') as parse_response:
+        def moved_redirect_effect(connection, *args, **options):
+            def ok_response(connection, *args, **options):
+                assert connection.host == "127.0.0.1"
+                assert connection.port == 7002
 
-    m = Mock(autospec=True)
+                return "MOCK_OK"
+            parse_response.side_effect = ok_response
+            raise MovedError("12182 127.0.0.1:7002")
 
-    def moved_redirect_effect(connection, *args, **options):
-        def ok_response(connection, *args, **options):
-            assert connection.host == "127.0.0.1"
-            assert connection.port == 7002
+        parse_response.side_effect = moved_redirect_effect
 
-            return "MOCK_OK"
-        m.side_effect = ok_response
-        raise MovedError("12182 127.0.0.1:7002")
-
-    m.side_effect = moved_redirect_effect
-
-    p.parse_response = m
-    p.set("foo", "bar")
-    assert p.execute() == ["MOCK_OK"]
+        r = StrictRedisCluster(host="127.0.0.1", port=7000)
+        p = r.pipeline()
+        p.set("foo", "bar")
+        assert p.execute() == ["MOCK_OK"]
 
 
 def assert_moved_redirection_on_slave(sr, connection_pool_cls, cluster_obj):

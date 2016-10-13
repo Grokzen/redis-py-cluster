@@ -19,7 +19,7 @@ class NodeManager(object):
     """
     RedisClusterHashSlots = 16384
 
-    def __init__(self, startup_nodes=None, **connection_kwargs):
+    def __init__(self, startup_nodes=None, reinitialize_steps=None, **connection_kwargs):
         """
         """
         self.connection_kwargs = connection_kwargs
@@ -27,6 +27,8 @@ class NodeManager(object):
         self.slots = {}
         self.startup_nodes = [] if startup_nodes is None else startup_nodes
         self.orig_startup_nodes = [node for node in self.startup_nodes]
+        self.reinitialize_counter = 0
+        self.reinitialize_steps = reinitialize_steps or 25
 
         if not self.startup_nodes:
             raise RedisClusterException("No startup nodes provided")
@@ -237,6 +239,13 @@ class NodeManager(object):
         # Set the tmp variables to the real variables
         self.slots = tmp_slots
         self.nodes = nodes_cache
+        self.reinitialize_counter = 0
+
+    def increment_reinitialize_counter(self, ct=1):
+        for i in range(1, ct):
+            self.reinitialize_counter += 1
+            if self.reinitialize_counter % self.reinitialize_steps == 0:
+                self.initialize()
 
     def cluster_require_full_coverage(self, nodes_cache):
         """

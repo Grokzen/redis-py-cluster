@@ -154,6 +154,7 @@ class StrictRedisCluster(StrictRedis):
                 startup_nodes=startup_nodes,
                 init_slot_cache=init_slot_cache,
                 max_connections=max_connections,
+                reinitialize_steps=reinitialize_steps,
                 max_connections_per_node=max_connections_per_node,
                 **kwargs
             )
@@ -164,8 +165,6 @@ class StrictRedisCluster(StrictRedis):
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
-        self.reinitialize_counter = 0
-        self.reinitialize_steps = reinitialize_steps or 25
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
 
     def __repr__(self):
@@ -196,10 +195,8 @@ class StrictRedisCluster(StrictRedis):
         return StrictClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
-            refresh_table_asap=self.refresh_table_asap,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
-            reinitialize_steps=self.reinitialize_steps
         )
 
     def transaction(self, *args, **kwargs):
@@ -326,14 +323,13 @@ class StrictRedisCluster(StrictRedis):
                 # This counter will increase faster when the same client object
                 # is shared between multiple threads. To reduce the frequency you
                 # can set the variable 'reinitialize_steps' in the constructor.
-                self.reinitialize_counter += 1
-                if self.reinitialize_counter % self.reinitialize_steps == 0:
-                    self.refresh_table_asap = True
+                self.refresh_table_asap = True
+                self.connection_pool.nodes.increment_reinitialize_counter()
 
                 node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
                 self.connection_pool.nodes.slots[e.slot_id][0] = node
             except TryAgainError as e:
-                if ttl < self.COMMAND_TTL / 2:
+                if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.05)
             except AskError as e:
                 redirect_addr, asking = "{0}:{1}".format(e.host, e.port), True
@@ -1125,7 +1121,6 @@ class RedisCluster(StrictRedisCluster):
         return StrictClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
-            refresh_table_asap=self.refresh_table_asap,
             response_callbacks=self.response_callbacks
         )
 
