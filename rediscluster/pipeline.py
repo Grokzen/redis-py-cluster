@@ -24,7 +24,7 @@ class StrictClusterPipeline(StrictRedisCluster):
     """
 
     def __init__(self, connection_pool, result_callbacks=None,
-                 response_callbacks=None, startup_nodes=None):
+                 response_callbacks=None, startup_nodes=None, allow_same_slot_commands=False):
         """
         """
         self.command_stack = []
@@ -35,6 +35,7 @@ class StrictClusterPipeline(StrictRedisCluster):
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.response_callbacks = dict_merge(response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy(),
                                              self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
+        self.allow_same_slot_commands = allow_same_slot_commands
 
     def __repr__(self):
         """
@@ -89,6 +90,35 @@ class StrictClusterPipeline(StrictRedisCluster):
             number, cmd, unicode(exception.args[0]))
         exception.args = (msg,) + exception.args[1:]
 
+    def validate_command_stack_same_slot_commands(self):
+        """
+        Go through all commands in the stack and validate if the commands
+        that use multiple keys acctually points to the same slot.
+        If all commands comply then we pass this test and continue to execute.
+        If we fail this test then raise exception back to caller that it violates the rules.
+
+        The initial check if each command is acceptiable to be a multi key command is checked
+        in the function `allow_same_slot_block_pipeline_command` that is bound to all
+        multi key commands when running in a pipeline.
+        """
+        for cmd in self.command_stack:
+            # Handle each allowed multi key commands becuase they might deal with
+            # what keys should be used how.
+            if cmd.args[0] == 'MGET':
+                keys = cmd.args[1:]
+            elif cmd.args[0] == 'MSET':
+                keys = cmd.args[1::2]
+
+            slot = None
+
+            for key in keys:
+                s = self.connection_pool.nodes.keyslot(key)
+                if slot is not None and s != slot:
+                    raise RedisClusterException('Multi key command: "{0}" have keys that tries to access different hash slots'.format(cmd.args))
+                slot = s
+
+        # All multi key commands passed and we can continue.
+
     def execute(self, raise_on_error=True):
         """
         """
@@ -96,6 +126,9 @@ class StrictClusterPipeline(StrictRedisCluster):
 
         if not stack:
             return []
+
+        if self.allow_same_slot_commands:
+            self.validate_command_stack_same_slot_commands()
 
         try:
             return self.send_cluster_commands(stack, raise_on_error)
@@ -294,6 +327,19 @@ def block_pipeline_command(func):
     return inner
 
 
+def allow_same_slot_block_pipeline_command(func):
+    """
+    """
+    def inner(*args, **kwargs):
+        if not args[0].allow_same_slot_commands:
+            raise RedisClusterException("Pipeline object is not configured to handle multi key commands")
+        return func(*args, **kwargs)
+    return inner
+
+
+StrictClusterPipeline.mget = allow_same_slot_block_pipeline_command(StrictRedis.mget)
+StrictClusterPipeline.mset = allow_same_slot_block_pipeline_command(StrictRedis.mset)
+
 # Blocked pipeline commands
 StrictClusterPipeline.bgrewriteaof = block_pipeline_command(StrictRedis.bgrewriteaof)
 StrictClusterPipeline.bgsave = block_pipeline_command(StrictRedis.bgsave)
@@ -315,9 +361,7 @@ StrictClusterPipeline.flushdb = block_pipeline_command(StrictRedis.flushdb)
 StrictClusterPipeline.info = block_pipeline_command(StrictRedis.info)
 StrictClusterPipeline.keys = block_pipeline_command(StrictRedis.keys)
 StrictClusterPipeline.lastsave = block_pipeline_command(StrictRedis.lastsave)
-StrictClusterPipeline.mget = block_pipeline_command(StrictRedis.mget)
 StrictClusterPipeline.move = block_pipeline_command(StrictRedis.move)
-StrictClusterPipeline.mset = block_pipeline_command(StrictRedis.mset)
 StrictClusterPipeline.msetnx = block_pipeline_command(StrictRedis.msetnx)
 StrictClusterPipeline.pfmerge = block_pipeline_command(StrictRedis.pfmerge)
 StrictClusterPipeline.pfcount = block_pipeline_command(StrictRedis.pfcount)

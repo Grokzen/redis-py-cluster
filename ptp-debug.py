@@ -3,7 +3,13 @@ from rediscluster import StrictRedisCluster
 startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
 # Note: decode_responses must be set to True when used with python3
-rc = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+rc = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True, pipeline_allow_same_slot_commands=True)
 url_client = StrictRedisCluster.from_url('http://127.0.0.1:7000')
+
+rc.set("{asd}foo", "bar")
+p = rc.pipeline()
+p.mget('{asd}foo', '{asd}bar', '{asd}wqe')
+p.mset({'{asd}qwe': 'ewq', '{asd}wer': 'rew'})
+print(p.execute())
 
 __import__('ptpdb').set_trace()

@@ -7,6 +7,9 @@ Next release (??? ??, 201?)
     * Fix a bug where from_url was not possible to use without passing in additional variables. Now it works as the same method from redis-py.
       Note that the same rules that is currently in place for passing ip addresses/dns names into startup_nodes variable apply the same way through
       the from_url method.
+    * Implement basic support for validating pipeline command stack when using multi key commands MSET & MGET to validate all keys used
+      points to the same cluster hash slot. Will raise exception if StrictRedisCluster object is not configured with new option `pipeline_allow_same_slot_commands=True`
+      that will enable validation of the commadn stack.
 
 
 1.3.1 (Oct 13, 2016)

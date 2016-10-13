@@ -113,7 +113,7 @@ class StrictRedisCluster(StrictRedis):
     }
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, max_connections_per_node=False, init_slot_cache=True,
-                 readonly_mode=False, reinitialize_steps=None, **kwargs):
+                 readonly_mode=False, reinitialize_steps=None, pipeline_allow_same_slot_commands=False, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -166,6 +166,7 @@ class StrictRedisCluster(StrictRedis):
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
+        self.pipeline_allow_same_slot_commands = pipeline_allow_same_slot_commands
 
     @classmethod
     def from_url(cls, url, db=None, **kwargs):
@@ -221,6 +222,7 @@ class StrictRedisCluster(StrictRedis):
             startup_nodes=self.connection_pool.nodes.startup_nodes,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
+            allow_same_slot_commands=self.pipeline_allow_same_slot_commands
         )
 
     def transaction(self, *args, **kwargs):
