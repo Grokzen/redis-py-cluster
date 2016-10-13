@@ -167,6 +167,30 @@ class StrictRedisCluster(StrictRedis):
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
 
+    @classmethod
+    def from_url(cls, url, db=None, **kwargs):
+        """
+        Return a Redis client object configured from the given URL, which must
+        use either `the ``redis://`` scheme
+        <http://www.iana.org/assignments/uri-schemes/prov/redis>`_ for RESP
+        connections or the ``unix://`` scheme for Unix domain sockets.
+        For example::
+            redis://[:password]@localhost:6379/0
+            unix://[:password]@/path/to/socket.sock?db=0
+        There are several ways to specify a database number. The parse function
+        will return the first specified option:
+            1. A ``db`` querystring option, e.g. redis://localhost?db=0
+            2. If using the redis:// scheme, the path argument of the url, e.g.
+               redis://localhost/0
+            3. The ``db`` argument to this function.
+        If none of these options are specified, db=0 is used.
+        Any additional querystring arguments and keyword arguments will be
+        passed along to the ConnectionPool class's initializer. In the case
+        of conflicting arguments, querystring arguments always win.
+        """
+        connection_pool = ClusterConnectionPool.from_url(url, db=db, **kwargs)
+        return cls(connection_pool=connection_pool)
+
     def __repr__(self):
         """
         """

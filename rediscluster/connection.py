@@ -75,6 +75,18 @@ class ClusterConnectionPool(ConnectionPool):
         """
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
+        # Special case to make from_url method compliant with cluster setting.
+        # from_url method will send in the ip and port through a different variable then the
+        # regular startup_nodes variable.
+        if startup_nodes is None:
+            if 'port' in connection_kwargs and 'host' in connection_kwargs:
+                startup_nodes = [{
+                    'host': connection_kwargs.pop('host'),
+                    'port': str(connection_kwargs.pop('port')),
+                }]
+
+        print(startup_nodes)
+
         self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
 

@@ -1,6 +1,13 @@
 Release Notes
 =============
 
+Next release (??? ??, 201?)
+---------------------------
+
+    * Fix a bug where from_url was not possible to use without passing in additional variables. Now it works as the same method from redis-py.
+      Note that the same rules that is currently in place for passing ip addresses/dns names into startup_nodes variable apply the same way through
+      the from_url method.
+
 
 1.3.1 (Oct 13, 2016)
 --------------------
