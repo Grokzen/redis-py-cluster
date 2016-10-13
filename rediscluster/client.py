@@ -28,7 +28,7 @@ from .utils import (
 from redis import StrictRedis
 from redis.client import list_or_args, parse_info
 from redis.connection import Token
-from redis._compat import iteritems, basestring, b, izip, nativestr
+from redis._compat import iteritems, basestring, b, izip, nativestr, long
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
 
 
@@ -154,6 +154,7 @@ class StrictRedisCluster(StrictRedis):
                 startup_nodes=startup_nodes,
                 init_slot_cache=init_slot_cache,
                 max_connections=max_connections,
+                reinitialize_steps=reinitialize_steps,
                 max_connections_per_node=max_connections_per_node,
                 **kwargs
             )
@@ -164,8 +165,6 @@ class StrictRedisCluster(StrictRedis):
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
-        self.reinitialize_counter = 0
-        self.reinitialize_steps = reinitialize_steps or 25
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
 
     def __repr__(self):
@@ -196,10 +195,8 @@ class StrictRedisCluster(StrictRedis):
         return StrictClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
-            refresh_table_asap=self.refresh_table_asap,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
-            reinitialize_steps=self.reinitialize_steps
         )
 
     def transaction(self, *args, **kwargs):
@@ -326,14 +323,13 @@ class StrictRedisCluster(StrictRedis):
                 # This counter will increase faster when the same client object
                 # is shared between multiple threads. To reduce the frequency you
                 # can set the variable 'reinitialize_steps' in the constructor.
-                self.reinitialize_counter += 1
-                if self.reinitialize_counter % self.reinitialize_steps == 0:
-                    self.refresh_table_asap = True
+                self.refresh_table_asap = True
+                self.connection_pool.nodes.increment_reinitialize_counter()
 
                 node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
                 self.connection_pool.nodes.slots[e.slot_id][0] = node
             except TryAgainError as e:
-                if ttl < self.COMMAND_TTL / 2:
+                if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.05)
             except AskError as e:
                 redirect_addr, asking = "{0}:{1}".format(e.host, e.port), True
@@ -551,6 +547,13 @@ class StrictRedisCluster(StrictRedis):
     ##########
     # All methods that must have custom implementation
 
+    def _parse_scan(self, response, **options):
+        """
+        Borrowed from redis-py::client.py
+        """
+        cursor, r = response
+        return long(cursor), r
+
     def scan_iter(self, match=None, count=None):
         """
         Make an iterator using the SCAN command so that the client doesn't
@@ -562,13 +565,36 @@ class StrictRedisCluster(StrictRedis):
         Cluster impl:
             Result from SCAN is different in cluster mode.
         """
-        cursor = '0'
-        while cursor != 0:
-            for _, node_data in self.scan(cursor=cursor, match=match, count=count).items():
-                cursor, data = node_data
+        cursors = {}
+        nodeData = {}
+        for master_node in self.connection_pool.nodes.all_masters():
+            cursors[master_node["name"]] = "0"
+            nodeData[master_node["name"]] = master_node
 
-                for item in data:
-                    yield item
+        while not all(cursors[node] == 0 for node in cursors):
+            for node in cursors:
+                if cursors[node] == 0:
+                    continue
+
+                conn = self.connection_pool.get_connection_by_node(nodeData[node])
+
+                pieces = ['SCAN', cursors[node]]
+                if match is not None:
+                    pieces.extend([Token('MATCH'), match])
+                if count is not None:
+                    pieces.extend([Token('COUNT'), count])
+
+                conn.send_command(*pieces)
+
+                raw_resp = conn.read_response()
+
+                # if you don't release the connection, the driver will make another, and you will hate your life
+                self.connection_pool.release(conn)
+                cur, resp = self._parse_scan(raw_resp)
+                cursors[node] = cur
+
+                for r in resp:
+                    yield r
 
     def mget(self, keys, *args):
         """
@@ -1095,7 +1121,6 @@ class RedisCluster(StrictRedisCluster):
         return StrictClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
-            refresh_table_asap=self.refresh_table_asap,
             response_callbacks=self.response_callbacks
         )
 

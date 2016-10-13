@@ -20,7 +20,7 @@ with open(os.path.join('docs', 'release-notes.rst')) as f:
 
 setup(
     name="redis-py-cluster",
-    version="1.3.0",
+    version="1.3.1",
     description="Cluster library for redis 3.0.0 built on top of redis-py lib",
     long_description=readme + '\n\n' + history,
     author="Johan Andersson",
@@ -55,5 +55,6 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Environment :: Web Environment',
         'Operating System :: POSIX',
+        'License :: OSI Approved :: MIT License',
     )
 )

@@ -639,11 +639,13 @@ class TestRedisCommands(object):
         assert set(keys) == set([b('a')])
 
     def test_scan_iter(self, r):
-        r.set('a', 1)
-        r.set('b', 2)
-        r.set('c', 3)
+        alphabet = 'abcdefghijklmnopqrstuvwABCDEFGHIJKLMNOPQRSTUVW'
+        for i, c in enumerate(alphabet):
+            r.set(c, i)
         keys = list(r.scan_iter())
-        assert set(keys) == set([b('a'), b('b'), b('c')])
+        expected_result = [b(c) for c in alphabet]
+        assert set(keys) == set(expected_result)
+
         keys = list(r.scan_iter(match='a'))
         assert set(keys) == set([b('a')])
 
