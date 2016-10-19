@@ -19,8 +19,11 @@ class NodeManager(object):
     """
     RedisClusterHashSlots = 16384
 
-    def __init__(self, startup_nodes=None, reinitialize_steps=None, **connection_kwargs):
+    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, **connection_kwargs):
         """
+        :skip_full_coverage_check:
+            Skips the check of cluster-require-full-coverage config, useful for clusters
+            without the CONFIG command (like aws)
         """
         self.connection_kwargs = connection_kwargs
         self.nodes = {}
@@ -29,6 +32,7 @@ class NodeManager(object):
         self.orig_startup_nodes = [node for node in self.startup_nodes]
         self.reinitialize_counter = 0
         self.reinitialize_steps = reinitialize_steps or 25
+        self._skip_full_coverage_check = skip_full_coverage_check
 
         if not self.startup_nodes:
             raise RedisClusterException("No startup nodes provided")
@@ -218,7 +222,10 @@ class NodeManager(object):
                 self.populate_startup_nodes()
                 self.refresh_table_asap = False
 
-            need_full_slots_coverage = self.cluster_require_full_coverage(nodes_cache)
+            if self._skip_full_coverage_check:
+                need_full_slots_coverage = False
+            else:
+                need_full_slots_coverage = self.cluster_require_full_coverage(nodes_cache)
 
             # Validate if all slots are covered or if we should try next startup node
             for i in range(0, self.RedisClusterHashSlots):
