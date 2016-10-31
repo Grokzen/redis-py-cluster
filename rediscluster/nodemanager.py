@@ -12,6 +12,7 @@ from .exceptions import RedisClusterException
 from redis import StrictRedis
 from redis._compat import unicode
 from redis import ConnectionError
+from redis import ResponseError
 
 
 class NodeManager(object):
@@ -257,7 +258,12 @@ class NodeManager(object):
 
         def node_require_full_coverage(node):
             r_node = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
-            return "yes" in r_node.config_get("cluster-require-full-coverage").values()
+            try:
+                val = "yes" in r_node.config_get("cluster-require-full-coverage").values()
+            except ResponseError:
+                # can't use CONFIG command in elasticache. 
+                # So set default value as False
+                return False
 
         # at least one node should have cluster-require-full-coverage yes
         return any(node_require_full_coverage(node) for node in nodes.values())
