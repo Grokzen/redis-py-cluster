@@ -70,8 +70,12 @@ class ClusterConnectionPool(ConnectionPool):
     RedisClusterDefaultTimeout = None
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
-                 max_connections=None, max_connections_per_node=False, reinitialize_steps=None, **connection_kwargs):
+                 max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
+                 skip_full_coverage_check=False, **connection_kwargs):
         """
+        :skip_full_coverage_check:
+            Skips the check of cluster-require-full-coverage config, useful for clusters
+            without the CONFIG command (like aws)
         """
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
@@ -90,7 +94,8 @@ class ClusterConnectionPool(ConnectionPool):
         self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
 
-        self.nodes = NodeManager(startup_nodes, reinitialize_steps=reinitialize_steps, **connection_kwargs)
+        self.nodes = NodeManager(startup_nodes, reinitialize_steps=reinitialize_steps,
+                                 skip_full_coverage_check=skip_full_coverage_check, **connection_kwargs)
         if init_slot_cache:
             self.nodes.initialize()
 

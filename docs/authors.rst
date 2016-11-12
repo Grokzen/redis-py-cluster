@@ -20,3 +20,4 @@ Authors who contributed code or testing:
  - gmolight - https://github.com/gmolight
  - baranbartu - https://github.com/baranbartu
  - monklof - https://github.com/monklof
+ - dutradda - https://github.com/dutradda
