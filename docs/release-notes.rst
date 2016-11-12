@@ -8,6 +8,7 @@ Next release (??? ??, 201?)
       Note that the same rules that is currently in place for passing ip addresses/dns names into startup_nodes variable apply the same way through
       the from_url method.
     * Added options to skip full coverage check. This flag is useful when the CONFIG redis command is disabled by the server.
+    * Fixed a bug where method *CLUSTER SLOTS* would break in newer redis versions where node id is included in the reponse. Method is not compatible with both old and new redis versions.
 
 
 1.3.1 (Oct 13, 2016)

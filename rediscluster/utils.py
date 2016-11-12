@@ -125,8 +125,8 @@ def parse_cluster_slots(resp, **options):
     """
     current_host = options.get('current_host', '')
 
-    def fix_server(host, port):
-        return (host or current_host, port)
+    def fix_server(*args):
+        return (args[0] or current_host, args[1])
 
     slots = {}
     for slot in resp:
