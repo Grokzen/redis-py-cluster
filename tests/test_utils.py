@@ -14,11 +14,61 @@ from rediscluster.utils import (
     merge_result,
     first_key,
     clusterdown_wrapper,
+    parse_cluster_slots,
 )
 
 # 3rd party imports
 import pytest
 from redis._compat import unicode
+
+
+def test_parse_cluster_slots():
+    """
+    Example raw output from redis cluster. Output is form a redis 3.2.x node
+    that includes the id in the reponse. The test below that do not include the id
+    is to validate that the code is compatible with redis versions that do not contain
+    that value in the response from the server.
+
+    127.0.0.1:10000> cluster slots
+    1) 1) (integer) 5461
+       2) (integer) 10922
+       3) 1) "10.0.0.1"
+          2) (integer) 10000
+          3) "3588b4cf9fc72d57bb262a024747797ead0cf7ea"
+       4) 1) "10.0.0.4"
+          2) (integer) 10000
+          3) "a72c02c7d85f4ec3145ab2c411eefc0812aa96b0"
+    2) 1) (integer) 10923
+       2) (integer) 16383
+       3) 1) "10.0.0.2"
+          2) (integer) 10000
+          3) "ffd36d8d7cb10d813f81f9662a835f6beea72677"
+       4) 1) "10.0.0.5"
+          2) (integer) 10000
+          3) "5c15b69186017ddc25ebfac81e74694fc0c1a160"
+    3) 1) (integer) 0
+       2) (integer) 5460
+       3) 1) "10.0.0.3"
+          2) (integer) 10000
+          3) "069cda388c7c41c62abe892d9e0a2d55fbf5ffd5"
+       4) 1) "10.0.0.6"
+          2) (integer) 10000
+          3) "dc152a08b4cf1f2a0baf775fb86ad0938cb907dc"
+    """
+    mock_response = [
+        [0, 5460, ['172.17.0.2', 7000], ['172.17.0.2', 7003]],
+        [5461, 10922, ['172.17.0.2', 7001], ['172.17.0.2', 7004]],
+        [10923, 16383, ['172.17.0.2', 7002], ['172.17.0.2', 7005]]
+    ]
+    parse_cluster_slots(mock_response)
+
+    extended_mock_response = [
+        [0, 5460, ['172.17.0.2', 7000, 'ffd36d8d7cb10d813f81f9662a835f6beea72677'], ['172.17.0.2', 7003, '5c15b69186017ddc25ebfac81e74694fc0c1a160']],
+        [5461, 10922, ['172.17.0.2', 7001, '069cda388c7c41c62abe892d9e0a2d55fbf5ffd5'], ['172.17.0.2', 7004, 'dc152a08b4cf1f2a0baf775fb86ad0938cb907dc']],
+        [10923, 16383, ['172.17.0.2', 7002, '3588b4cf9fc72d57bb262a024747797ead0cf7ea'], ['172.17.0.2', 7005, 'a72c02c7d85f4ec3145ab2c411eefc0812aa96b0']]
+    ]
+
+    parse_cluster_slots(extended_mock_response)
 
 
 def test_string_keys_to():

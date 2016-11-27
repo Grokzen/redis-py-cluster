@@ -70,15 +70,32 @@ class ClusterConnectionPool(ConnectionPool):
     RedisClusterDefaultTimeout = None
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
-                 max_connections=None, max_connections_per_node=False, reinitialize_steps=None, **connection_kwargs):
+                 max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
+                 skip_full_coverage_check=False, **connection_kwargs):
         """
+        :skip_full_coverage_check:
+            Skips the check of cluster-require-full-coverage config, useful for clusters
+            without the CONFIG command (like aws)
         """
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
+
+        # Special case to make from_url method compliant with cluster setting.
+        # from_url method will send in the ip and port through a different variable then the
+        # regular startup_nodes variable.
+        if startup_nodes is None:
+            if 'port' in connection_kwargs and 'host' in connection_kwargs:
+                startup_nodes = [{
+                    'host': connection_kwargs.pop('host'),
+                    'port': str(connection_kwargs.pop('port')),
+                }]
+
+        print(startup_nodes)
 
         self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
 
-        self.nodes = NodeManager(startup_nodes, reinitialize_steps=reinitialize_steps, **connection_kwargs)
+        self.nodes = NodeManager(startup_nodes, reinitialize_steps=reinitialize_steps,
+                                 skip_full_coverage_check=skip_full_coverage_check, **connection_kwargs)
         if init_slot_cache:
             self.nodes.initialize()
 

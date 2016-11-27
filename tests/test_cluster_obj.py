@@ -15,8 +15,9 @@ from rediscluster.nodemanager import NodeManager
 from tests.conftest import _get_client, skip_if_server_version_lt, skip_if_not_password_protected_nodes
 
 # 3rd party imports
-from mock import patch, Mock
+from mock import patch, Mock, MagicMock
 from redis._compat import b, unicode
+from redis import StrictRedis
 import pytest
 
 pytestmark = skip_if_server_version_lt('2.9.0')
@@ -105,6 +106,17 @@ def test_custom_connectionpool():
     assert c.connection_pool is pool
     assert c.connection_pool.connection_class == DummyConnection
     assert {"host": h, "port": p} in c.connection_pool.nodes.startup_nodes
+
+
+@patch('rediscluster.nodemanager.StrictRedis', new=MagicMock())
+def test_skip_full_coverage_check():
+    """
+    Test if the cluster_require_full_coverage NodeManager method was not called with the flag activated
+    """
+    c = StrictRedisCluster("192.168.0.1", 7001, init_slot_cache=False, skip_full_coverage_check=True)
+    c.connection_pool.nodes.cluster_require_full_coverage = MagicMock()
+    c.connection_pool.nodes.initialize()
+    assert not c.connection_pool.nodes.cluster_require_full_coverage.called
 
 
 def test_blocked_commands(r):

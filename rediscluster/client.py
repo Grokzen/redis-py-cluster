@@ -113,7 +113,7 @@ class StrictRedisCluster(StrictRedis):
     }
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, max_connections_per_node=False, init_slot_cache=True,
-                 readonly_mode=False, reinitialize_steps=None, **kwargs):
+                 readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -125,6 +125,9 @@ class StrictRedisCluster(StrictRedis):
             Maximum number of connections that should be kept open at one time
         :readonly_mode:
             enable READONLY mode. You can read possibly stale data from slave.
+        :skip_full_coverage_check:
+            Skips the check of cluster-require-full-coverage config, useful for clusters
+            without the CONFIG command (like aws)
         :**kwargs:
             Extra arguments that will be sent into StrictRedis instance when created
             (See Official redis-py doc for supported kwargs
@@ -156,6 +159,7 @@ class StrictRedisCluster(StrictRedis):
                 max_connections=max_connections,
                 reinitialize_steps=reinitialize_steps,
                 max_connections_per_node=max_connections_per_node,
+                skip_full_coverage_check=skip_full_coverage_check,
                 **kwargs
             )
 
@@ -166,6 +170,30 @@ class StrictRedisCluster(StrictRedis):
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
+
+    @classmethod
+    def from_url(cls, url, db=None, skip_full_coverage_check=False, **kwargs):
+        """
+        Return a Redis client object configured from the given URL, which must
+        use either `the ``redis://`` scheme
+        <http://www.iana.org/assignments/uri-schemes/prov/redis>`_ for RESP
+        connections or the ``unix://`` scheme for Unix domain sockets.
+        For example::
+            redis://[:password]@localhost:6379/0
+            unix://[:password]@/path/to/socket.sock?db=0
+        There are several ways to specify a database number. The parse function
+        will return the first specified option:
+            1. A ``db`` querystring option, e.g. redis://localhost?db=0
+            2. If using the redis:// scheme, the path argument of the url, e.g.
+               redis://localhost/0
+            3. The ``db`` argument to this function.
+        If none of these options are specified, db=0 is used.
+        Any additional querystring arguments and keyword arguments will be
+        passed along to the ConnectionPool class's initializer. In the case
+        of conflicting arguments, querystring arguments always win.
+        """
+        connection_pool = ClusterConnectionPool.from_url(url, db=db, **kwargs)
+        return cls(connection_pool=connection_pool, skip_full_coverage_check=skip_full_coverage_check)
 
     def __repr__(self):
         """
