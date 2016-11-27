@@ -9,19 +9,19 @@ python:
 services:
   - redis-server
 install:
-  - "if [[ $REDIS_VERSION == '3.0' ]]; then REDIS_VERSION=3.0.7 make redis-install; fi"
-  - "if [[ $REDIS_VERSION == '3.2' ]]; then REDIS_VERSION=3.2.0-rc3 make redis-install; fi"
+  - "if [[ $REDIS_VERSION == '3.0' ]]; then REDIS_VERSION=3.0 make redis-install; fi"
+  - "if [[ $REDIS_VERSION == '3.2' ]]; then REDIS_VERSION=3.2 make redis-install; fi"
   - pip install -r dev-requirements.txt
   - pip install -e .
   - "if [[ $HIREDIS == '1' ]]; then pip install hiredis; fi"
 env:
-  # Redis 3.0.7
+  # Redis 3.0
   - HIREDIS=0 REDIS_VERSION=3.0
-  # Redis 3.0.7 and HIREDIS
+  # Redis 3.0 and HIREDIS
   - HIREDIS=1 REDIS_VERSION=3.0
-  # Redis 3.2.0-rc3
+  # Redis 3.2
   - HIREDIS=0 REDIS_VERSION=3.2
-  # Redis 3.2.0-rc3 and HIREDIS
+  # Redis 3.2 and HIREDIS
   - HIREDIS=1 REDIS_VERSION=3.2
 script: 
   - make start
