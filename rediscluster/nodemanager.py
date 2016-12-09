@@ -67,8 +67,10 @@ class NodeManager(object):
         """
         if hasattr(key, "encode"):
             k = key.encode("utf-8")
-        else:
+        elif hasattr(key, "decode"):
             k = key
+        else:
+            k = str(key).encode()
 
         start = k.find(b"{")
 
