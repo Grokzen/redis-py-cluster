@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Next release (??? ??, 2016)
+---------------------------
+
+    * Remove print statement that was faulty commited into release 1.3.2 that case logs to fill up with unwanted data.
+
 1.3.2 (Nov 27, 2016)
 --------------------
 
