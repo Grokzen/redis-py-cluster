@@ -123,6 +123,9 @@ def nslookup(node_ip):
 def parse_cluster_slots(resp, **options):
     """
     """
+    if type(resp) is bytes:
+        resp = resp.decode('UTF-8')
+
     current_host = options.get('current_host', '')
 
     def fix_server(*args):
@@ -145,6 +148,9 @@ def parse_cluster_nodes(resp, **options):
     @see: http://redis.io/commands/cluster-nodes  # string
     @see: http://redis.io/commands/cluster-slaves # list of string
     """
+    if type(resp) is bytes:
+        resp = resp.decode('UTF-8')
+
     current_host = options.get('current_host', '')
 
     def parse_slots(s):
