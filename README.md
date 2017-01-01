@@ -55,7 +55,7 @@ True
 
 ## License & Authors
 
-Copyright (c) 2013-2016 Johan Andersson
+Copyright (c) 2013-2017 Johan Andersson
 
 MIT (See docs/License.txt file)
 
