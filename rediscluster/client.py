@@ -56,7 +56,8 @@ class StrictRedisCluster(StrictRedis):
             "FLUSHALL", "FLUSHDB", "SCRIPT LOAD", "SCRIPT FLUSH", "SCRIPT EXISTS", "SCAN",
         ], 'all-masters'),
         string_keys_to_dict([
-            "RANDOMKEY", "CLUSTER NODES", 'CLUSTER SLOTS',
+            "RANDOMKEY", "CLUSTER NODES", "CLUSTER SLOTS", "PUBSUB CHANNELS",  
+            "PUBSUB NUMSUB", "PUBSUB NUMPAT",
         ], 'random'),
         string_keys_to_dict([
             "CLUSTER COUNTKEYSINSLOT",
