@@ -19,13 +19,14 @@ class NodeManager(object):
     """
     RedisClusterHashSlots = 16384
 
-    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, **connection_kwargs):
+    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, max_connections=None, **connection_kwargs):
         """
         :skip_full_coverage_check:
             Skips the check of cluster-require-full-coverage config, useful for clusters
             without the CONFIG command (like aws)
         """
         self.connection_kwargs = connection_kwargs
+        self.max_connections=max_connections
         self.nodes = {}
         self.slots = {}
         self.startup_nodes = [] if startup_nodes is None else startup_nodes
@@ -155,7 +156,7 @@ class NodeManager(object):
             'decode_responses',
         )
         connection_kwargs = {k: v for k, v in self.connection_kwargs.items() if k in set(allowed_keys) - set(disabled_keys)}
-        return StrictRedis(host=host, port=port, decode_responses=decode_responses, **connection_kwargs)
+        return StrictRedis(host=host, port=port, decode_responses=decode_responses, max_connections=self.max_connections, **connection_kwargs)
 
     def initialize(self):
         """
