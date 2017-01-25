@@ -50,14 +50,14 @@ class StrictRedisCluster(StrictRedis):
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
-            "TIME", "KEYS", "CLUSTER INFO",
+            "TIME", "KEYS", "CLUSTER INFO", "PUBSUB CHANNELS",  
+            "PUBSUB NUMSUB", "PUBSUB NUMPAT",
         ], 'all-nodes'),
         string_keys_to_dict([
             "FLUSHALL", "FLUSHDB", "SCRIPT LOAD", "SCRIPT FLUSH", "SCRIPT EXISTS", "SCAN",
         ], 'all-masters'),
         string_keys_to_dict([
-            "RANDOMKEY", "CLUSTER NODES", "CLUSTER SLOTS", "PUBSUB CHANNELS",  
-            "PUBSUB NUMSUB", "PUBSUB NUMPAT",
+            "RANDOMKEY", "CLUSTER NODES", "CLUSTER SLOTS",
         ], 'random'),
         string_keys_to_dict([
             "CLUSTER COUNTKEYSINSLOT",
@@ -71,6 +71,7 @@ class StrictRedisCluster(StrictRedis):
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
             "TIME", "SCAN", "CLUSTER INFO", 'CLUSTER ADDSLOTS', 'CLUSTER COUNT-FAILURE-REPORTS',
             'CLUSTER DELSLOTS', 'CLUSTER FAILOVER', 'CLUSTER FORGET', "FLUSHALL", "FLUSHDB",
+            "PUBSUB CHANNELS", "PUBSUB NUMSUB", "PUBSUB NUMPAT",
         ], lambda command, res: res),
         string_keys_to_dict([
             "SCRIPT LOAD",
