@@ -17,7 +17,7 @@ from .exceptions import (
 # 3rd party imports
 from redis._compat import nativestr
 from redis.client import dict_merge
-from redis.connection import ConnectionPool, Connection, DefaultParser
+from redis.connection import ConnectionPool, Connection, DefaultParser, SSLConnection
 from redis.exceptions import ConnectionError
 
 
@@ -49,6 +49,35 @@ class ClusterConnection(Connection):
         set during object initialization.
         '''
         super(ClusterConnection, self).on_connect()
+
+        if self.readonly:
+            self.send_command('READONLY')
+
+            if nativestr(self.read_response()) != 'OK':
+                raise ConnectionError('READONLY command failed')
+
+
+class SSLClusterConnection(SSLConnection):
+    """
+    Manages TCP communication over TLS/SSL to and from a Redis cluster
+    Usage:
+        pool = ClusterConnectionPool(connection_class=SSLClusterConnection, ...)
+        client = StrictRedisCluster(connection_pool=pool)
+    """
+    description_format = "SSLClusterConnection<host=%(host)s,port=%(port)s,db=%(db)s>"
+
+    def __init__(self, **kwargs):
+        self.readonly = kwargs.pop('readonly', False)
+        kwargs['parser_class'] = ClusterParser
+        kwargs.pop('ssl', None)  # Needs to be removed to avoid exception in redis Connection init
+        super(SSLClusterConnection, self).__init__(**kwargs)
+
+    def on_connect(self):
+        '''
+        Initialize the connection, authenticate and select a database and send READONLY if it is
+        set during object initialization.
+        '''
+        super(SSLClusterConnection, self).on_connect()
 
         if self.readonly:
             self.send_command('READONLY')
@@ -93,6 +122,9 @@ class ClusterConnectionPool(ConnectionPool):
 
         self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
+
+        if connection_class == SSLClusterConnection:
+            connection_kwargs['ssl'] = True  # needed in StrictRedis init
 
         self.nodes = NodeManager(startup_nodes, reinitialize_steps=reinitialize_steps,
                                  skip_full_coverage_check=skip_full_coverage_check, **connection_kwargs)
