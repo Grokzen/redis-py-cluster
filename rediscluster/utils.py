@@ -203,3 +203,45 @@ def parse_cluster_nodes(resp, **options):
         nodes.append(node)
 
     return nodes
+
+
+def parse_pubsub_channels(command, resp, **options):
+    aggregate = options.get('aggregate', True)
+    if not aggregate:
+        return resp
+
+    nodes = resp.keys()
+    channels = set()
+    for node in nodes:
+        channels.update(resp[node])
+    return list(channels)
+    
+
+def parse_pubsub_numpat(command, resp, **options):
+    aggregate = options.get('aggregate', True)
+    if not aggregate:
+        return resp
+
+    numpat = 0
+    for node, node_numpat in resp.items():
+        numpat += node_numpat
+    return numpat
+
+
+def parse_pubsub_numsub(command, resp, **options):
+    aggregate = options.get('aggregate', True)
+    if not aggregate:
+        return resp
+
+    numsub_d = dict()
+    for _, numsub_tups in resp.items():
+        for channel, numsubbed in numsub_tups:
+            try:
+                numsub_d[channel] += numsubbed
+            except KeyError:
+                numsub_d[channel] = numsubbed
+
+    ret_numsub = []
+    for channel, numsub in numsub_d.items():
+        ret_numsub.append((channel, numsub))
+    return ret_numsub
