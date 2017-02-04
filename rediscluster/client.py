@@ -23,6 +23,9 @@ from .utils import (
     clusterdown_wrapper,
     parse_cluster_slots,
     parse_cluster_nodes,
+    parse_pubsub_channels,
+    parse_pubsub_numsub,
+    parse_pubsub_numpat,
 )
 # 3rd party imports
 from redis import StrictRedis
@@ -71,7 +74,6 @@ class StrictRedisCluster(StrictRedis):
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
             "TIME", "SCAN", "CLUSTER INFO", 'CLUSTER ADDSLOTS', 'CLUSTER COUNT-FAILURE-REPORTS',
             'CLUSTER DELSLOTS', 'CLUSTER FAILOVER', 'CLUSTER FORGET', "FLUSHALL", "FLUSHDB",
-            "PUBSUB CHANNELS", "PUBSUB NUMSUB", "PUBSUB NUMPAT",
         ], lambda command, res: res),
         string_keys_to_dict([
             "SCRIPT LOAD",
@@ -88,6 +90,11 @@ class StrictRedisCluster(StrictRedis):
         string_keys_to_dict([
             "SSCAN", "HSCAN", "ZSCAN", "RANDOMKEY",
         ], first_key),
+        {
+            "PUBSUB CHANNELS" : parse_pubsub_channels,
+            "PUBSUB NUMSUB"   : parse_pubsub_numsub,
+            "PUBSUB NUMPAT"   : parse_pubsub_numpat,
+        },
     )
 
     CLUSTER_COMMANDS_RESPONSE_CALLBACKS = {
@@ -738,6 +745,34 @@ class StrictRedisCluster(StrictRedis):
 
         return False
 
+
+    def pubsub_channels(self, pattern='*', aggregate=True):
+        """
+        Return a list of channels that have at least one subscriber.
+        Aggregate toggles merging of response.
+        """
+        options = { 'aggregate': aggregate }
+        return self.execute_command('PUBSUB CHANNELS', pattern, **options)
+
+
+    def pubsub_numpat(self, aggregate=True):
+        """
+        Returns the number of subscriptions to patterns.
+        Aggregate toggles merging of response.
+        """
+        options = { 'aggregate': aggregate }
+        return self.execute_command('PUBSUB NUMPAT', **options)
+
+
+    def pubsub_numsub(self, *args, aggregate=True):
+        """
+        Return a list of (channel, number of subscribers) tuples
+        for each channel given in ``*args``.
+        Aggregate toggles merging of response.
+        """
+        options = { 'aggregate': aggregate }
+        return self.execute_command('PUBSUB NUMSUB', *args, **options)
+
     ####
     # List commands
 
@@ -1106,7 +1141,7 @@ class StrictRedisCluster(StrictRedis):
         Generate a good random key with a low probability of collision between any other key.
         """
         # TODO: Check if the key exists or not. continue to randomize until a empty key is found
-        random_id = "{{0}}{1}".format(hashslot, self._random_id())
+        random_id = "{{{0}}}{1}".format(hashslot, self._random_id())
         return random_id
 
     def _random_id(self, size=16, chars=string.ascii_uppercase + string.digits):
