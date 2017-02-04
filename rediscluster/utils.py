@@ -214,7 +214,7 @@ def parse_pubsub_channels(command, resp, **options):
     channels = set()
     for node in nodes:
         channels.update(resp[node])
-    return list(channels)
+    return sorted(list(channels))
     
 
 def parse_pubsub_numpat(command, resp, **options):
