@@ -21,3 +21,4 @@ Authors who contributed code or testing:
  - baranbartu - https://github.com/baranbartu
  - monklof - https://github.com/monklof
  - dutradda - https://github.com/dutradda
+ - AngusP - https://github.com/AngusP
