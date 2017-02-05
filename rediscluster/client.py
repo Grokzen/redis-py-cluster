@@ -91,10 +91,10 @@ class StrictRedisCluster(StrictRedis):
             "SSCAN", "HSCAN", "ZSCAN", "RANDOMKEY",
         ], first_key),
         {
-            "PUBSUB CHANNELS" : parse_pubsub_channels,
-            "PUBSUB NUMSUB"   : parse_pubsub_numsub,
-            "PUBSUB NUMPAT"   : parse_pubsub_numpat,
-        },
+            "PUBSUB CHANNELS": parse_pubsub_channels,
+            "PUBSUB NUMSUB": parse_pubsub_numsub,
+            "PUBSUB NUMPAT": parse_pubsub_numpat,
+        }
     )
 
     CLUSTER_COMMANDS_RESPONSE_CALLBACKS = {
@@ -262,12 +262,12 @@ class StrictRedisCluster(StrictRedis):
 
         return self.connection_pool.nodes.keyslot(key)
 
-    def _merge_result(self, command, res):
+    def _merge_result(self, command, res, **kwargs):
         """
         `res` is a dict with the following structure Dict(NodeName, CommandResult)
         """
         if command in self.result_callbacks:
-            return self.result_callbacks[command](command, res)
+            return self.result_callbacks[command](command, res, **kwargs)
 
         # Default way to handle result
         return first_key(command, res)
@@ -399,7 +399,7 @@ class StrictRedisCluster(StrictRedis):
             finally:
                 self.connection_pool.release(connection)
 
-        return self._merge_result(command, res)
+        return self._merge_result(command, res, **kwargs)
 
     ##########
     # Cluster management commands
@@ -751,8 +751,7 @@ class StrictRedisCluster(StrictRedis):
         Return a list of channels that have at least one subscriber.
         Aggregate toggles merging of response.
         """
-        options = { 'aggregate': aggregate }
-        return self.execute_command('PUBSUB CHANNELS', pattern, **options)
+        return self.execute_command('PUBSUB CHANNELS', pattern, aggregate=aggregate)
 
 
     def pubsub_numpat(self, aggregate=True):
@@ -760,17 +759,17 @@ class StrictRedisCluster(StrictRedis):
         Returns the number of subscriptions to patterns.
         Aggregate toggles merging of response.
         """
-        options = { 'aggregate': aggregate }
-        return self.execute_command('PUBSUB NUMPAT', **options)
+        return self.execute_command('PUBSUB NUMPAT', aggregate=aggregate)
 
 
-    def pubsub_numsub(self, *args, aggregate=True):
+    def pubsub_numsub(self, *args, **kwargs):
         """
         Return a list of (channel, number of subscribers) tuples
         for each channel given in ``*args``.
-        Aggregate toggles merging of response.
+        
+        ``aggregate`` keyword argument toggles merging of response.
         """
-        options = { 'aggregate': aggregate }
+        options = { 'aggregate': kwargs.get('aggregate', True) }
         return self.execute_command('PUBSUB NUMSUB', *args, **options)
 
     ####
