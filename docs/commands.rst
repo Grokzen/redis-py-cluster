@@ -33,6 +33,12 @@ The following commands will send the same request to all nodes in the cluster. R
  - slowlog_reset
  - time
 
+The pubsub commands are sent to all nodes, and the resulting replies are merged together. They have an optional keyword argument `aggregate` which when set to `False` will return a dict with k,v pair (NodeID, Result) instead of the merged result.
+
+ - pubsub_channels
+ - pubsub_numsub
+ - pubsub_numpat
+
 This command will send the same request to all nodes in the cluster in sequence. Results is appended to a unified list.
 
  - keys
