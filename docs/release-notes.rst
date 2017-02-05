@@ -1,6 +1,12 @@
 Release Notes
 =============
 
+Unstable
+--------
+
+    * Add support for `PUBSUB` subcommands `CHANNELS`, `NUMSUB [arg] [args...]` and `NUMPAT`.
+    * Add method `set_result_callback(command, callback)` allowing the default reply callbacks to be changed, in the same way `set_response_callback(command, callback)` inherited from Redis-Py does for responses.
+
 1.3.3 (Dec 15, 2016)
 --------------------
 
