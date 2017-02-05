@@ -495,8 +495,8 @@ class TestPubSubPubSubSubcommands(object):
         p3 = r.pubsub(ignore_subscribe_messages=True)
         p3.subscribe('baz')
 
-        channels = [(b('foo'), 1), (b('bar'), 2), (b('baz'), 3)]
-        assert channels == r.pubsub_numsub('foo', 'bar', 'baz')
+        channels = [(b('bar'), 2), (b('baz'), 3), (b('foo'), 1)]
+        assert channels == sorted(r.pubsub_numsub('foo', 'bar', 'baz'))
 
     @skip_if_server_version_lt('2.8.0')
     def test_pubsub_numpat(self, r):
