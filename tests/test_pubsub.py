@@ -16,7 +16,7 @@ from redis import StrictRedis, Redis
 from redis.exceptions import ConnectionError
 from redis._compat import basestring, u, unichr, b
 
-from .conftest import skip_if_server_version_lt
+from .conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt
 
 def wait_for_message(pubsub, timeout=0.5, ignore_subscribe_messages=False):
     now = time.time()
