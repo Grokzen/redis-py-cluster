@@ -90,11 +90,15 @@ class StrictRedisCluster(StrictRedis):
         string_keys_to_dict([
             "SSCAN", "HSCAN", "ZSCAN", "RANDOMKEY",
         ], first_key),
-        {
-            "PUBSUB CHANNELS": parse_pubsub_channels,
-            "PUBSUB NUMSUB": parse_pubsub_numsub,
-            "PUBSUB NUMPAT": parse_pubsub_numpat,
-        }
+        string_keys_to_dict([
+            "PUBSUB CHANNELS",
+        ], parse_pubsub_channels),
+        string_keys_to_dict([
+            "PUBSUB NUMSUB",
+        ], parse_pubsub_numsub),
+        string_keys_to_dict([
+            "PUBSUB NUMPAT",
+        ], parse_pubsub_numpat),
     )
 
     CLUSTER_COMMANDS_RESPONSE_CALLBACKS = {
@@ -210,6 +214,10 @@ class StrictRedisCluster(StrictRedis):
         servers = list({'{0}:{1}'.format(nativestr(info['host']), info['port']) for info in self.connection_pool.nodes.startup_nodes})
         servers.sort()
         return "{0}<{1}>".format(type(self).__name__, ', '.join(servers))
+
+    def set_result_callback(self, command, callback):
+        "Set a custom Result Callback"
+        self.result_callbacks[command] = callback
 
     def pubsub(self, **kwargs):
         """
@@ -1140,7 +1148,7 @@ class StrictRedisCluster(StrictRedis):
         Generate a good random key with a low probability of collision between any other key.
         """
         # TODO: Check if the key exists or not. continue to randomize until a empty key is found
-        random_id = "{{{0}}}{1}".format(hashslot, self._random_id())
+        random_id = "{{0}}{1}".format(hashslot, self._random_id())
         return random_id
 
     def _random_id(self, size=16, chars=string.ascii_uppercase + string.digits):
