@@ -5,12 +5,14 @@ python:
   - "3.3"
   - "3.4"
   - "3.5"
+  - "3.6-dev"
   - "nightly"
 services:
   - redis-server
 install:
   - "if [[ $REDIS_VERSION == '3.0' ]]; then REDIS_VERSION=3.0 make redis-install; fi"
   - "if [[ $REDIS_VERSION == '3.2' ]]; then REDIS_VERSION=3.2 make redis-install; fi"
+  - "if [[ $REDIS_VERSION == '4.0' ]]; then REDIS_VERSION=4.0 make redis-install; fi"
   - pip install -r dev-requirements.txt
   - pip install -e .
   - "if [[ $HIREDIS == '1' ]]; then pip install hiredis; fi"
@@ -23,6 +25,10 @@ env:
   - HIREDIS=0 REDIS_VERSION=3.2
   # Redis 3.2 and HIREDIS
   - HIREDIS=1 REDIS_VERSION=3.2
+  # Redis 4.0
+  - HIREDIS=0 REDIS_VERSION=4.0
+  # Redis 4.0 and HIREDIS
+  - HIREDIS=1 REDIS_VERSION=4.0
 script: 
   - make start
   - coverage erase
