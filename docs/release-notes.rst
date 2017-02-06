@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Next release
+------------
+
+    * Add SSLClusterConnection for connecting over TLS/SSL to Redis Cluster
+
 1.3.3 (Dec 15, 2016)
 --------------------
 
