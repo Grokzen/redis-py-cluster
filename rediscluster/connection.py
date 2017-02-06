@@ -130,6 +130,8 @@ class ClusterConnectionPool(ConnectionPool):
             skip_full_coverage_check=skip_full_coverage_check,
             max_connections=self.max_connections,
             **connection_kwargs
+        )
+        
         if init_slot_cache:
             self.nodes.initialize()
 
