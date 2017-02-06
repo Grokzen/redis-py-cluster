@@ -94,8 +94,13 @@ class ClusterConnectionPool(ConnectionPool):
         self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
 
-        self.nodes = NodeManager(startup_nodes, reinitialize_steps=reinitialize_steps,
-                                 skip_full_coverage_check=skip_full_coverage_check, **connection_kwargs)
+        self.nodes = NodeManager(
+            startup_nodes,
+            reinitialize_steps=reinitialize_steps,
+            skip_full_coverage_check=skip_full_coverage_check,
+            max_connections=self.max_connections,
+            **connection_kwargs
+        )
         if init_slot_cache:
             self.nodes.initialize()
 
