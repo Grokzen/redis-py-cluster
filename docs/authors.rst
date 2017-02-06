@@ -22,3 +22,4 @@ Authors who contributed code or testing:
  - monklof - https://github.com/monklof
  - dutradda - https://github.com/dutradda
  - AngusP - https://github.com/AngusP
+ - Doug Kent - https://github.com/dkent
