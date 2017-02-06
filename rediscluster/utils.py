@@ -126,7 +126,7 @@ def parse_cluster_slots(resp, **options):
     current_host = options.get('current_host', '')
 
     def fix_server(*args):
-        return (args[0] or current_host, args[1])
+        return (nativestr(args[0]) or current_host, args[1])
 
     slots = {}
     for slot in resp:
@@ -145,6 +145,7 @@ def parse_cluster_nodes(resp, **options):
     @see: http://redis.io/commands/cluster-nodes  # string
     @see: http://redis.io/commands/cluster-slaves # list of string
     """
+    resp = nativestr(resp)
     current_host = options.get('current_host', '')
 
     def parse_slots(s):

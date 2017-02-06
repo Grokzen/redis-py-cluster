@@ -8,6 +8,8 @@ Unstable
     * Add method `set_result_callback(command, callback)` allowing the default reply callbacks to be changed, in the same way `set_response_callback(command, callback)` inherited from Redis-Py does for responses.
     * Node manager now honors defined max_connections variable so connections that is emited from that class uses the same variable.
     * Add SSLClusterConnection for connecting over TLS/SSL to Redis Cluster
+    * Fixed a bug in cluster detection when running on python 3.x and decode_responses=False was used.
+      Data back from redis for cluster structure is now converted no matter what the data you want to set/get later is using.
 
 1.3.3 (Dec 15, 2016)
 --------------------
