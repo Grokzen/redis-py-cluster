@@ -89,8 +89,6 @@ class ClusterConnectionPool(ConnectionPool):
                     'port': str(connection_kwargs.pop('port')),
                 }]
 
-        print(startup_nodes)
-
         self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
 
