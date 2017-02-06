@@ -23,6 +23,9 @@ from .utils import (
     clusterdown_wrapper,
     parse_cluster_slots,
     parse_cluster_nodes,
+    parse_pubsub_channels,
+    parse_pubsub_numsub,
+    parse_pubsub_numpat,
 )
 # 3rd party imports
 from redis import StrictRedis
@@ -50,13 +53,14 @@ class StrictRedisCluster(StrictRedis):
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
-            "TIME", "KEYS", "CLUSTER INFO",
+            "TIME", "KEYS", "CLUSTER INFO", "PUBSUB CHANNELS",  
+            "PUBSUB NUMSUB", "PUBSUB NUMPAT",
         ], 'all-nodes'),
         string_keys_to_dict([
             "FLUSHALL", "FLUSHDB", "SCRIPT LOAD", "SCRIPT FLUSH", "SCRIPT EXISTS", "SCAN",
         ], 'all-masters'),
         string_keys_to_dict([
-            "RANDOMKEY", "CLUSTER NODES", 'CLUSTER SLOTS',
+            "RANDOMKEY", "CLUSTER NODES", "CLUSTER SLOTS",
         ], 'random'),
         string_keys_to_dict([
             "CLUSTER COUNTKEYSINSLOT",
@@ -86,6 +90,15 @@ class StrictRedisCluster(StrictRedis):
         string_keys_to_dict([
             "SSCAN", "HSCAN", "ZSCAN", "RANDOMKEY",
         ], first_key),
+        string_keys_to_dict([
+            "PUBSUB CHANNELS",
+        ], parse_pubsub_channels),
+        string_keys_to_dict([
+            "PUBSUB NUMSUB",
+        ], parse_pubsub_numsub),
+        string_keys_to_dict([
+            "PUBSUB NUMPAT",
+        ], parse_pubsub_numpat),
     )
 
     CLUSTER_COMMANDS_RESPONSE_CALLBACKS = {
@@ -202,6 +215,10 @@ class StrictRedisCluster(StrictRedis):
         servers.sort()
         return "{0}<{1}>".format(type(self).__name__, ', '.join(servers))
 
+    def set_result_callback(self, command, callback):
+        "Set a custom Result Callback"
+        self.result_callbacks[command] = callback
+
     def pubsub(self, **kwargs):
         """
         """
@@ -253,12 +270,12 @@ class StrictRedisCluster(StrictRedis):
 
         return self.connection_pool.nodes.keyslot(key)
 
-    def _merge_result(self, command, res):
+    def _merge_result(self, command, res, **kwargs):
         """
         `res` is a dict with the following structure Dict(NodeName, CommandResult)
         """
         if command in self.result_callbacks:
-            return self.result_callbacks[command](command, res)
+            return self.result_callbacks[command](command, res, **kwargs)
 
         # Default way to handle result
         return first_key(command, res)
@@ -390,7 +407,7 @@ class StrictRedisCluster(StrictRedis):
             finally:
                 self.connection_pool.release(connection)
 
-        return self._merge_result(command, res)
+        return self._merge_result(command, res, **kwargs)
 
     ##########
     # Cluster management commands
@@ -735,6 +752,33 @@ class StrictRedisCluster(StrictRedis):
             return self.rename(src, dst)
 
         return False
+
+
+    def pubsub_channels(self, pattern='*', aggregate=True):
+        """
+        Return a list of channels that have at least one subscriber.
+        Aggregate toggles merging of response.
+        """
+        return self.execute_command('PUBSUB CHANNELS', pattern, aggregate=aggregate)
+
+
+    def pubsub_numpat(self, aggregate=True):
+        """
+        Returns the number of subscriptions to patterns.
+        Aggregate toggles merging of response.
+        """
+        return self.execute_command('PUBSUB NUMPAT', aggregate=aggregate)
+
+
+    def pubsub_numsub(self, *args, **kwargs):
+        """
+        Return a list of (channel, number of subscribers) tuples
+        for each channel given in ``*args``.
+        
+        ``aggregate`` keyword argument toggles merging of response.
+        """
+        options = { 'aggregate': kwargs.get('aggregate', True) }
+        return self.execute_command('PUBSUB NUMSUB', *args, **options)
 
     ####
     # List commands

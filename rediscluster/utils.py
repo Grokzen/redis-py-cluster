@@ -203,3 +203,53 @@ def parse_cluster_nodes(resp, **options):
         nodes.append(node)
 
     return nodes
+
+
+def parse_pubsub_channels(command, res, **options):
+    """
+    Result callback, handles different return types
+    switchable by the `aggregate` flag.
+    """
+    aggregate = options.get('aggregate', True)
+    if not aggregate:
+        return res
+    return merge_result(command, res)
+
+
+def parse_pubsub_numpat(command, res, **options):
+    """
+    Result callback, handles different return types
+    switchable by the `aggregate` flag.
+    """
+    aggregate = options.get('aggregate', True)
+    if not aggregate:
+        return res
+
+    numpat = 0
+    for node, node_numpat in res.items():
+        numpat += node_numpat
+    return numpat
+
+
+def parse_pubsub_numsub(command, res, **options):
+    """
+    Result callback, handles different return types
+    switchable by the `aggregate` flag.
+    """
+    aggregate = options.get('aggregate', True)
+    if not aggregate:
+        return res
+
+    numsub_d = dict()
+    for _, numsub_tups in res.items():
+        for channel, numsubbed in numsub_tups:
+            try:
+                numsub_d[channel] += numsubbed
+            except KeyError:
+                numsub_d[channel] = numsubbed
+
+    ret_numsub = []
+    for channel, numsub in numsub_d.items():
+        ret_numsub.append((channel, numsub))
+    return ret_numsub
+

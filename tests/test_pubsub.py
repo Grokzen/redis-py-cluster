@@ -14,8 +14,9 @@ import pytest
 # import redis
 from redis import StrictRedis, Redis
 from redis.exceptions import ConnectionError
-from redis._compat import basestring, u, unichr
+from redis._compat import basestring, u, unichr, b
 
+from .conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt
 
 def wait_for_message(pubsub, timeout=0.5, ignore_subscribe_messages=False):
     now = time.time()
@@ -474,3 +475,31 @@ def test_pubsub_thread_publish():
             t.start()
     except Exception:
         print("Error: unable to start thread")
+
+
+class TestPubSubPubSubSubcommands(object):
+    """
+    Test Pub/Sub subcommands of PUBSUB
+    @see https://redis.io/commands/pubsub
+    """
+
+    @skip_if_redis_py_version_lt('2.10.6')
+    def test_pubsub_channels(self, r):
+        r.pubsub(ignore_subscribe_messages=True).subscribe('foo', 'bar', 'baz', 'quux')
+        channels = sorted(r.pubsub_channels())
+        assert channels == [b('bar'), b('baz'), b('foo'), b('quux')]
+
+    @skip_if_redis_py_version_lt('2.10.6')
+    def test_pubsub_numsub(self, r):
+        r.pubsub(ignore_subscribe_messages=True).subscribe('foo', 'bar', 'baz')
+        r.pubsub(ignore_subscribe_messages=True).subscribe('bar', 'baz')
+        r.pubsub(ignore_subscribe_messages=True).subscribe('baz')
+
+        channels = [(b('bar'), 2), (b('baz'), 3), (b('foo'), 1)]
+        assert channels == sorted(r.pubsub_numsub('foo', 'bar', 'baz'))
+
+    @skip_if_redis_py_version_lt('2.10.6')
+    def test_pubsub_numpat(self, r):
+        r.pubsub(ignore_subscribe_messages=True).psubscribe('*oo', '*ar', 'b*z')
+        assert r.pubsub_numpat() == 3
+
