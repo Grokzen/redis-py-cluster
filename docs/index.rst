@@ -70,14 +70,15 @@ Dependencies & supported python versions
 Supported python versions
 -------------------------
 
-- 2.7.x
-- 3.3.x
-- 3.4.1+
-- 3.5.x
+- 2.7
+- 3.3
+- 3.4.1+ (See note)
+- 3.5
+- 3.6
 
 Experimental:
 
-- Up to 3.6.0a0
+- 3.7-dev
 
 
 .. note:: Python 3.4.0
