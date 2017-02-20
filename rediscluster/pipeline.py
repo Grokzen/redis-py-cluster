@@ -430,6 +430,6 @@ class NodeCommands(object):
                 except (ConnectionError, TimeoutError) as e:
                     for c in self.commands:
                         c.result = e
-                        return
+                    return
                 except RedisError:
                     c.result = sys.exc_info()[1]
