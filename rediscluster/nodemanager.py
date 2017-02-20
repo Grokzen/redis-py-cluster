@@ -65,17 +65,17 @@ class NodeManager(object):
         Calculate keyslot for a given key.
         Tuned for compatibility with supported python 3.x versions
         """
-        try:
-            # Handle bytes case
-            k = str(key, encoding='utf-8')
-        except TypeError:
-            # Convert others to str.
-            k = str(key)
+        if hasattr(key, "encode"):
+            k = key.encode("utf-8")
+        elif hasattr(key, "decode"):
+            k = key
+        else:
+            k = str(key).encode()
 
-        start = k.find("{")
+        start = k.find(b"{")
 
         if start > -1:
-            end = k.find("}", start + 1)
+            end = k.find(b"}", start + 1)
             if end > -1 and end != start + 1:
                 k = k[start + 1:end]
 
