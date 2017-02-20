@@ -43,7 +43,9 @@ def _crc16_py3(data):
     """
     """
     crc = 0
-    for byte in data.encode("utf-8"):
+    if hasattr(data, "encode"):
+        data = data.encode("utf-8")
+    for byte in data:
         crc = ((crc << 8) & 0xff00) ^ x_mode_m_crc16_lookup[((crc >> 8) & 0xff) ^ byte]
     return crc & 0xffff
 
