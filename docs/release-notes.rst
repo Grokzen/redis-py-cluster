@@ -1,8 +1,8 @@
 Release Notes
 =============
 
-Unstable
---------
+Next release
+------------
 
     * Fixed issues with some key types in `NodeManager.keyslot()`.
     * Add support for `PUBSUB` subcommands `CHANNELS`, `NUMSUB [arg] [args...]` and `NUMPAT`.
@@ -10,6 +10,7 @@ Unstable
     * Node manager now honors defined max_connections variable so connections that is emited from that class uses the same variable.
     * Fixed a bug in cluster detection when running on python 3.x and decode_responses=False was used.
       Data back from redis for cluster structure is now converted no matter what the data you want to set/get later is using.
+    * Add SSLClusterConnection for connecting over TLS/SSL to Redis Cluster
 
 1.3.3 (Dec 15, 2016)
 --------------------
