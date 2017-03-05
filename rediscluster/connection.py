@@ -100,11 +100,15 @@ class ClusterConnectionPool(ConnectionPool):
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
                  max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
-                 skip_full_coverage_check=False, **connection_kwargs):
+                 skip_full_coverage_check=False, nodemanager_follow_cluster=False, **connection_kwargs):
         """
         :skip_full_coverage_check:
             Skips the check of cluster-require-full-coverage config, useful for clusters
             without the CONFIG command (like aws)
+        :nodemanager_follow_cluster:
+            The node manager will during initialization try the last set of nodes that
+            it was operating on. This will allow the client to drift along side the cluster
+            if the cluster nodes move around alot.
         """
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
@@ -129,6 +133,7 @@ class ClusterConnectionPool(ConnectionPool):
             reinitialize_steps=reinitialize_steps,
             skip_full_coverage_check=skip_full_coverage_check,
             max_connections=self.max_connections,
+            nodemanager_follow_cluster=nodemanager_follow_cluster,
             **connection_kwargs
         )
 
@@ -335,7 +340,7 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
     """
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
-                 max_connections=None, **connection_kwargs):
+                 max_connections=None, nodemanager_follow_cluster=False, **connection_kwargs):
         """
         """
         super(ClusterReadOnlyConnectionPool, self).__init__(
@@ -344,6 +349,7 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
             connection_class=connection_class,
             max_connections=max_connections,
             readonly=True,
+            nodemanager_follow_cluster=nodemanager_follow_cluster,
             **connection_kwargs)
 
     def get_node_by_slot(self, slot):

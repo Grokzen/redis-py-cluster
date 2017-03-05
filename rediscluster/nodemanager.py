@@ -18,11 +18,15 @@ class NodeManager(object):
     """
     RedisClusterHashSlots = 16384
 
-    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, **connection_kwargs):
+    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False, **connection_kwargs):
         """
         :skip_full_coverage_check:
             Skips the check of cluster-require-full-coverage config, useful for clusters
             without the CONFIG command (like aws)
+        :nodemanager_follow_cluster:
+            The node manager will during initialization try the last set of nodes that
+            it was operating on. This will allow the client to drift along side the cluster
+            if the cluster nodes move around alot.
         """
         self.connection_kwargs = connection_kwargs
         self.nodes = {}
@@ -32,6 +36,7 @@ class NodeManager(object):
         self.reinitialize_counter = 0
         self.reinitialize_steps = reinitialize_steps or 25
         self._skip_full_coverage_check = skip_full_coverage_check
+        self.nodemanager_follow_cluster = nodemanager_follow_cluster
 
         if not self.startup_nodes:
             raise RedisClusterException("No startup nodes provided")
@@ -161,7 +166,13 @@ class NodeManager(object):
         disagreements = []
         startup_nodes_reachable = False
 
-        for node in self.orig_startup_nodes:
+        nodes = self.orig_startup_nodes
+
+        # With this option the client will attempt to connect to any of the previous set of nodes instead of the original set of nodes
+        if self.nodemanager_follow_cluster:
+            nodes = self.startup_nodes
+
+        for node in nodes:
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")

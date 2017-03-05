@@ -353,6 +353,12 @@ def test_cluster_one_instance():
             }]
 
 
+def test_initialize_follow_cluster():
+    n = NodeManager(nodemanager_follow_cluster=True, startup_nodes=[{'host': '127.0.0.1', 'port': 7000}])
+    n.orig_startup_nodes = None
+    n.initialize()
+
+
 def test_init_with_down_node():
     """
     If I can't connect to one of the nodes, everything should still work.
