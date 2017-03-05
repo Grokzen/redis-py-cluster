@@ -44,7 +44,7 @@ Small sample script that shows how to get started with RedisCluster. It can also
     >>> # Requires at least one node for cluster discovery. Multiple nodes is recommended.
     >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
-    >>> # Note: decode_responses must be set to True when used with python3
+    >>> # Note: See note on Python 3 for decode_responses behaviour
     >>> rc = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True)
 
     >>> rc.set("foo", "bar")
@@ -53,6 +53,9 @@ Small sample script that shows how to get started with RedisCluster. It can also
     'bar'
 
 
+.. note:: Python 3
+
+    Since Python 3 changed to Unicode strings from Python 2's ASCII, the return type of *most* commands will be binary strings, unless the class is instantiated with the option ``decode_responses=True``. In this case, the responses will be Python 3 strings (Unicode). For the init argument `decode_responses`, when set to False, redis-py-cluster will not attempt to decode the responses it receives. In Python 3, this means the responses will be of type `bytes`. In Python 2, they will be native strings (`str`). If `decode_responses` is set to True, for Python 3 responses will be `str`, for Python 2 they will be `unicode`.
 
 Dependencies & supported python versions
 ----------------------------------------
@@ -67,14 +70,15 @@ Dependencies & supported python versions
 Supported python versions
 -------------------------
 
-- 2.7.x
-- 3.3.x
-- 3.4.1+
-- 3.5.x
+- 2.7
+- 3.3
+- 3.4.1+ (See note)
+- 3.5
+- 3.6
 
 Experimental:
 
-- Up to 3.6.0a0
+- 3.7-dev
 
 
 .. note:: Python 3.4.0

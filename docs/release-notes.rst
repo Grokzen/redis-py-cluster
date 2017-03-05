@@ -1,11 +1,20 @@
 Release Notes
 =============
 
-Unstable
---------
+1.3.4 (Mar 5, 2017)
+-------------------
 
+    * Package is now built as a wheel and source package when releases is built.
+    * Fixed issues with some key types in `NodeManager.keyslot()`.
     * Add support for `PUBSUB` subcommands `CHANNELS`, `NUMSUB [arg] [args...]` and `NUMPAT`.
     * Add method `set_result_callback(command, callback)` allowing the default reply callbacks to be changed, in the same way `set_response_callback(command, callback)` inherited from Redis-Py does for responses.
+    * Node manager now honors defined max_connections variable so connections that is emited from that class uses the same variable.
+    * Fixed a bug in cluster detection when running on python 3.x and decode_responses=False was used.
+      Data back from redis for cluster structure is now converted no matter what the data you want to set/get later is using.
+    * Add SSLClusterConnection for connecting over TLS/SSL to Redis Cluster
+    * Add new option to make the nodemanager to follow the cluster when nodes move around by avoiding to query the original list of startup nodes that was provided
+      when the client object was first created. This could make the client handle drifting clusters on for example AWS easier but there is a higher risk of the client talking to
+      the wrong group of nodes during split-brain event if the cluster is not consistent. This feature is EXPERIMENTAL and use it with care.
 
 1.3.3 (Dec 15, 2016)
 --------------------

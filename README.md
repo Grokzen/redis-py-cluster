@@ -42,7 +42,6 @@ Small sample script that shows how to get started with RedisCluster. It can also
 >>> # Requires at least one node for cluster discovery. Multiple nodes is recommended.
 >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
->>> # Note: decode_responses must be set to True when used with python3
 >>> rc = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True)
 
 >>> rc.set("foo", "bar")
@@ -55,7 +54,7 @@ True
 
 ## License & Authors
 
-Copyright (c) 2013-2016 Johan Andersson
+Copyright (c) 2013-2017 Johan Andersson
 
 MIT (See docs/License.txt file)
 

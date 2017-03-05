@@ -2,7 +2,6 @@
 
 # python std lib
 import random
-import sys
 
 # rediscluster imports
 from .crc import crc16
@@ -10,7 +9,7 @@ from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import StrictRedis
-from redis._compat import unicode
+from redis._compat import b, unicode, bytes, long, basestring
 from redis import ConnectionError
 
 
@@ -19,11 +18,15 @@ class NodeManager(object):
     """
     RedisClusterHashSlots = 16384
 
-    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, **connection_kwargs):
+    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False, **connection_kwargs):
         """
         :skip_full_coverage_check:
             Skips the check of cluster-require-full-coverage config, useful for clusters
             without the CONFIG command (like aws)
+        :nodemanager_follow_cluster:
+            The node manager will during initialization try the last set of nodes that
+            it was operating on. This will allow the client to drift along side the cluster
+            if the cluster nodes move around alot.
         """
         self.connection_kwargs = connection_kwargs
         self.nodes = {}
@@ -33,49 +36,40 @@ class NodeManager(object):
         self.reinitialize_counter = 0
         self.reinitialize_steps = reinitialize_steps or 25
         self._skip_full_coverage_check = skip_full_coverage_check
+        self.nodemanager_follow_cluster = nodemanager_follow_cluster
 
         if not self.startup_nodes:
             raise RedisClusterException("No startup nodes provided")
 
-        # Minor performance tweak to avoid having to check inside the method
-        # for each call to keyslot method.
-        if sys.version_info[0] < 3:
-            self.keyslot = self.keyslot_py_2
-        else:
-            self.keyslot = self.keyslot_py_3
+    def encode(self, value):
+        """
+        Return a bytestring representation of the value.
+        This method is copied from Redis' connection.py:Connection.encode
+        """
+        if isinstance(value, bytes):
+            return value
+        elif isinstance(value, (int, long)):
+            value = b(str(value))
+        elif isinstance(value, float):
+            value = b(repr(value))
+        elif not isinstance(value, basestring):
+            value = unicode(value)
+        if isinstance(value, unicode):
+            # The encoding should be configurable as in connection.py:Connection.encode
+            value = value.encode('utf-8')
+        return value
 
-    def keyslot_py_2(self, key):
+    def keyslot(self, key):
         """
         Calculate keyslot for a given key.
         Tuned for compatibility with python 2.7.x
         """
-        k = unicode(key)
+        k = self.encode(key)
 
-        start = k.find("{")
-
-        if start > -1:
-            end = k.find("}", start + 1)
-            if end > -1 and end != start + 1:
-                k = k[start + 1:end]
-
-        return crc16(k) % self.RedisClusterHashSlots
-
-    def keyslot_py_3(self, key):
-        """
-        Calculate keyslot for a given key.
-        Tuned for compatibility with supported python 3.x versions
-        """
-        try:
-            # Handle bytes case
-            k = str(key, encoding='utf-8')
-        except TypeError:
-            # Convert others to str.
-            k = str(key)
-
-        start = k.find("{")
+        start = k.find(b"{")
 
         if start > -1:
-            end = k.find("}", start + 1)
+            end = k.find(b"}", start + 1)
             if end > -1 and end != start + 1:
                 k = k[start + 1:end]
 
@@ -172,7 +166,13 @@ class NodeManager(object):
         disagreements = []
         startup_nodes_reachable = False
 
-        for node in self.orig_startup_nodes:
+        nodes = self.orig_startup_nodes
+
+        # With this option the client will attempt to connect to any of the previous set of nodes instead of the original set of nodes
+        if self.nodemanager_follow_cluster:
+            nodes = self.startup_nodes
+
+        for node in nodes:
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")
