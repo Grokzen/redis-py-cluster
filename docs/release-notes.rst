@@ -4,6 +4,7 @@ Release Notes
 1.3.4 (Mar 5, 2017)
 -------------------
 
+    * Package is now built as a wheel and source package when releases is built.
     * Fixed issues with some key types in `NodeManager.keyslot()`.
     * Add support for `PUBSUB` subcommands `CHANNELS`, `NUMSUB [arg] [args...]` and `NUMPAT`.
     * Add method `set_result_callback(command, callback)` allowing the default reply callbacks to be changed, in the same way `set_response_callback(command, callback)` inherited from Redis-Py does for responses.
