@@ -1,8 +1,8 @@
 Release Notes
 =============
 
-Next release
-------------
+1.3.4 (Mar 5, 2017)
+-------------------
 
     * Fixed issues with some key types in `NodeManager.keyslot()`.
     * Add support for `PUBSUB` subcommands `CHANNELS`, `NUMSUB [arg] [args...]` and `NUMPAT`.
