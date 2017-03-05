@@ -53,7 +53,7 @@ class StrictRedisCluster(StrictRedis):
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
-            "TIME", "KEYS", "CLUSTER INFO", "PUBSUB CHANNELS",  
+            "TIME", "KEYS", "CLUSTER INFO", "PUBSUB CHANNELS",
             "PUBSUB NUMSUB", "PUBSUB NUMPAT",
         ], 'all-nodes'),
         string_keys_to_dict([
@@ -753,14 +753,12 @@ class StrictRedisCluster(StrictRedis):
 
         return False
 
-
     def pubsub_channels(self, pattern='*', aggregate=True):
         """
         Return a list of channels that have at least one subscriber.
         Aggregate toggles merging of response.
         """
         return self.execute_command('PUBSUB CHANNELS', pattern, aggregate=aggregate)
-
 
     def pubsub_numpat(self, aggregate=True):
         """
@@ -769,15 +767,14 @@ class StrictRedisCluster(StrictRedis):
         """
         return self.execute_command('PUBSUB NUMPAT', aggregate=aggregate)
 
-
     def pubsub_numsub(self, *args, **kwargs):
         """
         Return a list of (channel, number of subscribers) tuples
         for each channel given in ``*args``.
-        
+
         ``aggregate`` keyword argument toggles merging of response.
         """
-        options = { 'aggregate': kwargs.get('aggregate', True) }
+        options = {'aggregate': kwargs.get('aggregate', True)}
         return self.execute_command('PUBSUB NUMSUB', *args, **options)
 
     ####

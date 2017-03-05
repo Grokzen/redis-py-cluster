@@ -2,7 +2,6 @@
 
 # python std lib
 import random
-import sys
 
 # rediscluster imports
 from .crc import crc16

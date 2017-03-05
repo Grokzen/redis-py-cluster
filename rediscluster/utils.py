@@ -253,4 +253,3 @@ def parse_pubsub_numsub(command, res, **options):
     for channel, numsub in numsub_d.items():
         ret_numsub.append((channel, numsub))
     return ret_numsub
-
