@@ -201,6 +201,9 @@ class StrictClusterPipeline(StrictRedisCluster):
             if n.connection in self.connection_pool._available_connections.get(node_name, []):
                 self.connection_pool._available_connections[node_name].remove(n.connection)
 
+            if self.connection_pool._created_connections_per_node.get(node_name, 0):
+                self.connection_pool._created_connections_per_node[node_name] -= 1
+
         # if the response isn't an exception it is a valid response from the node
         # we're all done with that command, YAY!
         # if we have more commands to attempt, we've run into problems.
