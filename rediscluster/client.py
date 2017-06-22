@@ -373,7 +373,6 @@ class StrictRedisCluster(StrictRedis):
                 # This counter will increase faster when the same client object
                 # is shared between multiple threads. To reduce the frequency you
                 # can set the variable 'reinitialize_steps' in the constructor.
-                self.refresh_table_asap = True
                 self.connection_pool.nodes.increment_reinitialize_counter()
 
                 node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
