@@ -936,7 +936,7 @@ class StrictRedisCluster(StrictRedis):
             g = g.replace('*', k)
             if '->' in g:
                 key, hash_key = g.split('->')
-                single_item = self.get(key, {}).get(hash_key)
+                single_item = getattr(self, key, {}).get(hash_key)
             else:
                 single_item = self.get(g)
         elif '#' in g:
