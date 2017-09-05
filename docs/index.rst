@@ -11,7 +11,7 @@ This project is a port of `redis-rb-cluster` by antirez, with alot of added func
 
 The source code is `available on github`_.
 
-.. _available on github: http://github.com/grokzen/pykwalify
+.. _available on github: http://github.com/grokzen/redis-py-cluster
 
 
 
