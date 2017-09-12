@@ -157,7 +157,7 @@ class NodeManager(object):
 
         TODO: Currently the last node will have the last say about how the configuration is setup.
         Maybe it should stop to try after it have correctly covered all slots or when one node is reached
-         and it could execute CLUSTER SLOTS command.
+        and it could execute CLUSTER SLOTS command.
         """
         nodes_cache = {}
         tmp_slots = {}
