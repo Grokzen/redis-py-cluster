@@ -263,8 +263,13 @@ class NodeManager(object):
         nodes = nodes_cache or self.nodes
 
         def node_require_full_coverage(node):
-            r_node = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
-            return "yes" in r_node.config_get("cluster-require-full-coverage").values()
+            try:
+                r_node = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
+                return "yes" in r_node.config_get("cluster-require-full-coverage").values()
+            except ConnectionError:
+                return False
+            except Exception:
+                raise RedisClusterException("ERROR sending 'config get cluster-require-full-coverage' command to redis server: {0}".format(node))
 
         # at least one node should have cluster-require-full-coverage yes
         return any(node_require_full_coverage(node) for node in nodes.values())
