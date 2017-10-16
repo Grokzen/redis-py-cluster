@@ -94,7 +94,6 @@ class TestScripting(object):
     def test_script_object(self, r):
         r.set('a', 2)
         multiply = r.register_script(multiply_script)
-        assert not multiply.sha
         # test evalsha fail -> script load + retry
         assert multiply(keys=['a'], args=[3]) == 6
         assert multiply.sha
