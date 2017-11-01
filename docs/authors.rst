@@ -24,3 +24,4 @@ Authors who contributed code or testing:
  - AngusP - https://github.com/AngusP
  - Doug Kent - https://github.com/dkent
  - VascoVisser - https://github.com/VascoVisser
+ - astrohsy - https://github.com/astrohsy
