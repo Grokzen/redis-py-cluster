@@ -48,6 +48,15 @@ Small sample script that shows how to get started with RedisCluster. It can also
 True
 >>> print(rc.get("foo"))
 'bar'
+
+You can also achieve this by using the interactive shell
+>>> redishost:~# redis-clu
+
+>>> redishost:7000> set foo bar
+>>> True
+
+>>> redishost:7000> get foo
+>>> 'bar'
 ```
 
 

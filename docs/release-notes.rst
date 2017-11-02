@@ -1,6 +1,10 @@
 Release Notes
 =============
 
+Next release
+-------------------
+    * Add interactive shell for redis cluster (redis-clu)
+
 1.3.4 (Mar 5, 2017)
 -------------------
 
@@ -79,7 +83,7 @@ Release Notes
     * Implement all "CLUSTER ..." commands as methods in the client class
     * Client now follows the service side setting 'cluster-require-full-coverage=yes/no' (baranbartu)
     * Change the pubsub implementation (PUBLISH/SUBSCRIBE commands) from using one single node to now determine the hashslot for the channel name and use that to connect to
-      a node in the cluster. Other clients that do not use this pattern will not be fully compatible with this client. Known limitations is pattern 
+      a node in the cluster. Other clients that do not use this pattern will not be fully compatible with this client. Known limitations is pattern
       subscription that do not work properly because a pattern can't know all the possible channel names in advance.
     * Convert all docs to ReadTheDocs
     * Rework connection pool logic to be more similar to redis-py. This also fixes an issue with pubsub and that connections

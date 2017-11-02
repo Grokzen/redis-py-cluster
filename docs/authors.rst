@@ -25,3 +25,4 @@ Authors who contributed code or testing:
  - Doug Kent - https://github.com/dkent
  - VascoVisser - https://github.com/VascoVisser
  - astrohsy - https://github.com/astrohsy
+ - Lacunoc - https://github.com/lacunoc
