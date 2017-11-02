@@ -4,7 +4,7 @@
 import os
 
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages
 except ImportError:
     from distutils.core import setup
 
@@ -27,7 +27,7 @@ setup(
     author_email="Grokzen@gmail.com",
     maintainer='Johan Andersson',
     maintainer_email='Grokzen@gmail.com',
-    packages=["rediscluster"],
+    packages=find_packages(),
     url='http://github.com/grokzen/redis-py-cluster',
     license='MIT',
     install_requires=[
@@ -37,6 +37,11 @@ setup(
         'redis',
         'redis cluster',
     ],
+    entry_points={
+        'console_scripts': [
+            'redis-clu=rediscluster.clu:main'
+        ],
+    },
     classifiers=(
         # As from https://pypi.python.org/pypi?%3Aaction=list_classifiers
         # 'Development Status :: 1 - Planning',
