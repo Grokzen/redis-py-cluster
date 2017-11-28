@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Future Release
+--------------
+
+    * Add Redis 4 compatability fix to CLUSTER NODES command (See issue #217)
+
 1.3.4 (Mar 5, 2017)
 -------------------
 
