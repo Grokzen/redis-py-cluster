@@ -1091,7 +1091,7 @@ class StrictRedisCluster(StrictRedis):
         """
         pfcount only works when all sources point to the same hash slot.
         """
-        return super(self.__class__, self).pfcount(*sources)
+        return super(StrictRedisCluster, self).pfcount(*sources)
 
     def pfmerge(self, dest, *sources):
         """
