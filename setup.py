@@ -53,6 +53,7 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Environment :: Web Environment',
         'Operating System :: POSIX',
         'License :: OSI Approved :: MIT License',
