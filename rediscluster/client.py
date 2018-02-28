@@ -126,7 +126,8 @@ class StrictRedisCluster(StrictRedis):
     }
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, max_connections_per_node=False, init_slot_cache=True,
-                 readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False, **kwargs):
+                 readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
+                 connection_class=None, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -178,6 +179,7 @@ class StrictRedisCluster(StrictRedis):
                 max_connections_per_node=max_connections_per_node,
                 skip_full_coverage_check=skip_full_coverage_check,
                 nodemanager_follow_cluster=nodemanager_follow_cluster,
+                connection_class=connection_class,
                 **kwargs
             )
 

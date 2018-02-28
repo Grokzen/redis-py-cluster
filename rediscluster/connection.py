@@ -98,7 +98,7 @@ class ClusterConnectionPool(ConnectionPool):
     """
     RedisClusterDefaultTimeout = None
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
                  max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
                  skip_full_coverage_check=False, nodemanager_follow_cluster=False, **connection_kwargs):
         """
@@ -110,6 +110,8 @@ class ClusterConnectionPool(ConnectionPool):
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around alot.
         """
+        if connection_class is None:
+            connection_class = ClusterConnection
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
         # Special case to make from_url method compliant with cluster setting.
@@ -339,10 +341,12 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
     Readonly connection pool for rediscluster
     """
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
                  max_connections=None, nodemanager_follow_cluster=False, **connection_kwargs):
         """
         """
+        if connection_class is None:
+            connection_class = ClusterConnection
         super(ClusterReadOnlyConnectionPool, self).__init__(
             startup_nodes=startup_nodes,
             init_slot_cache=init_slot_cache,
