@@ -183,11 +183,12 @@ def parse_cluster_nodes(resp, **options):
             pong_recv, config_epoch, link_state = parts[:8]
 
         host, port = addr.rsplit(':', 1)
+        ports = port.rsplit('@', 1)
 
         node = {
             'id': self_id,
             'host': host or current_host,
-            'port': int(port),
+            'port': int(ports[0]),
             'flags': tuple(flags.split(',')),
             'master': master_id if master_id != '-' else None,
             'ping-sent': int(ping_sent),
@@ -196,6 +197,9 @@ def parse_cluster_nodes(resp, **options):
             'slots': [],
             'migrations': [],
         }
+
+        if len(ports) >= 2:
+            node['cport'] = ports[1]
 
         if len(parts) >= 9:
             slots, migrations = parse_slots(parts[8])
