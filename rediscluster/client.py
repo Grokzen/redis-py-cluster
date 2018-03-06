@@ -108,7 +108,7 @@ class StrictRedisCluster(StrictRedis):
         'CLUSTER DELSLOTS': bool_ok,
         'CLUSTER FAILOVER': bool_ok,
         'CLUSTER FORGET': bool_ok,
-        'CLUSTER GETKEYSINSLOT': int,
+        'CLUSTER GETKEYSINSLOT': list,
         'CLUSTER INFO': parse_info,
         'CLUSTER KEYSLOT': int,
         'CLUSTER MEET': bool_ok,
@@ -557,6 +557,12 @@ class StrictRedisCluster(StrictRedis):
         Sends to all nodes in the cluster
         """
         return self.execute_command('CLUSTER SAVECONFIG')
+
+    def get_keys_in_slot(self, slot, num_keys):
+        """
+        Returns the number of keys in the specefied cluster slot
+        """
+        return self.execute_command('CLUSTER GETKEYSINSLOT', slot, num_keys)
 
     def cluster_set_config_epoch(self, node_id, epoch):
         """
