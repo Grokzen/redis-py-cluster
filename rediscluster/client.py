@@ -558,7 +558,7 @@ class StrictRedisCluster(StrictRedis):
         """
         return self.execute_command('CLUSTER SAVECONFIG')
 
-    def get_keys_in_slot(self, slot, num_keys):
+    def cluster_get_keys_in_slot(self, slot, num_keys):
         """
         Returns the number of keys in the specefied cluster slot
         """
