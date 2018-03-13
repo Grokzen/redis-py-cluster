@@ -289,7 +289,7 @@ class ClusterConnectionPool(ConnectionPool):
 
         raise Exception("Cant reach a single startup node.")
 
-    def get_connection_by_key(self, key):
+    def get_connection_by_key(self, key, command):
         """
         """
         if not key:
@@ -356,8 +356,43 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
             nodemanager_follow_cluster=nodemanager_follow_cluster,
             **connection_kwargs)
 
-    def get_node_by_slot(self, slot):
+        self.master_node_commands = ('SCAN', 'SSCAN', 'HSCAN', 'ZSCAN')
+
+    def get_connection_by_key(self, key, command):
         """
+        """
+        if not key:
+            raise RedisClusterException("No way to dispatch this command to Redis Cluster.")
+
+        if command in self.master_node_commands:
+            return self.get_master_connection_by_slot(self.nodes.keyslot(key))
+        else:
+            return self.get_random_master_slave_connection_by_slot(self.nodes.keyslot(key))
+
+    def get_master_connection_by_slot(self, slot):
+        """
+        Returns a connection for the Master node for the specefied slot.
+
+        Do not return a random node if master node is not available for any reason.
+        """
+        self._checkpid()
+        return self.get_connection_by_node(self.get_node_by_slot(slot))
+
+    def get_random_master_slave_connection_by_slot(self, slot):
+        """
+        Returns a random connection from the set of (master + slaves) for the
+        specefied slot. If connection is not reachable then return a random connection.
+        """
+        self._checkpid()
+
+        try:
+            return self.get_node_by_slot_random(self.get_node_by_slot(slot))
+        except KeyError:
+            return self.get_random_connection()
+
+    def get_node_by_slot_random(self, slot):
+        """
+        Return a random node for the specified slot.
         """
         return random.choice(self.nodes.slots[slot])
 
