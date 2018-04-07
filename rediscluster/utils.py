@@ -258,7 +258,6 @@ def parse_pubsub_numsub(command, res, **options):
 
 
 def parse_del(response, *args, **kwargs):
-
     s = '{}'.format(response)
 
     if s.isdigit():

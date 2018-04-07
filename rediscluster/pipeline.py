@@ -161,12 +161,11 @@ class StrictClusterPipeline(StrictRedisCluster):
             # little hack to make sure the node name is populated. probably could clean this up.
             self.connection_pool.nodes.set_node_name(node)
 
-            # now that we know the name of the node ( it's just a string in the form of host:port )
-            # we can build a list of commands for each node.
-
             if c.args[0] in ['MULTI', 'UNWATCH']:
                 c.args = (c.args[0],)
 
+            # now that we know the name of the node ( it's just a string in the form of host:port )
+            # we can build a list of commands for each node.
             node_name = node['name']
             if node_name not in nodes:
                 nodes[node_name] = NodeCommands(self.parse_response, self.connection_pool.get_connection_by_node(node))
@@ -198,11 +197,6 @@ class StrictClusterPipeline(StrictRedisCluster):
         # a mismatched result. (not just theoretical, I saw this happen on production x.x).
         for n in nodes.values():
             self.connection_pool.release(n.connection)
-            if n.connection in self.connection_pool._available_connections.get(node_name, []):
-                self.connection_pool._available_connections[node_name].remove(n.connection)
-
-            if self.connection_pool._created_connections_per_node.get(node_name, 0):
-                self.connection_pool._created_connections_per_node[node_name] -= 1
 
         # if the response isn't an exception it is a valid response from the node
         # we're all done with that command, YAY!
@@ -275,17 +269,25 @@ class StrictClusterPipeline(StrictRedisCluster):
 
     def watch(self, *names):
         """
+        Marks the given keys to be watched for conditional execution of a transaction.
+
+        :returns: always OK
+        :rtype: str
         """
         if not names:
-            raise RedisClusterException("WATCH command needs at least on name in this pipeline")
+            raise RedisClusterException("WATCH command needs at least one name in this pipeline")
 
         return self.execute_command('WATCH', *names)
 
     def unwatch(self, *names):
         """
+        Flushes all the previously watched keys for a transaction
+
+        :returns: always OK
+        :rtype: str
         """
         if not names:
-            raise RedisClusterException("UNWATCH command needs at least on name in this pipeline")
+            raise RedisClusterException("UNWATCH command needs at least one name in this pipeline")
 
         return self.execute_command('UNWATCH', *names)
 
