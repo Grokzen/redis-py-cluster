@@ -31,7 +31,7 @@ setup(
     url='http://github.com/grokzen/redis-py-cluster',
     license='MIT',
     install_requires=[
-        'redis>=2.10.2'
+        'redis>=2.10.6'
     ],
     keywords=[
         'redis',
