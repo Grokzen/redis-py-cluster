@@ -192,7 +192,7 @@ class StrictRedisCluster(StrictRedis):
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
 
     @classmethod
-    def from_url(cls, url, db=None, skip_full_coverage_check=False, **kwargs):
+    def from_url(cls, url, db=None, skip_full_coverage_check=False, readonly_mode=False, **kwargs):
         """
         Return a Redis client object configured from the given URL, which must
         use either `the ``redis://`` scheme
@@ -212,7 +212,12 @@ class StrictRedisCluster(StrictRedis):
         passed along to the ConnectionPool class's initializer. In the case
         of conflicting arguments, querystring arguments always win.
         """
-        connection_pool = ClusterConnectionPool.from_url(url, db=db, skip_full_coverage_check=skip_full_coverage_check,**kwargs)
+        if readonly_mode:
+            connection_pool_cls = ClusterReadOnlyConnectionPool
+        else:
+            connection_pool_cls = ClusterConnectionPool
+
+        connection_pool = connection_pool_cls.from_url(url, db=db, skip_full_coverage_check=skip_full_coverage_check, **kwargs)
         return cls(connection_pool=connection_pool, skip_full_coverage_check=skip_full_coverage_check)
 
     def __repr__(self):
