@@ -10,7 +10,7 @@ from .exceptions import RedisClusterException
 # 3rd party imports
 from redis import StrictRedis
 from redis._compat import b, unicode, bytes, long, basestring
-from redis import ConnectionError, TimeoutError
+from redis import ConnectionError, TimeoutError, ResponseError
 
 
 class NodeManager(object):
@@ -154,10 +154,6 @@ class NodeManager(object):
     def initialize(self):
         """
         Init the slots cache by asking all startup nodes what the current cluster configuration is
-
-        TODO: Currently the last node will have the last say about how the configuration is setup.
-        Maybe it should stop to try after it have correctly covered all slots or when one node is reached
-        and it could execute CLUSTER SLOTS command.
         """
         nodes_cache = {}
         tmp_slots = {}
@@ -179,6 +175,12 @@ class NodeManager(object):
                 startup_nodes_reachable = True
             except (ConnectionError, TimeoutError):
                 continue
+            except ResponseError as e:
+                # Isn't a cluster connection, so it won't parse these exceptions automatically
+                if 'CLUSTERDOWN' in e.message or 'MASTERDOWN' in e.message:
+                    continue
+                else:
+                    raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {0}".format(node))
             except Exception:
                 raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {0}".format(node))
 

@@ -450,3 +450,49 @@ def test_access_correct_slave_with_readonly_mode_client(sr):
             readonly_client = StrictRedisCluster.from_url(url="redis://127.0.0.1:7000/0", readonly_mode=True)
             assert b('foo') == readonly_client.get('foo16706')
             assert return_master_mock.call_count == 0
+
+
+def test_refresh_using_specific_nodes(r):
+    """
+    Test making calls on specific nodes when the cluster has failed over to
+    another node
+    """
+    with patch.object(StrictRedisCluster, 'parse_response') as parse_response_mock:
+        with patch.object(NodeManager, 'initialize', autospec=True) as init_mock:
+            # simulate 7006 as a failed node
+            def side_effect(self, *args, **kwargs):
+                if self.port == 7006:
+                    raise ClusterDownError('CLUSTERDOWN The cluster is down. Use CLUSTER INFO for more information')
+
+            def side_effect_rebuild_slots_cache(self):
+                # start with all slots mapped to 7006
+                self.nodes = {'127.0.0.1:7006': {'host': '127.0.0.1', 'server_type': 'master', 'port': 7006, 'name': '127.0.0.1:7006'}}
+                self.slots = {}
+
+                for i in range(0, 16383):
+                    self.slots[i] = [{
+                        'host': '127.0.0.1',
+                        'server_type': 'master',
+                        'port': 7006,
+                        'name': '127.0.0.1:7006',
+                    }]
+
+                # After the first connection fails, a reinitialize should follow the cluster to 7007
+                def map_7007(self):
+                    self.nodes = {'127.0.0.1:7007': {'host': '127.0.0.1', 'server_type': 'master', 'port': 7007, 'name': '127.0.0.1:7007'}}
+                    self.slots = {}
+
+                    for i in range(0, 16383):
+                        self.slots[i] = [{
+                            'host': '127.0.0.1',
+                            'server_type': 'master',
+                            'port': 7007,
+                            'name': '127.0.0.1:7007',
+                        }]
+                init_mock.side_effect = map_7007
+
+            parse_response_mock.side_effect = side_effect
+            init_mock.side_effect = side_effect_rebuild_slots_cache
+
+            rc = StrictRedisCluster(host='127.0.0.1', port=7006)
+            rc.ping()

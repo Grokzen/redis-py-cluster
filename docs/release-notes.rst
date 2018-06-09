@@ -8,6 +8,8 @@ Future Release
     * Fixed bug with command "CLUSTER GETKEYSINSLOT" that was throwing exceptions
     * Added new methods cluster_get_keys_in_slot() to client
     * Fixed bug with `StrictRedisCluster.from_url` that was ignoring the `readonly_mode` parameter
+    * NodeManager will now ignore nodes showing cluster errors when initializing the cluster
+    * Fix bug where RedisCluster wouldn't refresh the cluster table when executing commands on specific nodes
 
 1.3.4 (Mar 5, 2017)
 -------------------

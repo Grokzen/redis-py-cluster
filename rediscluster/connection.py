@@ -12,6 +12,7 @@ from .nodemanager import NodeManager
 from .exceptions import (
     RedisClusterException, AskError, MovedError,
     TryAgainError, ClusterDownError, ClusterCrossSlotError,
+    MasterDownError,
 )
 
 # 3rd party imports
