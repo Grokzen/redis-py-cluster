@@ -321,14 +321,14 @@ class StrictRedisCluster(StrictRedis):
 
         command = args[0]
 
-        node = self.determine_node(*args, **kwargs)
-        if node:
-            return self._execute_command_on_nodes(node, *args, **kwargs)
-
         # If set externally we must update it before calling any commands
         if self.refresh_table_asap:
             self.connection_pool.nodes.initialize()
             self.refresh_table_asap = False
+
+        node = self.determine_node(*args, **kwargs)
+        if node:
+            return self._execute_command_on_nodes(node, *args, **kwargs)
 
         redirect_addr = None
         asking = False
@@ -416,6 +416,12 @@ class StrictRedisCluster(StrictRedis):
 
                 connection.send_command(*args)
                 res[node["name"]] = self.parse_response(connection, command, **kwargs)
+            except ClusterDownError as e:
+                self.connection_pool.disconnect()
+                self.connection_pool.reset()
+                self.refresh_table_asap = True
+
+                raise
             finally:
                 self.connection_pool.release(connection)
 

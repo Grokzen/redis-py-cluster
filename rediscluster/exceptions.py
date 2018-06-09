@@ -74,3 +74,8 @@ class MovedError(AskError):
     """
     """
     pass
+
+class MasterDownError(ClusterDownError):
+    """
+    """
+    pass
