@@ -243,7 +243,7 @@ class TestReadOnlyConnectionPool(object):
         """
         pool = self.get_pool(connection_kwargs={})
 
-        expected_ports = {7000, 7005}
+        expected_ports = {7000, 7003}
         actual_ports = set()
         for _ in range(0, 100):
             node = pool.get_node_by_slot_random(0)
