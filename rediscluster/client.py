@@ -349,7 +349,7 @@ class StrictRedisCluster(StrictRedis):
 
             if asking:
                 node = self.connection_pool.nodes.nodes[redirect_addr]
-                r = self.connection_pool.get_connection_by_node(node, command)
+                r = self.connection_pool.get_connection_by_node(node)
             elif try_random_node:
                 r = self.connection_pool.get_random_connection()
                 try_random_node = False
