@@ -32,6 +32,7 @@ class ClusterParser(DefaultParser):
             'MOVED': MovedError,
             'CLUSTERDOWN': ClusterDownError,
             'CROSSSLOT': ClusterCrossSlotError,
+            'MASTERDOWN': MasterDownError,
         })
 
 
