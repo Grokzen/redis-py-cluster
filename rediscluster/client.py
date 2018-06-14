@@ -7,7 +7,8 @@ import string
 import time
 
 # rediscluster imports
-from .connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
+from .connection import (ClusterConnectionPool, ClusterReadOnlyConnectionPool,
+    ClusterConnection, SSLClusterConnection)
 from .exceptions import (
     RedisClusterException, AskError, MovedError, ClusterDownError,
     ClusterError, TryAgainError,
@@ -170,9 +171,15 @@ class StrictRedisCluster(StrictRedis):
             else:
                 connection_pool_cls = ClusterConnectionPool
 
+            if 'ssl' in kwargs:
+                connection_cls = SSLClusterConnection
+            else:
+                connection_cls = ClusterConnection
+
             pool = connection_pool_cls(
                 startup_nodes=startup_nodes,
                 init_slot_cache=init_slot_cache,
+                connection_class=connection_cls,
                 max_connections=max_connections,
                 reinitialize_steps=reinitialize_steps,
                 max_connections_per_node=max_connections_per_node,
