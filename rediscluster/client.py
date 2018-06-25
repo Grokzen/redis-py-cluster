@@ -67,6 +67,7 @@ class StrictRedisCluster(StrictRedis):
         ], 'random'),
         string_keys_to_dict([
             "CLUSTER COUNTKEYSINSLOT",
+            "CLUSTER GETKEYSINSLOT",
         ], 'slot-id'),
     )
 
