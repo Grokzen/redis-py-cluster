@@ -247,20 +247,17 @@ class StrictRedisCluster(StrictRedis):
         """
         Cluster impl:
             Pipelines do not work in cluster mode the same way they do in normal mode.
-            Create a clone of this object so that simulating pipelines will work correctly.
-            Each command will be called directly when used and when calling execute() will only return the result stack.
+            When operating with `transaction=True`, all commands must operate on the same slot
         """
         if shard_hint:
             raise RedisClusterException("shard_hint is deprecated in cluster mode")
-
-        if transaction:
-            raise RedisClusterException("transaction is deprecated in cluster mode")
 
         return StrictClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
+            transaction=transaction
         )
 
     def transaction(self, *args, **kwargs):
@@ -1215,13 +1212,11 @@ class RedisCluster(StrictRedisCluster):
         if shard_hint:
             raise RedisClusterException("shard_hint is deprecated in cluster mode")
 
-        if transaction:
-            raise RedisClusterException("transaction is deprecated in cluster mode")
-
         return StrictClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
-            response_callbacks=self.response_callbacks
+            response_callbacks=self.response_callbacks,
+            transaction=transaction
         )
 
     def setex(self, name, value, time):

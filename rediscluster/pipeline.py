@@ -2,17 +2,19 @@
 
 # python std lib
 import sys
+import time
+from itertools import chain, izip
 
 # rediscluster imports
 from .client import StrictRedisCluster
 from .exceptions import (
-    RedisClusterException, AskError, MovedError, TryAgainError,
+    ResponseError, RedisClusterException, AskError, MovedError, TryAgainError, ClusterError, ClusterDownError
 )
 from .utils import clusterdown_wrapper, dict_merge
 
 # 3rd party imports
 from redis import StrictRedis
-from redis.exceptions import ConnectionError, RedisError, TimeoutError
+from redis.exceptions import ConnectionError, RedisError, TimeoutError, ExecAbortError
 from redis._compat import imap, unicode
 
 
@@ -24,7 +26,8 @@ class StrictClusterPipeline(StrictRedisCluster):
     """
 
     def __init__(self, connection_pool, result_callbacks=None,
-                 response_callbacks=None, startup_nodes=None):
+                 response_callbacks=None, startup_nodes=None,
+                 transaction=False):
         """
         """
         self.command_stack = []
@@ -32,9 +35,11 @@ class StrictClusterPipeline(StrictRedisCluster):
         self.connection_pool = connection_pool
         self.result_callbacks = result_callbacks or self.__class__.RESULT_CALLBACKS.copy()
         self.startup_nodes = startup_nodes if startup_nodes else []
+        self.transaction = transaction
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.response_callbacks = dict_merge(response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy(),
                                              self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
+        self.keyslot = None
 
     def __repr__(self):
         """
@@ -69,6 +74,12 @@ class StrictClusterPipeline(StrictRedisCluster):
     def pipeline_execute_command(self, *args, **options):
         """
         """
+        if self.transaction:
+            if self.keyslot is None:
+                self.keyslot = self._determine_slot(*args)
+            elif self.keyslot != self._determine_slot(*args):
+                raise RedisClusterException("All commands in a transaction must map to the same key slot")
+
         self.command_stack.append(PipelineCommand(args, options, len(self.command_stack)))
         return self
 
@@ -125,7 +136,7 @@ class StrictClusterPipeline(StrictRedisCluster):
 
         # clean up the other instance attributes
         self.watching = False
-        self.explicit_transaction = False
+        self.keyslot = None
 
         # TODO: Implement
         # we can safely return the connection to the pool here since we're
@@ -135,7 +146,161 @@ class StrictClusterPipeline(StrictRedisCluster):
         #     self.connection = None
 
     @clusterdown_wrapper
-    def send_cluster_commands(self, stack, raise_on_error=True, allow_redirections=True):
+    def _execute_transaction(self, stack, raise_on_error=True, allow_redirections=True):
+        if self.refresh_table_asap:
+            self.connection_pool.nodes.initialize()
+            self.refresh_table_asap = False
+
+        connection = self.connection_pool.get_connection_by_slot(self.keyslot)
+        new_connection = False
+
+        cmds = chain([('MULTI', )], [c.args for c in stack], [('EXEC', )])
+        all_cmds = connection.pack_commands(cmds)
+
+        ttl = int(self.RedisClusterRequestTTL)
+
+        try:
+            while ttl > 0:
+                ttl -= 1
+
+                try:
+                    connection.send_packed_command(all_cmds)
+                except ConnectionError:
+                    if new_connection:
+                        self.connection_pool.disconnect()
+                        self.connection_pool.reset()
+                        self.refresh_table_asap = True
+                        raise ClusterDownError('Unable to connect to cluster')
+                    else:
+                        connection = self.connection_pool.get_connection_by_slot(self.keyslot)
+                        new_connection = True
+                        continue
+
+
+                errors = []
+
+                retry = False
+                pause = False
+                new_connection = None
+
+                # parse off the response for MULTI
+                # NOTE: we need to handle ResponseErrors here and continue
+                # so that we read all the additional command messages from
+                # the socket
+                try:
+                    self.parse_response(connection, '_')
+                except (ConnectionError, TimeoutError) as e:
+                    self.connection_pool.release(connection)
+                    connection = self.connection_pool.get_connection_by_slot(self.keyslot)
+                    continue
+                except ClusterDownError:
+                    self.connection_pool.disconnect()
+                    self.connection_pool.reset()
+                    self.refresh_table_asap = True
+                    raise
+                except ResponseError:
+                    errors.append((0, sys.exc_info()[1]))
+
+                # and all the other commands
+                for i, command in enumerate(stack):
+                    try:
+                        self.parse_response(connection, '_')
+                    except MovedError as e:
+                        self.refresh_table_asap = True
+                        self.connection_pool.nodes.increment_reinitialize_counter()
+
+                        if new_connection is None:
+                            node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
+                            self.connection_pool.nodes.slots[e.slot_id][0] = node
+                        
+                            new_connection = self.connection_pool.get_connection_by_node(node)
+
+                        # Transaction is aborted if moved/ask occurs
+                        retry = True
+                    except (AskError, TryAgainError) as e:
+                        # Migration in progress. Transactions can't use ASKING, so just delay and hope it's over soon
+                        retry = True
+                        pause = True
+                    except ClusterDownError:
+                        self.connection_pool.disconnect()
+                        self.connection_pool.reset()
+                        self.refresh_table_asap = True
+                        raise
+                    except ResponseError:
+                        ex = sys.exc_info()[1]
+                        self.annotate_exception(ex, i + 1, command.args)
+                        errors.append((i, ex))
+
+                # parse the EXEC.
+                try:
+                    response = self.parse_response(connection, '_')
+                except MovedError as e:
+                    self.refresh_table_asap = True
+                    self.connection_pool.nodes.increment_reinitialize_counter()
+
+                    if new_connection is None:
+                        node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
+                        self.connection_pool.nodes.slots[e.slot_id][0] = node
+                    
+                        self.connection_pool.release(connection)
+                        connection = self.connection_pool.get_connection_by_node(node)
+                    continue
+                except (AskError, TryAgainError) as e:
+                    # Migration in progress. Transactions can't use ASKING, so just delay and hope it's over soon
+                    time.sleep(0.1)
+                    continue
+                except ClusterDownError:
+                    self.connection_pool.disconnect()
+                    self.connection_pool.reset()
+                    self.refresh_table_asap = True
+                except ExecAbortError:
+                    if retry:
+                        if pause:
+                            time.sleep(0.1)
+                        if new_connection:
+                            self.connection_pool.release(connection)
+                            connection = new_connection
+                        continue
+                    elif errors:
+                        raise errors[0][1]
+                    else:
+                        raise sys.exc_info()[1]
+
+                # if response is None:
+                #     raise WatchError("Watched variable changed.")
+
+                # put any parse errors into the response
+                for i, e in errors:
+                    response.insert(i, e)
+
+                if len(response) != len(stack):
+                    raise ResponseError("Wrong number of response items from "
+                                        "pipeline execution")
+
+                # find any errors in the response and raise if necessary
+                if raise_on_error:
+                    for i, r in enumerate(response):
+                        if isinstance(r, ResponseError):
+                            self.annotate_exception(r, i + 1, stack[i].args)
+                            raise r
+
+                # We have to run response callbacks manually
+                data = []
+                for r, cmd in izip(response, stack):
+                    if not isinstance(r, Exception):
+                        command_name = cmd.args[0]
+                        if command_name in self.response_callbacks:
+                            r = self.response_callbacks[command_name](r, **cmd.options)
+                    data.append(r)
+                return data
+            raise ClusterError('TTL exhausted.')
+        except ConnectionError as e:
+            raise
+        finally:
+            self.connection_pool.release(connection)
+
+    @clusterdown_wrapper
+    def _execute_pipeline(self, stack, raise_on_error=True, allow_redirections=True):
         """
         Send a bunch of cluster commands to the redis cluster.
 
@@ -233,6 +398,14 @@ class StrictClusterPipeline(StrictRedisCluster):
 
         return response
 
+    def send_cluster_commands(self, stack, raise_on_error=True, allow_redirections=True):
+        if self.transaction:
+            execute = self._execute_transaction
+        else:
+            execute = self._execute_pipeline
+
+        return execute(stack, raise_on_error=raise_on_error, allow_redirections=allow_redirections)
+
     def _fail_on_redirect(self, allow_redirections):
         """
         """
@@ -248,11 +421,6 @@ class StrictClusterPipeline(StrictRedisCluster):
         """
         """
         raise RedisClusterException("method immediate_execute_command() is not implemented")
-
-    def _execute_transaction(self, *args, **kwargs):
-        """
-        """
-        raise RedisClusterException("method _execute_transaction() is not implemented")
 
     def load_scripts(self):
         """

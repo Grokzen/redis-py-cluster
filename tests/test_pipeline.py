@@ -6,14 +6,17 @@ import re
 
 # rediscluster imports
 from rediscluster.client import StrictRedisCluster
-from rediscluster.connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
+from rediscluster.connection import ClusterConnection, ClusterConnectionPool, ClusterReadOnlyConnectionPool
+from rediscluster.crc import crc16
 from rediscluster.exceptions import RedisClusterException
+from rediscluster.nodemanager import NodeManager
 from tests.conftest import _get_client
 
 # 3rd party imports
 import pytest
-from mock import patch
+from mock import patch, DEFAULT
 from redis._compat import b, u, unichr, unicode
+from redis.connection import Connection
 from redis.exceptions import WatchError, ResponseError, ConnectionError
 
 
@@ -267,9 +270,6 @@ class TestPipeline(object):
             pipe.immediate_execute_command()
 
         with pytest.raises(RedisClusterException):
-            pipe._execute_transaction(None, None, None)
-
-        with pytest.raises(RedisClusterException):
             pipe.load_scripts()
 
         with pytest.raises(RedisClusterException):
@@ -281,19 +281,11 @@ class TestPipeline(object):
         with pytest.raises(RedisClusterException):
             pipe.script_load_for_pipeline(None)
 
-        with pytest.raises(RedisClusterException):
-            pipe.transaction(None)
-
     def test_blocked_arguments(self, r):
         """
         Currently some arguments is blocked when using in cluster mode.
         They maybe implemented in the future.
         """
-        with pytest.raises(RedisClusterException) as ex:
-            r.pipeline(transaction=True)
-
-        assert unicode(ex.value).startswith("transaction is deprecated in cluster mode"), True
-
         with pytest.raises(RedisClusterException) as ex:
             r.pipeline(shard_hint=True)
 
@@ -569,3 +561,295 @@ class TestReadOnlyPipeline(object):
                 with readonly_client.pipeline() as readonly_pipe:
                     assert readonly_pipe.get('foo88').get('foo87').execute() == [b('bar'), b('foo')]
                     assert return_master_mock.call_count == 0
+
+
+class TestTransactionPipeline(object):
+    """
+    """
+    def test_store_slot(self, r):
+        """
+        Pipeline object should record which slot commands are being executed
+        against
+        """
+        with r.pipeline(transaction=True) as pipe:
+            slot = crc16('a') % NodeManager.RedisClusterHashSlots
+            pipe.set('a', 'a')
+
+            assert pipe.keyslot == slot
+
+    def test_different_slot_error(self, r):
+        """
+        Executing commands on different slots should raise an error
+        """
+        with r.pipeline(transaction=True) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.set('a', 'a').set('b', 'b')
+
+    def test_multi_exec(self, r):
+        connection = r.connection_pool.get_connection_by_slot(r._determine_slot('GET', '{a}'))
+
+        with patch('rediscluster.connection.ClusterConnection') as mock:
+            mock.pack_commands.side_effect = connection.pack_commands
+            mock.send_packed_command.side_effect = connection.send_packed_command
+            mock.read_response.side_effect = connection.read_response #[None, None, None, None, ['+', '+', '+']]
+            with patch.object(r.connection_pool, 'get_connection_by_slot', return_value=mock):
+                with r.pipeline(transaction=True) as pipe:
+                    pipe.set('{a}1', 'a1')
+                    pipe.execute()
+
+                    mock.send_command.assert_not_called()
+                    mock.send_packed_command.assert_called_once()
+
+                    packed_commands = mock.send_packed_command.call_args[0][0][0]
+                    assert 'MULTI' in packed_commands
+                    assert 'EXEC' in packed_commands
+                    assert packed_commands.index('MULTI') < packed_commands.index('SET') < packed_commands.index('EXEC')
+
+    def test_pipeline(self, r):
+        with r.pipeline(transaction=True) as pipe:
+            pipe.set('{a}', 'a1').get('{a}').zadd('z{a}', z1=1).zadd('z{a}', z2=4)
+            pipe.zincrby('z{a}', 'z1').zrange('z{a}', 0, 5, withscores=True)
+            assert pipe.execute() == [
+                True,
+                b('a1'),
+                True,
+                True,
+                2.0,
+                [(b('z1'), 2.0), (b('z2'), 4)],
+            ]
+
+    def test_pipeline_length(self, r):
+        with r.pipeline(transaction=True) as pipe:
+            # Initially empty.
+            assert len(pipe) == 0
+            assert not pipe
+
+            # Fill 'er up!
+            pipe.set('{a}1', 'a1').set('{a}2', 'b1').set('{a}3', 'c1')
+            assert len(pipe) == 3
+            assert pipe
+
+            # Execute calls reset(), so empty once again.
+            pipe.execute()
+            assert len(pipe) == 0
+            assert not pipe
+
+    def test_pipeline_set(self, r):
+        with r.pipeline(transaction=True) as pipe:
+            pipe.set('{a}1', 'a1').set('{a}2', 'b1').set('{a}3', 'c1')
+            assert '{a}1' not in r
+            assert '{a}2' not in r
+            assert '{a}3' not in r
+
+            assert pipe.execute() == [True, True, True]
+            assert r['{a}1'] == b('a1')
+            assert r['{a}2'] == b('b1')
+            assert r['{a}3'] == b('c1')
+
+    def test_pipeline_eval(self, r):
+        with r.pipeline(transaction=True) as pipe:
+            pipe.eval("return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}", 2, "A{foo}", "B{foo}", "first", "second")
+            res = pipe.execute()[0]
+            assert res[0] == b('A{foo}')
+            assert res[1] == b('B{foo}')
+            assert res[2] == b('first')
+            assert res[3] == b('second')
+
+    def test_exec_error_in_response(self, r):
+        """
+        an invalid pipeline command at exec time adds the exception instance
+        to the list of returned values
+        """
+        r['{a}3'] = 'a'
+        with r.pipeline(transaction=True) as pipe:
+            pipe.set('{a}1', 1).set('{a}2', 2).lpush('{a}3', 3).set('{a}4', 4)
+            result = pipe.execute(raise_on_error=False)
+
+            assert result[0]
+            assert r['{a}1'] == b('1')
+            assert result[1]
+            assert r['{a}2'] == b('2')
+
+            # we can't lpush to a key that's a string value, so this should
+            # be a ResponseError exception
+            assert isinstance(result[2], ResponseError)
+            assert r['{a}3'] == b('a')
+
+            # the other commands after the error are still executed
+            assert result[3]
+            assert r['{a}4'] == b('4')
+
+            # make sure the pipe was restored to a working state
+            assert pipe.set('z', 'zzz').execute() == [True]
+            assert r['z'] == b('zzz')
+
+    def test_exec_error_raised(self, r):
+        r['{a}3'] = 'a'
+        with r.pipeline(transaction=True) as pipe:
+            pipe.set('{a}1', 1).set('{a}2', 2).lpush('{a}3', 3).set('{a}4', 4)
+            with pytest.raises(ResponseError) as ex:
+                pipe.execute()
+            assert unicode(ex.value).startswith('Command # 3 (LPUSH {a}3 3) of '
+                                                'pipeline caused error: ')
+
+            # make sure the pipe was restored to a working state
+            assert pipe.set('z', 'zzz').execute() == [True]
+            assert r['z'] == b('zzz')
+
+    def test_parse_error_raised(self, r):
+        with r.pipeline(transaction=True) as pipe:
+            # the zrem is invalid because we don't pass any keys to it
+            pipe.set('{a}1', 1).zrem('{a}2').set('{a}3', 2)
+            with pytest.raises(ResponseError) as ex:
+                pipe.execute()
+
+            assert unicode(ex.value).startswith('Command # 2 (ZREM {a}2) of '
+                                                'pipeline caused error: ')
+
+            # make sure the pipe was restored to a working state
+            assert pipe.set('z', 'zzz').execute() == [True]
+            assert r['z'] == b('zzz')
+
+    def test_exec_error_in_pipeline(self, r):
+        r['a'] = 1
+        with r.pipeline(transaction=True) as pipe:
+            pipe.llen('a')
+            pipe.expire('a', 100)
+
+            with pytest.raises(ResponseError) as ex:
+                pipe.execute()
+
+            assert unicode(ex.value).startswith('Command # 1 (LLEN a) of '
+                                                'pipeline caused error: ')
+
+        assert r['a'] == b('1')
+
+    def test_exec_error_in_pipeline_unicode_command(self, r):
+        key = unichr(3456) + u('abcd') + unichr(3421)
+        r[key] = 1
+        with r.pipeline(transaction=True) as pipe:
+            pipe.llen(key)
+            pipe.expire(key, 100)
+
+            with pytest.raises(ResponseError) as ex:
+                pipe.execute()
+
+            expected = unicode('Command # 1 (LLEN {0}) of pipeline caused error: ').format(key)
+            assert unicode(ex.value).startswith(expected)
+
+        assert r[key] == b('1')
+
+    def test_blocked_arguments(self, r):
+        """
+        Currently some arguments is blocked when using in cluster mode.
+        They maybe implemented in the future.
+        """
+        with pytest.raises(RedisClusterException) as ex:
+            r.pipeline(shard_hint=True)
+
+        assert unicode(ex.value).startswith("shard_hint is deprecated in cluster mode"), True
+
+    def test_redis_cluster_pipeline(self):
+        """
+        Test that we can use a pipeline with the RedisCluster class
+        """
+        r = _get_client(cls=None)
+        with r.pipeline(transaction=True) as pipe:
+            pipe.get("foobar")
+
+    def test_empty_stack(self, r):
+        """
+        If pipeline is executed with no commands it should
+        return a empty list.
+        """
+        p = r.pipeline()
+        result = p.execute()
+        assert result == []
+
+    def test_mget_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.mget(['a'])
+
+    def test_mset_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.mset({'a': 1, 'b': 2})
+
+    def test_rename_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.rename('a', 'b')
+
+    def test_renamenx_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.renamenx('a', 'b')
+
+    def test_delete_single(self, r):
+        r['a'] = 1
+        with r.pipeline(transaction=False) as pipe:
+            pipe.delete('a')
+            assert pipe.execute(), True
+
+    def test_multi_delete_unsupported(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            r['a'] = 1
+            r['b'] = 2
+            with pytest.raises(RedisClusterException):
+                pipe.delete('a', 'b')
+
+    def test_brpoplpush_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.brpoplpush()
+
+    def test_rpoplpush_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.rpoplpush()
+
+    def test_sort_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sort()
+
+    def test_sdiff_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sdiff()
+
+    def test_sdiffstore_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sdiffstore()
+
+    def test_sinter_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sinter()
+
+    def test_sinterstore_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sinterstore()
+
+    def test_smove_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.smove()
+
+    def test_sunion_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sunion()
+
+    def test_sunionstore_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.sunionstore()
+
+    def test_spfmerge_disabled(self, r):
+        with r.pipeline(transaction=False) as pipe:
+            with pytest.raises(RedisClusterException):
+                pipe.pfmerge()
