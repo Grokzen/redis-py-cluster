@@ -14,6 +14,7 @@ from .utils import clusterdown_wrapper, dict_merge
 from redis import StrictRedis
 from redis.exceptions import ConnectionError, RedisError, TimeoutError
 from redis._compat import imap, unicode
+from .utils import parse_del
 
 
 ERRORS_ALLOW_RETRY = (ConnectionError, TimeoutError, MovedError, AskError, TryAgainError)
@@ -34,7 +35,7 @@ class StrictClusterPipeline(StrictRedisCluster):
         self.startup_nodes = startup_nodes if startup_nodes else []
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.response_callbacks = dict_merge(response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy(),
-                                             self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
+                                             self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS, {'DEL': parse_del})
 
     def __repr__(self):
         """
@@ -160,6 +161,9 @@ class StrictClusterPipeline(StrictRedisCluster):
             # little hack to make sure the node name is populated. probably could clean this up.
             self.connection_pool.nodes.set_node_name(node)
 
+            if c.args[0] in ['MULTI', 'UNWATCH']:
+                c.args = (c.args[0],)
+
             # now that we know the name of the node ( it's just a string in the form of host:port )
             # we can build a list of commands for each node.
             node_name = node['name']
@@ -200,6 +204,7 @@ class StrictClusterPipeline(StrictRedisCluster):
         # collect all the commands we are allowed to retry.
         # (MOVED, ASK, or connection errors or timeout errors)
         attempt = sorted([c for c in attempt if isinstance(c.result, ERRORS_ALLOW_RETRY)], key=lambda x: x.position)
+
         if attempt and allow_redirections:
             # RETRY MAGIC HAPPENS HERE!
             # send these remaing comamnds one at a time using `execute_command`
@@ -239,10 +244,13 @@ class StrictClusterPipeline(StrictRedisCluster):
         if not allow_redirections:
             raise RedisClusterException("ASK & MOVED redirection not allowed in this pipeline")
 
-    def multi(self):
+    def multi(self, *names):
         """
         """
-        raise RedisClusterException("method multi() is not implemented")
+        if not names:
+            raise RedisClusterException("MULTI command needs at least on name in this pipeline")
+
+        return self.execute_command('MULTI', *names)
 
     def immediate_execute_command(self, *args, **options):
         """
@@ -261,13 +269,27 @@ class StrictClusterPipeline(StrictRedisCluster):
 
     def watch(self, *names):
         """
-        """
-        raise RedisClusterException("method watch() is not implemented")
+        Marks the given keys to be watched for conditional execution of a transaction.
 
-    def unwatch(self):
+        :returns: always OK
+        :rtype: str
         """
+        if not names:
+            raise RedisClusterException("WATCH command needs at least one name in this pipeline")
+
+        return self.execute_command('WATCH', *names)
+
+    def unwatch(self, *names):
         """
-        raise RedisClusterException("method unwatch() is not implemented")
+        Flushes all the previously watched keys for a transaction
+
+        :returns: always OK
+        :rtype: str
+        """
+        if not names:
+            raise RedisClusterException("UNWATCH command needs at least one name in this pipeline")
+
+        return self.execute_command('UNWATCH', *names)
 
     def script_load_for_pipeline(self, *args, **kwargs):
         """
@@ -413,7 +435,6 @@ class NodeCommands(object):
         """
         connection = self.connection
         for c in self.commands:
-
             # if there is a result on this command, it means we ran into an exception
             # like a connection error. Trying to parse a response on a connection that
             # is no longer open will result in a connection error raised by redis-py.

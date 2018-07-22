@@ -255,3 +255,12 @@ def parse_pubsub_numsub(command, res, **options):
     for channel, numsub in numsub_d.items():
         ret_numsub.append((channel, numsub))
     return ret_numsub
+
+
+def parse_del(response, *args, **kwargs):
+    s = '{}'.format(response)
+
+    if s.isdigit():
+        return int(s)
+    else:
+        return s
