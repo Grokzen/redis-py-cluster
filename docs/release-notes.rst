@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Future Release
+1.3.5 (July 22, 2018)
 --------------
 
     * Add Redis 4 compatability fix to CLUSTER NODES command (See issue #217)
@@ -10,6 +10,16 @@ Future Release
     * Fixed bug with `StrictRedisCluster.from_url` that was ignoring the `readonly_mode` parameter
     * NodeManager will now ignore nodes showing cluster errors when initializing the cluster
     * Fix bug where RedisCluster wouldn't refresh the cluster table when executing commands on specific nodes
+    * Add redis 5.0 to travis-ci tests
+    * Change default redis version from 3.0.7 to 4.0.10
+    * Increase accepted ranges of dependencies specefied in dev-requirements.txt
+    * Several major and minor documentation updates and tweaks
+    * Add example script "from_url_password_protected.py"
+    * command "CLUSTER GETKEYSINSLOT" is now returned as a list and not int
+    * Improve support for ssl connections
+    * Retry on Timeout errors when doing cluster discovery
+    * Added new error class "MasterDownError"
+    * Updated requirements for dependency of redis-py to latest version
 
 1.3.4 (Mar 5, 2017)
 -------------------
