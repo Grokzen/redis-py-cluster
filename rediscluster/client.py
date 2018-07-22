@@ -7,7 +7,10 @@ import string
 import time
 
 # rediscluster imports
-from .connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
+from .connection import (
+    ClusterConnectionPool, ClusterReadOnlyConnectionPool,
+    SSLClusterConnection,
+)
 from .exceptions import (
     RedisClusterException, AskError, MovedError, ClusterDownError,
     ClusterError, TryAgainError,
@@ -64,6 +67,7 @@ class StrictRedisCluster(StrictRedis):
         ], 'random'),
         string_keys_to_dict([
             "CLUSTER COUNTKEYSINSLOT",
+            "CLUSTER GETKEYSINSLOT",
         ], 'slot-id'),
     )
 
@@ -156,6 +160,9 @@ class StrictRedisCluster(StrictRedis):
         # Tweaks to StrictRedis client arguments when running in cluster mode
         if "db" in kwargs:
             raise RedisClusterException("Argument 'db' is not possible to use in cluster mode")
+
+        if kwargs.get('ssl', False):
+            connection_class = SSLClusterConnection
 
         if "connection_pool" in kwargs:
             pool = kwargs.pop('connection_pool')

@@ -10,7 +10,7 @@ from .exceptions import RedisClusterException
 # 3rd party imports
 from redis import StrictRedis
 from redis._compat import b, unicode, bytes, long, basestring
-from redis import ConnectionError, ResponseError
+from redis import ConnectionError, TimeoutError, ResponseError
 
 
 class NodeManager(object):
@@ -173,7 +173,7 @@ class NodeManager(object):
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")
                 startup_nodes_reachable = True
-            except ConnectionError:
+            except (ConnectionError, TimeoutError):
                 continue
             except ResponseError as e:
                 # Isn't a cluster connection, so it won't parse these exceptions automatically
