@@ -131,11 +131,11 @@ class TestConnectionPool(object):
                 return DummyConnection(port=1337)
             pool_mock.side_effect = side_effect
 
-            connection = pool.get_connection_by_key("foo")
+            connection = pool.get_connection_by_key("foo", 'GET')
             assert connection.port == 1337
 
         with pytest.raises(RedisClusterException) as ex:
-            pool.get_connection_by_key(None)
+            pool.get_connection_by_key(None, None)
         assert unicode(ex.value).startswith("No way to dispatch this command to Redis Cluster."), True
 
     def test_get_connection_by_slot(self):
@@ -209,7 +209,35 @@ class TestReadOnlyConnectionPool(object):
         with pytest.raises(RedisClusterException):
             pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
 
-    def test_get_node_by_slot(self):
+    def test_get_connection_by_slot(self):
+        """
+        """
+        pool = self.get_pool(connection_kwargs={})
+
+        # Patch the call that is made inside the method to allow control of the returned connection object
+        with patch.object(ClusterReadOnlyConnectionPool, 'get_master_connection_by_slot', autospec=True) as pool_mock:
+            def side_effect(self, *args, **kwargs):
+                return DummyConnection(port=1337)
+            pool_mock.side_effect = side_effect
+
+            # Try a master only command
+            connection = pool.get_connection_by_key("foo", 'ZSCAN')
+            assert connection.port == 1337
+
+        with patch.object(ClusterReadOnlyConnectionPool, 'get_random_master_slave_connection_by_slot', autospec=True) as pool_mock:
+            def side_effect(self, *args, **kwargs):
+                return DummyConnection(port=1337)
+            pool_mock.side_effect = side_effect
+
+            # try a random node command
+            connection = pool.get_connection_by_key('foo', 'GET')
+            assert connection.port == 1337
+
+        with pytest.raises(RedisClusterException) as ex:
+            pool.get_connection_by_key(None, None)
+        assert unicode(ex.value).startswith("No way to dispatch this command to Redis Cluster."), True
+
+    def test_get_node_by_slot_random(self):
         """
         We can randomly get all nodes in readonly mode.
         """
@@ -218,7 +246,7 @@ class TestReadOnlyConnectionPool(object):
         expected_ports = {7000, 7003}
         actual_ports = set()
         for _ in range(0, 100):
-            node = pool.get_node_by_slot(0)
+            node = pool.get_node_by_slot_random(0)
             actual_ports.add(node['port'])
         assert actual_ports == expected_ports
 

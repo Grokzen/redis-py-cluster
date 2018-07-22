@@ -1,6 +1,26 @@
 Release Notes
 =============
 
+1.3.5 (July 22, 2018)
+--------------
+
+    * Add Redis 4 compatability fix to CLUSTER NODES command (See issue #217)
+    * Fixed bug with command "CLUSTER GETKEYSINSLOT" that was throwing exceptions
+    * Added new methods cluster_get_keys_in_slot() to client
+    * Fixed bug with `StrictRedisCluster.from_url` that was ignoring the `readonly_mode` parameter
+    * NodeManager will now ignore nodes showing cluster errors when initializing the cluster
+    * Fix bug where RedisCluster wouldn't refresh the cluster table when executing commands on specific nodes
+    * Add redis 5.0 to travis-ci tests
+    * Change default redis version from 3.0.7 to 4.0.10
+    * Increase accepted ranges of dependencies specefied in dev-requirements.txt
+    * Several major and minor documentation updates and tweaks
+    * Add example script "from_url_password_protected.py"
+    * command "CLUSTER GETKEYSINSLOT" is now returned as a list and not int
+    * Improve support for ssl connections
+    * Retry on Timeout errors when doing cluster discovery
+    * Added new error class "MasterDownError"
+    * Updated requirements for dependency of redis-py to latest version
+
 1.3.4 (Mar 5, 2017)
 -------------------
 
@@ -79,7 +99,7 @@ Release Notes
     * Implement all "CLUSTER ..." commands as methods in the client class
     * Client now follows the service side setting 'cluster-require-full-coverage=yes/no' (baranbartu)
     * Change the pubsub implementation (PUBLISH/SUBSCRIBE commands) from using one single node to now determine the hashslot for the channel name and use that to connect to
-      a node in the cluster. Other clients that do not use this pattern will not be fully compatible with this client. Known limitations is pattern 
+      a node in the cluster. Other clients that do not use this pattern will not be fully compatible with this client. Known limitations is pattern
       subscription that do not work properly because a pattern can't know all the possible channel names in advance.
     * Convert all docs to ReadTheDocs
     * Rework connection pool logic to be more similar to redis-py. This also fixes an issue with pubsub and that connections

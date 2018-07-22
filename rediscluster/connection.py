@@ -12,6 +12,7 @@ from .nodemanager import NodeManager
 from .exceptions import (
     RedisClusterException, AskError, MovedError,
     TryAgainError, ClusterDownError, ClusterCrossSlotError,
+    MasterDownError,
 )
 
 # 3rd party imports
@@ -31,6 +32,7 @@ class ClusterParser(DefaultParser):
             'MOVED': MovedError,
             'CLUSTERDOWN': ClusterDownError,
             'CROSSSLOT': ClusterCrossSlotError,
+            'MASTERDOWN': MasterDownError,
         })
 
 
@@ -98,7 +100,7 @@ class ClusterConnectionPool(ConnectionPool):
     """
     RedisClusterDefaultTimeout = None
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
                  max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
                  skip_full_coverage_check=False, nodemanager_follow_cluster=False, **connection_kwargs):
         """
@@ -110,6 +112,8 @@ class ClusterConnectionPool(ConnectionPool):
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around alot.
         """
+        if connection_class is None:
+            connection_class = ClusterConnection
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
         # Special case to make from_url method compliant with cluster setting.
@@ -287,7 +291,7 @@ class ClusterConnectionPool(ConnectionPool):
 
         raise Exception("Cant reach a single startup node.")
 
-    def get_connection_by_key(self, key):
+    def get_connection_by_key(self, key, command):
         """
         """
         if not key:
@@ -339,10 +343,12 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
     Readonly connection pool for rediscluster
     """
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=ClusterConnection,
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
                  max_connections=None, nodemanager_follow_cluster=False, **connection_kwargs):
         """
         """
+        if connection_class is None:
+            connection_class = ClusterConnection
         super(ClusterReadOnlyConnectionPool, self).__init__(
             startup_nodes=startup_nodes,
             init_slot_cache=init_slot_cache,
@@ -352,8 +358,43 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
             nodemanager_follow_cluster=nodemanager_follow_cluster,
             **connection_kwargs)
 
-    def get_node_by_slot(self, slot):
+        self.master_node_commands = ('SCAN', 'SSCAN', 'HSCAN', 'ZSCAN')
+
+    def get_connection_by_key(self, key, command):
         """
+        """
+        if not key:
+            raise RedisClusterException("No way to dispatch this command to Redis Cluster.")
+
+        if command in self.master_node_commands:
+            return self.get_master_connection_by_slot(self.nodes.keyslot(key))
+        else:
+            return self.get_random_master_slave_connection_by_slot(self.nodes.keyslot(key))
+
+    def get_master_connection_by_slot(self, slot):
+        """
+        Returns a connection for the Master node for the specefied slot.
+
+        Do not return a random node if master node is not available for any reason.
+        """
+        self._checkpid()
+        return self.get_connection_by_node(self.get_node_by_slot(slot))
+
+    def get_random_master_slave_connection_by_slot(self, slot):
+        """
+        Returns a random connection from the set of (master + slaves) for the
+        specefied slot. If connection is not reachable then return a random connection.
+        """
+        self._checkpid()
+
+        try:
+            return self.get_node_by_slot_random(self.get_node_by_slot(slot))
+        except KeyError:
+            return self.get_random_connection()
+
+    def get_node_by_slot_random(self, slot):
+        """
+        Return a random node for the specified slot.
         """
         return random.choice(self.nodes.slots[slot])
 

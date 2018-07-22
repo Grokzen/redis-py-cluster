@@ -38,7 +38,7 @@ An `ASK` error means the slot is only partially migrated and that the client can
 The philosophy on pipelines
 ---------------------------
 
-After playing around with pipelines and thinking about possible solutions that could be used in a cluster setting this document will describe how pipelines work, strengths and weaknesses with the implementation that was chosen.
+After playing around with pipelines and thinking about possible solutions that could be used in a cluster setting this document will describe how pipelines work, strengths and weaknesses of the implementation that was chosen.
 
 Why can't we reuse the pipeline code in `redis-py`? In short it is almost the same reason why code from the normal redis client can't be reused in a cluster environment and that is because of the slots system. Redis cluster consist of a number of slots that is distributed across a number of servers and each key belongs in one of these slots.
 
@@ -62,8 +62,15 @@ Consider the following example. Create a pipeline and issue 6 commands `A`, `B`,
 
 If we look back at the order we executed the commands we get `[A, F]` for the first node and `[B, E, C, D]` for the second node. At first glance this looks like it is out of order because command `E` is executed before `C` & `D`. Why is this not matter? Because no multi key operations can be done in a pipeline, we only have to care the execution order is correct for each slot and in this case it was because `B` & `E` belongs to the same slot and `C` & `D` belongs to the same slot. There should be no possible way to corrupt any data between slots if multi key commands are blocked by the code.
 
-What is good with this pipeline solution? First we can actually have a pipeline solution that will work in most cases with few commands blocked (only multi key commands). Secondly we can run it in parralel to increase the performance of the pipeline even further, making the benefits even greater.
+What is good with this pipeline solution? First we can actually have a pipeline solution that will work in most cases with few commands blocked (only multi key commands). Secondly we can run it in parallel to increase the performance of the pipeline even further, making the benefits even greater.
 
+
+Packing Commands
+----------------
+
+When issuing only a single command, there is only one network round trip to be made. But what if you issue 100 pipelined commands? In a single-instance redis configuration, you still only need to make one network hop. The commands are packed into a single request and the server responds with all the data for those requests in a single response. But with redis cluster, those keys could be spread out over many different nodes. 
+
+The client is responsible for figuring out which commands map to which nodes. Let's say for example that your 100 pipelined commands need to route to 3 different nodes? The first thing the client does is break out the commands that go to each node, so it only has 3 network requests to make instead of 100. 
 
 
 Transactions and WATCH
@@ -135,7 +142,7 @@ This section will describe different types of pipeline solutions. It will list t
 Suggestion one
 **************
 
-Simple but yet sequential pipeline. This solution acts more like an interface for the already existing pipeline implementation and only provides a simple backwards compatible interface to ensure that code that sexists still will work withouth any major modifications. The good this with this implementation is that because all commands is runned in sequence it will handle `MOVED` or `ASK` redirections very good and withouth any problems. The major downside to this solution is that no commands is ever batched and runned in parralell and thus you do not get any major performance boost from this approach. Other plus is that execution order is preserved across the entire cluster but a major downside is that thte commands is no longer atomic on the cluster scale because they are sent in multiple commands to different nodes.
+Simple but yet sequential pipeline. This solution acts more like an interface for the already existing pipeline implementation and only provides a simple backwards compatible interface to ensure that code that sexists still will work withouth any major modifications. The good this with this implementation is that because all commands is runned in sequence it will handle `MOVED` or `ASK` redirections very good and withouth any problems. The major downside to this solution is that no command is ever batched and ran in parallel and thus you do not get any major performance boost from this approach. Other plus is that execution order is preserved across the entire cluster but a major downside is that thte commands is no longer atomic on the cluster scale because they are sent in multiple commands to different nodes.
 
 **Good**
 
@@ -151,8 +158,8 @@ Simple but yet sequential pipeline. This solution acts more like an interface fo
 Suggestion two
 **************
 
-Current pipeline implementation. This implementation is rather good and works well because it combines the existing pipeline interface and functionality and it also provides a basic handling of `ASK` or `MOVED` errors inside the client. One major downside to this is that execution order is not preserved across the cluster. Altho the execution order is somewhat broken if you look at the entire cluster level becuase commands can be splitted so that cmd1, cmd3, cmd5 get sent to one server and cmd2, cmd4 gets sent to another server. The order is then broken globally but locally for each server it is preserved and maintained correctly. On the other hand i guess that there can't be any commands that can affect different hashslots within the same command so it maybe do not really matter if the execution order is not correct because for each slot/key the order is valid.
-There might be some issues with rebuilding the correct response ordering from the scattered data because each command might be in different sub pipelines. But i think that our current code still handles this correctly. I think i have to figure out some wierd case where the execution order acctually matters. There might be some issues with the nonsupported mget/mset commands that acctually performs different sub commands then it currently supports.
+Current pipeline implementation. This implementation is rather good and works well because it combines the existing pipeline interface and functionality and it also provides a basic handling of `ASK` or `MOVED` errors inside the client. One major downside to this is that execution order is not preserved across the cluster. Although the execution order is somewhat broken if you look at the entire cluster level because commands can be split so that cmd1, cmd3, cmd5 get sent to one server and cmd2, cmd4 gets sent to another server. The order is then broken globally but locally for each server it is preserved and maintained correctly. On the other hand I guess that there can't be any commands that can affect different hashslots within the same command so maybe it really doesn't matter if the execution order is not correct because for each slot/key the order is valid.
+There might be some issues with rebuilding the correct response ordering from the scattered data because each command might be in different sub pipelines. But I think that our current code still handles this correctly. I think I have to figure out some weird case where the execution order actually matters. There might be some issues with the nonsupported mget/mset commands that acctually performs different sub commands then it currently supports.
 
 **Good**
 
@@ -160,7 +167,7 @@ There might be some issues with rebuilding the correct response ordering from th
 
 **Bad**
 
- - Not sequential execution on the entire pipeline
+ - Non sequential execution on the entire pipeline
  - Medium difficult `ASK` or `MOVED` handling
 
 
@@ -168,7 +175,7 @@ There might be some issues with rebuilding the correct response ordering from th
 Suggestion three
 ****************
 
-There is a even simpler form of pipelines that can be made where all commands is supported as long as they conform to the same hashslot because redis supports that mode of operation. The good thing with this is that sinc all keys must belong to the same slot there can't be very few `ASK` or `MOVED` errors that happens and if they happen they will be very easy to handle because the entire pipeline is kinda atomic because you talk to the same server and only 1 server. There can't be any multiple server communication happening.
+There is a even simpler form of pipelines that can be made where all commands is supported as long as they conform to the same hashslot because REDIS supports that mode of operation. The good thing with this is that since all keys must belong to the same slot there can't be very few `ASK` or `MOVED` errors that happens and if they happen they will be very easy to handle because the entire pipeline is kinda atomic because you talk to the same server and only 1 server. There can't be any multiple server communication happening.
 
 **Good**
 
@@ -184,7 +191,7 @@ There is a even simpler form of pipelines that can be made where all commands is
 Suggestion four
 **************
 
-One other solution is the 2 step commit solution where you send for each server 2 batches of commands. The first command should somehow establish that each keyslot is in the correct state and able to handle the data. After the client have recieved OK from all nodes that all data slots is good to use then it will acctually send the real pipeline with all data and commands. The big problem with this approach is that ther eis a gap between the checking of the slots and the acctual sending of the data where things can happen to the already established slots setup. But at the same time there is no possibility of merging these 2 steps because if step 2 is automatically runned if step 1 is Ok then the pipeline for the first node that will fail will fail but for the other nodes it will suceed but when it should not because if one command gets `ASK` or `MOVED` redirection then all pipeline objects must be rebuilt to match the new specs/setup and then reissued by the client. The major advantage of this solution is that if you have total controll of the redis server and do controlled upgrades when no clients is talking to the server then it can acctually work really well because there is no possibility that `ASK` or `MOVED` will triggered by migrations in between the 2 batches.
+One other solution is the 2 step commit solution where you send for each server 2 batches of commands. The first command should somehow establish that each keyslot is in the correct state and able to handle the data. After the client have recieved OK from all nodes that all data slots is good to use then it will acctually send the real pipeline with all data and commands. The big problem with this approach is that ther eis a gap between the checking of the slots and the acctual sending of the data where things can happen to the already established slots setup. But at the same time there is no possibility of merging these 2 steps because if step 2 is automatically runned if step 1 is Ok then the pipeline for the first node that will fail will fail but for the other nodes it will suceed but when it should not because if one command gets `ASK` or `MOVED` redirection then all pipeline objects must be rebuilt to match the new specs/setup and then reissued by the client. The major advantage of this solution is that if you have total controll of the redis server and do controlled upgrades when no clients is talking to the server then it can actually work really well because there is no possibility that `ASK` or `MOVED` will triggered by migrations in between the 2 batches.
 
 **Good**
 

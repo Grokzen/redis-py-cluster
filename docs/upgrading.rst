@@ -3,11 +3,16 @@ Upgrading redis-py-cluster
 
 This document describes what must be done when upgrading between different versions to ensure that code still works.
 
+1.3.2 --> Next Release
+----------------------
+
+If you created the `StrictRedisCluster` (or `RedisCluster`) instance via the `from_url` method and were passing `readonly_mode` to it, the connection pool created will now properly allow selecting read-only slaves from the pool. Previously it always used master nodes only, even in the case of `readonly_mode=True`. Make sure your code don't attempt any write commands over connections with `readonly_mode=True`.
+
 
 1.3.1 --> 1.3.2
 ---------------
 
-If your redis instance is configured to not have the `CONFIG ...` comannds enabled due to security reasons you need to pass this into the client object `skip_full_coverage_check=True`. Benefits is that the client class no longer requires the `CONFIG ...` commands to be enabled on the server. Downsides is that you can't use the option in your redis server and still use the same feature in this client.
+If your redis instance is configured to not have the `CONFIG ...` commands enabled due to security reasons you need to pass this into the client object `skip_full_coverage_check=True`. Benefits is that the client class no longer requires the `CONFIG ...` commands to be enabled on the server. Downsides is that you can't use the option in your redis server and still use the same feature in this client.
 
 
 

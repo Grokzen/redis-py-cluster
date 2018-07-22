@@ -7,7 +7,10 @@ import string
 import time
 
 # rediscluster imports
-from .connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
+from .connection import (
+    ClusterConnectionPool, ClusterReadOnlyConnectionPool,
+    SSLClusterConnection,
+)
 from .exceptions import (
     RedisClusterException, AskError, MovedError, ClusterDownError,
     ClusterError, TryAgainError,
@@ -64,6 +67,7 @@ class StrictRedisCluster(StrictRedis):
         ], 'random'),
         string_keys_to_dict([
             "CLUSTER COUNTKEYSINSLOT",
+            "CLUSTER GETKEYSINSLOT",
         ], 'slot-id'),
     )
 
@@ -108,7 +112,7 @@ class StrictRedisCluster(StrictRedis):
         'CLUSTER DELSLOTS': bool_ok,
         'CLUSTER FAILOVER': bool_ok,
         'CLUSTER FORGET': bool_ok,
-        'CLUSTER GETKEYSINSLOT': int,
+        'CLUSTER GETKEYSINSLOT': list,
         'CLUSTER INFO': parse_info,
         'CLUSTER KEYSLOT': int,
         'CLUSTER MEET': bool_ok,
@@ -125,8 +129,9 @@ class StrictRedisCluster(StrictRedis):
         'READWRITE': bool_ok,
     }
 
-    def __init__(self, host=None, port=None, startup_nodes=None, max_connections=32, max_connections_per_node=False, init_slot_cache=True,
-                 readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False, **kwargs):
+    def __init__(self, host=None, port=None, startup_nodes=None, max_connections=None, max_connections_per_node=False, init_slot_cache=True,
+                 readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
+                 connection_class=None, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -156,6 +161,9 @@ class StrictRedisCluster(StrictRedis):
         if "db" in kwargs:
             raise RedisClusterException("Argument 'db' is not possible to use in cluster mode")
 
+        if kwargs.get('ssl', False):
+            connection_class = SSLClusterConnection
+
         if "connection_pool" in kwargs:
             pool = kwargs.pop('connection_pool')
         else:
@@ -178,6 +186,7 @@ class StrictRedisCluster(StrictRedis):
                 max_connections_per_node=max_connections_per_node,
                 skip_full_coverage_check=skip_full_coverage_check,
                 nodemanager_follow_cluster=nodemanager_follow_cluster,
+                connection_class=connection_class,
                 **kwargs
             )
 
@@ -190,7 +199,7 @@ class StrictRedisCluster(StrictRedis):
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
 
     @classmethod
-    def from_url(cls, url, db=None, skip_full_coverage_check=False, **kwargs):
+    def from_url(cls, url, db=None, skip_full_coverage_check=False, readonly_mode=False, **kwargs):
         """
         Return a Redis client object configured from the given URL, which must
         use either `the ``redis://`` scheme
@@ -210,7 +219,12 @@ class StrictRedisCluster(StrictRedis):
         passed along to the ConnectionPool class's initializer. In the case
         of conflicting arguments, querystring arguments always win.
         """
-        connection_pool = ClusterConnectionPool.from_url(url, db=db, **kwargs)
+        if readonly_mode:
+            connection_pool_cls = ClusterReadOnlyConnectionPool
+        else:
+            connection_pool_cls = ClusterConnectionPool
+
+        connection_pool = connection_pool_cls.from_url(url, db=db, skip_full_coverage_check=skip_full_coverage_check, **kwargs)
         return cls(connection_pool=connection_pool, skip_full_coverage_check=skip_full_coverage_check)
 
     def __repr__(self):
@@ -314,14 +328,14 @@ class StrictRedisCluster(StrictRedis):
 
         command = args[0]
 
-        node = self.determine_node(*args, **kwargs)
-        if node:
-            return self._execute_command_on_nodes(node, *args, **kwargs)
-
         # If set externally we must update it before calling any commands
         if self.refresh_table_asap:
             self.connection_pool.nodes.initialize()
             self.refresh_table_asap = False
+
+        node = self.determine_node(*args, **kwargs)
+        if node:
+            return self._execute_command_on_nodes(node, *args, **kwargs)
 
         redirect_addr = None
         asking = False
@@ -409,6 +423,12 @@ class StrictRedisCluster(StrictRedis):
 
                 connection.send_command(*args)
                 res[node["name"]] = self.parse_response(connection, command, **kwargs)
+            except ClusterDownError as e:
+                self.connection_pool.disconnect()
+                self.connection_pool.reset()
+                self.refresh_table_asap = True
+
+                raise
             finally:
                 self.connection_pool.release(connection)
 
@@ -555,6 +575,12 @@ class StrictRedisCluster(StrictRedis):
         Sends to all nodes in the cluster
         """
         return self.execute_command('CLUSTER SAVECONFIG')
+
+    def cluster_get_keys_in_slot(self, slot, num_keys):
+        """
+        Returns the number of keys in the specefied cluster slot
+        """
+        return self.execute_command('CLUSTER GETKEYSINSLOT', slot, num_keys)
 
     def cluster_set_config_epoch(self, node_id, epoch):
         """

@@ -13,15 +13,6 @@ The advantage to this design is that a smart client can communicate with the clu
 
 
 
-Packing Commands
-----------------
-
-When issuing only a single command, there is only one network round trip to be made. But what if you issue 100 pipelined commands? In a single-instance redis configuration, you still only need to make one network hop. The commands are packed into a single request and the server responds with all the data for those requests in a single response. But with redis cluster, those keys could be spread out over many different nodes. 
-
-The client is responsible for figuring out which commands map to which nodes. Let's say for example that your 100 pipelined commands need to route to 3 different nodes? The first thing the client does is break out the commands that go to each node, so it only has 3 network requests to make instead of 100. 
-
-
-
 Parallel network i/o using threads
 ----------------------------------
 
