@@ -1,6 +1,11 @@
 Release Notes
 =============
 
+Future Release
+--------------
+
+    * Add basic transaction (MULTI/EXEC) support to pipelines
+
 1.3.5 (July 22, 2018)
 --------------
 
