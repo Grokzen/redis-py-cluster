@@ -572,7 +572,7 @@ class TestTransactionPipeline(object):
         against
         """
         with r.pipeline(transaction=True) as pipe:
-            slot = crc16('a') % NodeManager.RedisClusterHashSlots
+            slot = crc16(b'a') % NodeManager.RedisClusterHashSlots
             pipe.set('a', 'a')
 
             assert pipe.keyslot == slot
@@ -601,9 +601,9 @@ class TestTransactionPipeline(object):
                     mock.send_packed_command.assert_called_once()
 
                     packed_commands = mock.send_packed_command.call_args[0][0][0]
-                    assert 'MULTI' in packed_commands
-                    assert 'EXEC' in packed_commands
-                    assert packed_commands.index('MULTI') < packed_commands.index('SET') < packed_commands.index('EXEC')
+                    assert b'MULTI' in packed_commands
+                    assert b'EXEC' in packed_commands
+                    assert packed_commands.index(b'MULTI') < packed_commands.index(b'SET') < packed_commands.index(b'EXEC')
 
     def test_pipeline(self, r):
         with r.pipeline(transaction=True) as pipe:

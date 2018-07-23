@@ -3,7 +3,7 @@
 # python std lib
 import sys
 import time
-from itertools import chain, izip
+from itertools import chain
 
 # rediscluster imports
 from .client import StrictRedisCluster
@@ -15,7 +15,7 @@ from .utils import clusterdown_wrapper, dict_merge
 # 3rd party imports
 from redis import StrictRedis
 from redis.exceptions import ConnectionError, RedisError, TimeoutError, ExecAbortError
-from redis._compat import imap, unicode
+from redis._compat import imap, izip, unicode
 
 
 ERRORS_ALLOW_RETRY = (ConnectionError, TimeoutError, MovedError, AskError, TryAgainError)
