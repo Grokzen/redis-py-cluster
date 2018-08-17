@@ -307,7 +307,7 @@ class ClusterConnectionPool(ConnectionPool):
         self._checkpid()
 
         try:
-            return self.get_master_node_by_slot()
+            return self.get_master_connection_by_slot()
         except KeyError:
             return self.get_random_connection()
 
