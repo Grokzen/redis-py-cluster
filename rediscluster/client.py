@@ -5,6 +5,7 @@ import datetime
 import random
 import string
 import time
+from sets import Set
 
 # rediscluster imports
 from .connection import (
@@ -71,6 +72,20 @@ class StrictRedisCluster(StrictRedis):
         ], 'slot-id'),
     )
 
+    # Not complete, but covers the major ones
+    # https://redis.io/commands
+    READ_COMMANDS = Set(["BITPOS", "BITCOUNT", "EXISTS",
+        "GEOHASH", "GEOPOS", "GEODIST", "GEORADIUS", "GEORADIUSBYMEMBER",
+        "GET", "GETBIT", "GETRANGE",
+        "HEXISTS", "HGET", "HGETALL", "HKEYS", "HLEN", "HMGET", "HSTRLEN", "HVALS",
+        "KEYS",
+        "LINDEX", "LLEN", "LRANGE",
+        "MGET", "PTTL", "RANDOMKEY",
+        "SCARD", "SDIFF", "SINTER", "SISMEMBER", "SMEMBERS", "SRANDMEMBER",
+        "STRLEN", "SUNION", "TTL",
+        "ZCARD", "ZCOUNT", "ZRANGE", "ZSCORE"
+    ])
+
     RESULT_CALLBACKS = dict_merge(
         string_keys_to_dict([
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
@@ -131,7 +146,7 @@ class StrictRedisCluster(StrictRedis):
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=None, max_connections_per_node=False, init_slot_cache=True,
                  readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
-                 connection_class=None, **kwargs):
+                 connection_class=None, enable_read_from_replicas=False, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -197,6 +212,7 @@ class StrictRedisCluster(StrictRedis):
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
+        self.enable_read_from_replicas = enable_read_from_replicas
 
     @classmethod
     def from_url(cls, url, db=None, skip_full_coverage_check=False, readonly_mode=False, **kwargs):
@@ -339,6 +355,7 @@ class StrictRedisCluster(StrictRedis):
 
         redirect_addr = None
         asking = False
+        is_read_replica = False
 
         try_random_node = False
         slot = self._determine_slot(*args)
@@ -358,7 +375,7 @@ class StrictRedisCluster(StrictRedis):
                     # MOVED
                     node = self.connection_pool.get_master_node_by_slot(slot)
                 else:
-                    node = self.connection_pool.get_node_by_slot(slot)
+                    node, is_read_replica = self.connection_pool.get_node_by_slot(slot, self.enable_read_from_replicas and (command in self.READ_COMMANDS))
                 r = self.connection_pool.get_connection_by_node(node)
 
             try:
@@ -366,6 +383,10 @@ class StrictRedisCluster(StrictRedis):
                     r.send_command('ASKING')
                     self.parse_response(r, "ASKING", **kwargs)
                     asking = False
+                if is_read_replica:
+                    # Ask read replica to accept reads (see https://redis.io/commands/readonly)
+                    r.send_command('READONLY')
+                    is_read_replica = False
 
                 r.send_command(*args)
                 return self.parse_response(r, command, **kwargs)
