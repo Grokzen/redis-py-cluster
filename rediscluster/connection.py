@@ -6,6 +6,7 @@ import random
 import threading
 from contextlib import contextmanager
 from itertools import chain
+import random
 
 # rediscluster imports
 from .nodemanager import NodeManager
@@ -306,7 +307,8 @@ class ClusterConnectionPool(ConnectionPool):
         self._checkpid()
 
         try:
-            return self.get_connection_by_node(self.get_node_by_slot(slot))
+            node, is_read_replica = self.get_node_by_slot(slot)
+            return self.get_connection_by_node()
         except KeyError:
             return self.get_random_connection()
 
@@ -332,10 +334,22 @@ class ClusterConnectionPool(ConnectionPool):
         """
         return self.nodes.slots[slot][0]
 
-    def get_node_by_slot(self, slot):
+    def get_random_node_by_slot(self, slot):
+        """
+        Get a random node from the slot, including master
+        """
+        nodes_in_slot = self.nodes.slots[slot]
+        random_index = random.randrange(0,len(nodes_in_slot))
+        is_read_replica = random_index > 0
+        return nodes_in_slot[random_index], is_read_replica
+
+    def get_node_by_slot(self, slot, enable_read_from_replicas):
         """
         """
-        return self.get_master_node_by_slot(slot)
+        if enable_read_from_replicas:
+            return self.get_random_node_by_slot(slot)
+        else:
+            return self.get_master_node_by_slot(slot), False
 
 
 class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
@@ -378,7 +392,7 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
         Do not return a random node if master node is not available for any reason.
         """
         self._checkpid()
-        return self.get_connection_by_node(self.get_node_by_slot(slot))
+        return self.get_connection_by_node(self.get_master_node_by_slot(slot))
 
     def get_random_master_slave_connection_by_slot(self, slot):
         """
@@ -388,7 +402,8 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
         self._checkpid()
 
         try:
-            return self.get_node_by_slot_random(self.get_node_by_slot(slot))
+            node, is_read_replica = self.get_random_node_by_slot(slot)
+            return node
         except KeyError:
             return self.get_random_connection()
 
