@@ -392,6 +392,7 @@ class StrictRedisCluster(StrictRedis):
 
                 node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
                 self.connection_pool.nodes.slots[e.slot_id][0] = node
+                slot = e.slot_id if e.slot_id != slot else slot
             except TryAgainError as e:
                 if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.05)
