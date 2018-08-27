@@ -342,10 +342,10 @@ class ClusterConnectionPool(ConnectionPool):
         is_read_replica = random_index > 0
         return nodes_in_slot[random_index], is_read_replica
 
-    def get_node_by_slot(self, slot, enable_read_from_replicas):
+    def get_node_by_slot(self, slot, read_from_replicas):
         """
         """
-        if enable_read_from_replicas:
+        if read_from_replicas:
             return self.get_random_node_by_slot(slot)
         else:
             return self.get_master_node_by_slot(slot), False
