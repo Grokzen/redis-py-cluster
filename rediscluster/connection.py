@@ -408,15 +408,12 @@ class ClusterWithReadReplicasConnectionPool(ClusterConnectionPool):
         """
         Get a random node from the slot, including master
         """
-        print "Choosing slot from:", self.nodes.slots[slot], "with reads on:", read_command
         nodes_in_slot = self.nodes.slots[slot]
-
         if read_command:
             random_index = random.randrange(0, len(nodes_in_slot))
-            is_read_replica = random_index > 0
-            return nodes_in_slot[random_index], is_read_replica
+            return nodes_in_slot[random_index]
         else:
-            return nodes_in_slot[0], False
+            return nodes_in_slot[0]
 
 
 @contextmanager

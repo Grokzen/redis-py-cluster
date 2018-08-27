@@ -380,8 +380,6 @@ class StrictRedisCluster(StrictRedis):
                 else:
                     node = self.connection_pool.get_node_by_slot(slot, self.read_from_replicas and (command in self.READ_COMMANDS))
                     is_read_replica = node['server_type'] == 'slave'
-                    print "node:", node
-
                 r = self.connection_pool.get_connection_by_node(node)
 
             try:
