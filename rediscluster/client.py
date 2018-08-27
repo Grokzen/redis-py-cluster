@@ -5,11 +5,10 @@ import datetime
 import random
 import string
 import time
-from sets import Set
 
 # rediscluster imports
 from .connection import (
-    ClusterConnectionPool, ClusterReadOnlyConnectionPool,
+    ClusterConnectionPool, ClusterWithReadReplicasConnectionPool, ClusterReadOnlyConnectionPool,
     SSLClusterConnection,
 )
 from .exceptions import (
@@ -190,6 +189,8 @@ class StrictRedisCluster(StrictRedis):
 
             if readonly_mode:
                 connection_pool_cls = ClusterReadOnlyConnectionPool
+            elif read_from_replicas:
+                connection_pool_cls = ClusterWithReadReplicasConnectionPool
             else:
                 connection_pool_cls = ClusterConnectionPool
 
@@ -215,7 +216,7 @@ class StrictRedisCluster(StrictRedis):
         self.read_from_replicas = read_from_replicas
 
     @classmethod
-    def from_url(cls, url, db=None, skip_full_coverage_check=False, readonly_mode=False, **kwargs):
+    def from_url(cls, url, db=None, skip_full_coverage_check=False, readonly_mode=False, read_from_replicas=False, **kwargs):
         """
         Return a Redis client object configured from the given URL, which must
         use either `the ``redis://`` scheme
@@ -237,6 +238,8 @@ class StrictRedisCluster(StrictRedis):
         """
         if readonly_mode:
             connection_pool_cls = ClusterReadOnlyConnectionPool
+        elif read_from_replicas:
+            connection_pool_cls = ClusterWithReadReplicasConnectionPool
         else:
             connection_pool_cls = ClusterConnectionPool
 
@@ -375,7 +378,10 @@ class StrictRedisCluster(StrictRedis):
                     # MOVED
                     node = self.connection_pool.get_master_node_by_slot(slot)
                 else:
-                    node, is_read_replica = self.connection_pool.get_node_by_slot(slot, self.read_from_replicas and (command in self.READ_COMMANDS))
+                    node = self.connection_pool.get_node_by_slot(slot, self.read_from_replicas and (command in self.READ_COMMANDS))
+                    is_read_replica = node['server_type'] == 'slave'
+                    print "node:", node
+
                 r = self.connection_pool.get_connection_by_node(node)
 
             try:
