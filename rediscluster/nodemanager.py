@@ -282,6 +282,9 @@ class NodeManager(object):
 
         # TODO: This shold not be constructed this way. It should update the name of the node in the node cache dict
         """
+
+        print "set_node_name n:", n
+
         if "name" not in n:
             n["name"] = "{0}:{1}".format(n["host"], n["port"])
 

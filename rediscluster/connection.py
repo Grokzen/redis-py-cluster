@@ -6,7 +6,6 @@ import random
 import threading
 from contextlib import contextmanager
 from itertools import chain
-import random
 
 # rediscluster imports
 from .nodemanager import NodeManager
@@ -307,7 +306,7 @@ class ClusterConnectionPool(ConnectionPool):
         self._checkpid()
 
         try:
-            return self.get_master_connection_by_slot()
+            return self.get_connection_by_node(self.get_node_by_slot(slot))
         except KeyError:
             return self.get_random_connection()
 
@@ -333,22 +332,10 @@ class ClusterConnectionPool(ConnectionPool):
         """
         return self.nodes.slots[slot][0]
 
-    def get_random_node_by_slot(self, slot):
-        """
-        Get a random node from the slot, including master
-        """
-        nodes_in_slot = self.nodes.slots[slot]
-        random_index = random.randrange(0,len(nodes_in_slot))
-        is_read_replica = random_index > 0
-        return nodes_in_slot[random_index], is_read_replica
-
-    def get_node_by_slot(self, slot, read_from_replicas):
+    def get_node_by_slot(self, slot, read_command=False):
         """
         """
-        if read_from_replicas:
-            return self.get_random_node_by_slot(slot)
-        else:
-            return self.get_master_node_by_slot(slot), False
+        return self.get_master_node_by_slot(slot)
 
 
 class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
@@ -391,7 +378,7 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
         Do not return a random node if master node is not available for any reason.
         """
         self._checkpid()
-        return self.get_connection_by_node(self.get_master_node_by_slot(slot))
+        return self.get_connection_by_node(self.get_node_by_slot(slot))
 
     def get_random_master_slave_connection_by_slot(self, slot):
         """
@@ -401,8 +388,7 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
         self._checkpid()
 
         try:
-            node, is_read_replica = self.get_random_node_by_slot(slot)
-            return node
+            return self.get_node_by_slot_random(self.get_node_by_slot(slot))
         except KeyError:
             return self.get_random_connection()
 
@@ -411,6 +397,26 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
         Return a random node for the specified slot.
         """
         return random.choice(self.nodes.slots[slot])
+
+
+class ClusterWithReadReplicasConnectionPool(ClusterConnectionPool):
+    """
+    Custom connection pool for rediscluster with load balancing across read replicas
+    """
+
+    def get_node_by_slot(self, slot, read_command=False):
+        """
+        Get a random node from the slot, including master
+        """
+        print "Choosing slot from:", self.nodes.slots[slot], "with reads on:", read_command
+        nodes_in_slot = self.nodes.slots[slot]
+
+        if read_command:
+            random_index = random.randrange(0, len(nodes_in_slot))
+            is_read_replica = random_index > 0
+            return nodes_in_slot[random_index], is_read_replica
+        else:
+            return nodes_in_slot[0], False
 
 
 @contextmanager
