@@ -5,7 +5,7 @@ Usage:
 
 Options:
   -c <concurrent>    concurrent client number [default: 1]
-  -n <reqursts>      request number [default: 100000]
+  -n <request>       request number [default: 100000]
   --nocluster        If flag is set then StrictRedis will be used instead of cluster lib
   --host IP          Redis server to test against [default: 127.0.0.1]
   --port PORT        Port on redis server [default: 6379]
@@ -17,10 +17,8 @@ Options:
 """
 import time
 from multiprocessing import Process
-
 # 3rd party imports
 from docopt import docopt
-# from redis._compat import xrange
 
 
 def loop(rc, reset_last_key=None):
@@ -57,43 +55,33 @@ def timeit(rc, num):
     """
     Time how long it take to run a number of set/get:s
     """
-    # t0 = time.time()
     for i in range(0, num):  # noqa
         s = "foo{0}".format(i)
         rc.set(s, i)
         rc.get(s)
-    # t1 = time.time() - t0
-    # print("{0}k SET/GET operations took: {1} seconds... {2} operations per second".format((num / 1000) * 2, t1, (num / t1) * 2))
 
 
 def timeit_pipeline(rc, num):
     """
     Time how long it takes to run a number of set/get:s inside a cluster pipeline
     """
-    # t0 = time.time()
     for i in range(0, num):  # noqa
         s = "foo{0}".format(i)
         p = rc.pipeline()
         p.set(s, i)
         p.get(s)
         p.execute()
-    # t1 = time.time() - t0
-    # print("{0}k SET/GET operations inside pipelines took: {1} seconds... {2} operations per second".format((num / 1000) * 2, t1, (num / t1) * 2))
 
 
 if __name__ == "__main__":
     args = docopt(__doc__, version="0.3.1")
-    # print(args)
-    #startup_nodes = [{"host": '172.16.166.31', "port": 6379}, {"host": '172.16.166.32', "port": 6379}, {"host": '172.16.166.33', "port": 6379}]
     startup_nodes = [{"host": args['--host'], "port": args['--port']}]
     if not args["--nocluster"]:
         from rediscluster import StrictRedisCluster
         rc = StrictRedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1, decode_responses=True)
-        # print(rc)
     else:
         from redis import StrictRedis
         rc = StrictRedis(host=args["--host"], port=args["--port"], socket_timeout=0.1, decode_responses=True)
-        # print(rc)
     # create specified number processes
     processes = []
     single_request = int(args["-n"]) // int(args["-c"])
