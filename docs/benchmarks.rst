@@ -1,7 +1,7 @@
 Benchmarks
 ==========
 
-There is a few benchmarks that is designed to test specific parts of the code that will show how big of a performance difference there is between using this lib and the normal Redis client.
+These are a few benchmarks that are designed to test specific parts of the code to demonstrate the performance difference between using this lib and the normal Redis client.
 
 
 
@@ -16,21 +16,21 @@ Install with
     
     pip install -e .
 
-You also need a few redis servers to test against. It is required to have 1 cluster with atleast one node on port `7001` and it also required to have a non-clustered server on port `7007`.
+You also need a few redis servers to test against. You must have one cluster with at least one node on port `7001` and you must also have a non-clustered server on port `7007`.
 
 
 
-Implemented Bencmarks
+Implemented benchmarks
 ---------------------
 
-- `simple.py`, This benchmark can be used to messure a simple `set` and `get` operation chain. It also support running pipelines bu adding the flag `--pipeline`
+- `simple.py`, This benchmark can be used to measure a simple `set` and `get` operation chain. It also supports running pipelines by adding the flag `--pipeline`.
 
 
 
 Run predefined benchmarks
 -------------------------
 
-There is a set of predefined benchmarks that can be runned to messure performance drop from using this library.
+These are a set of predefined benchmarks that can be run to measure the performance drop from using this library.
 
 To run the benchmarks run
 
