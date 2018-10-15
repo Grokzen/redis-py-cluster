@@ -43,17 +43,17 @@ Example output and comparison of different runmodes
 .. code-block::
 
      -- Running Simple benchmark with StrictRedis lib and non cluster server, 50 concurrent processes and total 50000*2 requests --
-    python benchmarks/simple.py --host 172.16.166.31 --timeit --nocluster -c 50 -n 50000
-    100.0k SET/GET operations took: 2.45 seconds... 40799.93 operations per second
+    python benchmarks/simple.py --host 127.0.0.1 --timeit --nocluster -c 50 -n 50000
+    50.0k SET/GET operations took: 2.45 seconds... 40799.93 operations per second
 
      -- Running Simple benchmark with StrictRedisCluster lib and cluster server, 50 concurrent processes and total 50000*2 requests --
-    python benchmarks/simple.py --host 172.16.166.31 --timeit -c 50 -n 50000
-    100.0k SET/GET operations took: 9.51 seconds... 31513.71 operations per second
+    python benchmarks/simple.py --host 127.0.0.1 --timeit -c 50 -n 50000
+    50.0k SET & GET (each 50%) operations took: 9.51 seconds... 31513.71 operations per second
 
      -- Running Simple benchmark with pipelines & StrictRedis lib and non cluster server --
-    python benchmarks/simple.py --host 172.16.166.31 --timeit --nocluster -c 50 -n 50000 --pipeline
-    100.0k SET/GET operations took: 2.1728243827819824 seconds... 46023.047602201834 operations per second
+    python benchmarks/simple.py --host 127.0.0.1 --timeit --nocluster -c 50 -n 50000 --pipeline
+    50.0k SET & GET (each 50%) operations took: 2.1728243827819824 seconds... 46023.047602201834 operations per second
 
      -- Running Simple benchmark with StrictRedisCluster lib and cluster server
-    python benchmarks/simple.py --host 172.16.166.31 --timeit -c 50 -n 50000 --pipeline
-    100.0k SET/GET operations took: 1.7181339263916016 seconds... 58202.68051514381 operations per second
+    python benchmarks/simple.py --host 127.0.0.1 --timeit -c 50 -n 50000 --pipeline
+    50.0k SET & GET (each 50%) operations took: 1.7181339263916016 seconds... 58202.68051514381 operations per second

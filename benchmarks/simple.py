@@ -1,20 +1,22 @@
-#!/bin/env python3
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
 """
 Usage:
-  redis-cluster-benchmark.py [--host IP] [--port PORT] [--nocluster] [-n <reqursts>] [--timeit] [--pipeline] [--resetlastkey] [-c <concurrent>] [-h] [--version]
+  redis-cluster-benchmark.py [--host <ip>] [-p <port>] [-n <request>] [-c <concurrent>] [--nocluster] [--timeit] [--pipeline] [--resetlastkey] [-h] [--version]
 
 Options:
-  -c <concurrent>    concurrent client number [default: 1]
-  -n <request>       request number [default: 100000]
+  --host <ip>        Redis server to test against [default: 127.0.0.1]
+  -p <port>          Port on redis server [default: 7000]
+  -n <request>       Request number [default: 100000]
+  -c <concurrent>    Concurrent client number [default: 1]
   --nocluster        If flag is set then StrictRedis will be used instead of cluster lib
-  --host IP          Redis server to test against [default: 127.0.0.1]
-  --port PORT        Port on redis server [default: 6379]
-  --timeit           run a mini benchmark to test performance
+  --timeit           Run a mini benchmark to test performance
   --pipeline         Only usable with --timeit flag. Runs SET/GET inside pipelines.
-  --resetlastkey     reset __last__ key
-  -h --help          show this help and exit
-  -v --version       show version and exit
+  --resetlastkey     Reset __last__ key
+  -h --help          Output this help and exit
+  --version          Output version and exit
 """
+
 import time
 from multiprocessing import Process
 # 3rd party imports
@@ -55,7 +57,7 @@ def timeit(rc, num):
     """
     Time how long it take to run a number of set/get:s
     """
-    for i in range(0, num):  # noqa
+    for i in range(0, num//2):  # noqa
         s = "foo{0}".format(i)
         rc.set(s, i)
         rc.get(s)
@@ -65,7 +67,7 @@ def timeit_pipeline(rc, num):
     """
     Time how long it takes to run a number of set/get:s inside a cluster pipeline
     """
-    for i in range(0, num):  # noqa
+    for i in range(0, num//2):  # noqa
         s = "foo{0}".format(i)
         p = rc.pipeline()
         p.set(s, i)
@@ -75,13 +77,13 @@ def timeit_pipeline(rc, num):
 
 if __name__ == "__main__":
     args = docopt(__doc__, version="0.3.1")
-    startup_nodes = [{"host": args['--host'], "port": args['--port']}]
+    startup_nodes = [{"host": args['--host'], "port": args['-p']}]
     if not args["--nocluster"]:
         from rediscluster import StrictRedisCluster
         rc = StrictRedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1, decode_responses=True)
     else:
         from redis import StrictRedis
-        rc = StrictRedis(host=args["--host"], port=args["--port"], socket_timeout=0.1, decode_responses=True)
+        rc = StrictRedis(host=args["--host"], port=args["-p"], socket_timeout=0.1, decode_responses=True)
     # create specified number processes
     processes = []
     single_request = int(args["-n"]) // int(args["-c"])
@@ -100,4 +102,4 @@ if __name__ == "__main__":
     for p in processes:
         p.join()
     t2 = time.time() - t1
-    print("{0}k SET/GET operations took: {1} seconds... {2} operations per second".format(int(args["-n"]) / 1000 * 2, t2, int(args["-n"]) / t2 * 2))
+    print("Tested {0}k SET & GET (each 50%) operations took: {1} seconds... {2} operations per second".format(int(args["-n"]) / 1000, t2, int(args["-n"]) / t2 * 2))
