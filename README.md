@@ -12,7 +12,7 @@ Gitter chat room: [![Gitter](https://badges.gitter.im/Grokzen/redis-py-cluster.s
 
 # Documentation
 
-All documentation can be found at http://redis-py-cluster.readthedocs.org/en/master
+All documentation can be found at https://redis-py-cluster.readthedocs.io/en/master
 
 This Readme contains a reduced version of the full documentation.
 
