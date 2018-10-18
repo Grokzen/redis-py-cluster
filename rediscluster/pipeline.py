@@ -24,7 +24,7 @@ class StrictClusterPipeline(StrictRedisCluster):
     """
 
     def __init__(self, connection_pool, result_callbacks=None,
-                 response_callbacks=None, startup_nodes=None):
+                 response_callbacks=None, startup_nodes=None, read_from_replicas=False):
         """
         """
         self.command_stack = []
@@ -32,6 +32,7 @@ class StrictClusterPipeline(StrictRedisCluster):
         self.connection_pool = connection_pool
         self.result_callbacks = result_callbacks or self.__class__.RESULT_CALLBACKS.copy()
         self.startup_nodes = startup_nodes if startup_nodes else []
+        self.read_from_replicas = read_from_replicas
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.response_callbacks = dict_merge(response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy(),
                                              self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
