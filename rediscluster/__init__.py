@@ -10,6 +10,7 @@ from .pubsub import ClusterPubSub
 
 # Monkey patch RedisCluster class into redis for easy access
 import redis
+
 setattr(redis, "StrictRedisCluster", StrictRedisCluster)
 setattr(redis, "RedisCluster", RedisCluster)
 setattr(redis, "ClusterPubSub", ClusterPubSub)
@@ -19,4 +20,6 @@ setattr(redis, "StrictClusterPipeline", StrictClusterPipeline)
 __version__ = (1, 3, 5)
 
 if sys.version_info[0:3] == (3, 4, 0):
-    raise RuntimeError("CRITICAL: rediscluster do not work with python 3.4.0. Please use 3.4.1 or higher.")
+    raise RuntimeError(
+        "CRITICAL: rediscluster do not work with python 3.4.0. Please use 3.4.1 or higher."
+    )

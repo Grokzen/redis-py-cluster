@@ -10,8 +10,12 @@ from itertools import chain
 # rediscluster imports
 from .nodemanager import NodeManager
 from .exceptions import (
-    RedisClusterException, AskError, MovedError,
-    TryAgainError, ClusterDownError, ClusterCrossSlotError,
+    RedisClusterException,
+    AskError,
+    MovedError,
+    TryAgainError,
+    ClusterDownError,
+    ClusterCrossSlotError,
     MasterDownError,
 )
 
@@ -25,15 +29,18 @@ from redis.exceptions import ConnectionError
 class ClusterParser(DefaultParser):
     """
     """
+
     EXCEPTION_CLASSES = dict_merge(
-        DefaultParser.EXCEPTION_CLASSES, {
-            'ASK': AskError,
-            'TRYAGAIN': TryAgainError,
-            'MOVED': MovedError,
-            'CLUSTERDOWN': ClusterDownError,
-            'CROSSSLOT': ClusterCrossSlotError,
-            'MASTERDOWN': MasterDownError,
-        })
+        DefaultParser.EXCEPTION_CLASSES,
+        {
+            "ASK": AskError,
+            "TRYAGAIN": TryAgainError,
+            "MOVED": MovedError,
+            "CLUSTERDOWN": ClusterDownError,
+            "CROSSSLOT": ClusterCrossSlotError,
+            "MASTERDOWN": MasterDownError,
+        },
+    )
 
 
 class ClusterConnection(Connection):
@@ -41,22 +48,22 @@ class ClusterConnection(Connection):
     description_format = "ClusterConnection<host=%(host)s,port=%(port)s>"
 
     def __init__(self, *args, **kwargs):
-        self.readonly = kwargs.pop('readonly', False)
-        kwargs['parser_class'] = ClusterParser
+        self.readonly = kwargs.pop("readonly", False)
+        kwargs["parser_class"] = ClusterParser
         super(ClusterConnection, self).__init__(*args, **kwargs)
 
     def on_connect(self):
-        '''
+        """
         Initialize the connection, authenticate and select a database and send READONLY if it is
         set during object initialization.
-        '''
+        """
         super(ClusterConnection, self).on_connect()
 
         if self.readonly:
-            self.send_command('READONLY')
+            self.send_command("READONLY")
 
-            if nativestr(self.read_response()) != 'OK':
-                raise ConnectionError('READONLY command failed')
+            if nativestr(self.read_response()) != "OK":
+                raise ConnectionError("READONLY command failed")
 
 
 class SSLClusterConnection(SSLConnection):
@@ -66,31 +73,35 @@ class SSLClusterConnection(SSLConnection):
         pool = ClusterConnectionPool(connection_class=SSLClusterConnection, ...)
         client = StrictRedisCluster(connection_pool=pool)
     """
+
     description_format = "SSLClusterConnection<host=%(host)s,port=%(port)s,db=%(db)s>"
 
     def __init__(self, **kwargs):
-        self.readonly = kwargs.pop('readonly', False)
-        kwargs['parser_class'] = ClusterParser
-        kwargs.pop('ssl', None)  # Needs to be removed to avoid exception in redis Connection init
+        self.readonly = kwargs.pop("readonly", False)
+        kwargs["parser_class"] = ClusterParser
+        kwargs.pop(
+            "ssl", None
+        )  # Needs to be removed to avoid exception in redis Connection init
         super(SSLClusterConnection, self).__init__(**kwargs)
 
     def on_connect(self):
-        '''
+        """
         Initialize the connection, authenticate and select a database and send READONLY if it is
         set during object initialization.
-        '''
+        """
         super(SSLClusterConnection, self).on_connect()
 
         if self.readonly:
-            self.send_command('READONLY')
+            self.send_command("READONLY")
 
-            if nativestr(self.read_response()) != 'OK':
-                raise ConnectionError('READONLY command failed')
+            if nativestr(self.read_response()) != "OK":
+                raise ConnectionError("READONLY command failed")
 
 
 class UnixDomainSocketConnection(Connection):
     """
     """
+
     description_format = "ClusterUnixDomainSocketConnection<path=%(path)s>"
 
 
@@ -98,11 +109,21 @@ class ClusterConnectionPool(ConnectionPool):
     """
     Custom connection pool for rediscluster
     """
+
     RedisClusterDefaultTimeout = None
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
-                 max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
-                 skip_full_coverage_check=False, nodemanager_follow_cluster=False, **connection_kwargs):
+    def __init__(
+        self,
+        startup_nodes=None,
+        init_slot_cache=True,
+        connection_class=None,
+        max_connections=None,
+        max_connections_per_node=False,
+        reinitialize_steps=None,
+        skip_full_coverage_check=False,
+        nodemanager_follow_cluster=False,
+        **connection_kwargs
+    ):
         """
         :skip_full_coverage_check:
             Skips the check of cluster-require-full-coverage config, useful for clusters
@@ -114,23 +135,27 @@ class ClusterConnectionPool(ConnectionPool):
         """
         if connection_class is None:
             connection_class = ClusterConnection
-        super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
+        super(ClusterConnectionPool, self).__init__(
+            connection_class=connection_class, max_connections=max_connections
+        )
 
         # Special case to make from_url method compliant with cluster setting.
         # from_url method will send in the ip and port through a different variable then the
         # regular startup_nodes variable.
         if startup_nodes is None:
-            if 'port' in connection_kwargs and 'host' in connection_kwargs:
-                startup_nodes = [{
-                    'host': connection_kwargs.pop('host'),
-                    'port': str(connection_kwargs.pop('port')),
-                }]
+            if "port" in connection_kwargs and "host" in connection_kwargs:
+                startup_nodes = [
+                    {
+                        "host": connection_kwargs.pop("host"),
+                        "port": str(connection_kwargs.pop("port")),
+                    }
+                ]
 
         self.max_connections = max_connections or 2 ** 31
         self.max_connections_per_node = max_connections_per_node
 
         if connection_class == SSLClusterConnection:
-            connection_kwargs['ssl'] = True  # needed in StrictRedis init
+            connection_kwargs["ssl"] = True  # needed in StrictRedis init
 
         self.nodes = NodeManager(
             startup_nodes,
@@ -149,17 +174,27 @@ class ClusterConnectionPool(ConnectionPool):
         self.reset()
 
         if "socket_timeout" not in self.connection_kwargs:
-            self.connection_kwargs["socket_timeout"] = ClusterConnectionPool.RedisClusterDefaultTimeout
+            self.connection_kwargs[
+                "socket_timeout"
+            ] = ClusterConnectionPool.RedisClusterDefaultTimeout
 
     def __repr__(self):
         """
         Return a string with all unique ip:port combinations that this pool is connected to.
         """
-        nodes = [{'host': i['host'], 'port': i['port']} for i in self.nodes.startup_nodes]
+        nodes = [
+            {"host": i["host"], "port": i["port"]} for i in self.nodes.startup_nodes
+        ]
 
         return "{0}<{1}>".format(
             type(self).__name__,
-            ", ".join([self.connection_class.description_format % dict(node, **self.connection_kwargs) for node in nodes])
+            ", ".join(
+                [
+                    self.connection_class.description_format
+                    % dict(node, **self.connection_kwargs)
+                    for node in nodes
+                ]
+            ),
         )
 
     def reset(self):
@@ -192,9 +227,11 @@ class ClusterConnectionPool(ConnectionPool):
         """
         # Only pubsub command/connection should be allowed here
         if command_name != "pubsub":
-            raise RedisClusterException("Only 'pubsub' commands can be used by get_connection()")
+            raise RedisClusterException(
+                "Only 'pubsub' commands can be used by get_connection()"
+            )
 
-        channel = options.pop('channel', None)
+        channel = options.pop("channel", None)
 
         if not channel:
             return self.get_random_connection()
@@ -209,10 +246,10 @@ class ClusterConnectionPool(ConnectionPool):
         except IndexError:
             connection = self.make_connection(node)
 
-        if node['name'] not in self._in_use_connections:
-            self._in_use_connections[node['name']] = set()
+        if node["name"] not in self._in_use_connections:
+            self._in_use_connections[node["name"]] = set()
 
-        self._in_use_connections[node['name']].add(connection)
+        self._in_use_connections[node["name"]].add(connection)
 
         return connection
 
@@ -222,13 +259,19 @@ class ClusterConnectionPool(ConnectionPool):
         """
         if self.count_all_num_connections(node) >= self.max_connections:
             if self.max_connections_per_node:
-                raise RedisClusterException("Too many connection ({0}) for node: {1}".format(self.count_all_num_connections(node), node['name']))
+                raise RedisClusterException(
+                    "Too many connection ({0}) for node: {1}".format(
+                        self.count_all_num_connections(node), node["name"]
+                    )
+                )
 
             raise RedisClusterException("Too many connections")
 
-        self._created_connections_per_node.setdefault(node['name'], 0)
-        self._created_connections_per_node[node['name']] += 1
-        connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
+        self._created_connections_per_node.setdefault(node["name"], 0)
+        self._created_connections_per_node[node["name"]] += 1
+        connection = self.connection_class(
+            host=node["host"], port=node["port"], **self.connection_kwargs
+        )
 
         # Must store node in the connection to make it eaiser to track
         connection.node = node
@@ -254,15 +297,16 @@ class ClusterConnectionPool(ConnectionPool):
             pass
             # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
 
-        self._available_connections.setdefault(connection.node["name"], []).append(connection)
+        self._available_connections.setdefault(connection.node["name"], []).append(
+            connection
+        )
 
     def disconnect(self):
         """
         Nothing that requires any overwrite.
         """
         all_conns = chain(
-            self._available_connections.values(),
-            self._in_use_connections.values(),
+            self._available_connections.values(), self._in_use_connections.values()
         )
 
         for node_connections in all_conns:
@@ -273,7 +317,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         """
         if self.max_connections_per_node:
-            return self._created_connections_per_node.get(node['name'], 0)
+            return self._created_connections_per_node.get(node["name"], 0)
 
         return sum([i for i in self._created_connections_per_node.values()])
 
@@ -295,7 +339,9 @@ class ClusterConnectionPool(ConnectionPool):
         """
         """
         if not key:
-            raise RedisClusterException("No way to dispatch this command to Redis Cluster.")
+            raise RedisClusterException(
+                "No way to dispatch this command to Redis Cluster."
+            )
 
         return self.get_connection_by_slot(self.nodes.keyslot(key))
 
@@ -343,8 +389,15 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
     Readonly connection pool for rediscluster
     """
 
-    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
-                 max_connections=None, nodemanager_follow_cluster=False, **connection_kwargs):
+    def __init__(
+        self,
+        startup_nodes=None,
+        init_slot_cache=True,
+        connection_class=None,
+        max_connections=None,
+        nodemanager_follow_cluster=False,
+        **connection_kwargs
+    ):
         """
         """
         if connection_class is None:
@@ -356,20 +409,25 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
             max_connections=max_connections,
             readonly=True,
             nodemanager_follow_cluster=nodemanager_follow_cluster,
-            **connection_kwargs)
+            **connection_kwargs
+        )
 
-        self.master_node_commands = ('SCAN', 'SSCAN', 'HSCAN', 'ZSCAN')
+        self.master_node_commands = ("SCAN", "SSCAN", "HSCAN", "ZSCAN")
 
     def get_connection_by_key(self, key, command):
         """
         """
         if not key:
-            raise RedisClusterException("No way to dispatch this command to Redis Cluster.")
+            raise RedisClusterException(
+                "No way to dispatch this command to Redis Cluster."
+            )
 
         if command in self.master_node_commands:
             return self.get_master_connection_by_slot(self.nodes.keyslot(key))
         else:
-            return self.get_random_master_slave_connection_by_slot(self.nodes.keyslot(key))
+            return self.get_random_master_slave_connection_by_slot(
+                self.nodes.keyslot(key)
+            )
 
     def get_master_connection_by_slot(self, slot):
         """

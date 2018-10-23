@@ -3,9 +3,7 @@ from socket import gethostbyaddr
 from functools import wraps
 
 # rediscluster imports
-from .exceptions import (
-    RedisClusterException, ClusterDownError
-)
+from .exceptions import RedisClusterException, ClusterDownError
 
 # 3rd party imports
 from redis._compat import basestring, nativestr
@@ -16,7 +14,7 @@ def bool_ok(response, *args, **kwargs):
     Borrowed from redis._compat becuase that method to not support extra arguments
     when used in a cluster environment.
     """
-    return nativestr(response) == 'OK'
+    return nativestr(response) == "OK"
 
 
 def string_keys_to_dict(key_strings, callback):
@@ -35,7 +33,7 @@ def dict_merge(*dicts):
 
     for d in dicts:
         if not isinstance(d, dict):
-            raise ValueError('Value should be of dict type')
+            raise ValueError("Value should be of dict type")
         else:
             merged.update(d)
 
@@ -46,7 +44,9 @@ def blocked_command(self, command):
     """
     Raises a `RedisClusterException` mentioning the command is blocked.
     """
-    raise RedisClusterException("Command: {0} is blocked in redis cluster mode".format(command))
+    raise RedisClusterException(
+        "Command: {0} is blocked in redis cluster mode".format(command)
+    )
 
 
 def merge_result(command, res):
@@ -57,7 +57,7 @@ def merge_result(command, res):
     and they result from each node should be merged into a single list.
     """
     if not isinstance(res, dict):
-        raise ValueError('Value should be of dict type')
+        raise ValueError("Value should be of dict type")
 
     result = set([])
 
@@ -75,10 +75,12 @@ def first_key(command, res):
     If more then 1 result is returned then a `RedisClusterException` is raised.
     """
     if not isinstance(res, dict):
-        raise ValueError('Value should be of dict type')
+        raise ValueError("Value should be of dict type")
 
     if len(res.keys()) != 1:
-        raise RedisClusterException("More then 1 result from command: {0}".format(command))
+        raise RedisClusterException(
+            "More then 1 result from command: {0}".format(command)
+        )
 
     return list(res.values())[0]
 
@@ -94,6 +96,7 @@ def clusterdown_wrapper(func):
 
     It will try 3 times to rerun the command and raises ClusterDownException if it continues to fail.
     """
+
     @wraps(func)
     def inner(*args, **kwargs):
         for _ in range(0, 3):
@@ -106,24 +109,25 @@ def clusterdown_wrapper(func):
 
         # If it fails 3 times then raise exception back to caller
         raise ClusterDownError("CLUSTERDOWN error. Unable to rebuild the cluster")
+
     return inner
 
 
 def nslookup(node_ip):
     """
     """
-    if ':' not in node_ip:
+    if ":" not in node_ip:
         return gethostbyaddr(node_ip)[0]
 
-    ip, port = node_ip.split(':')
+    ip, port = node_ip.split(":")
 
-    return '{0}:{1}'.format(gethostbyaddr(ip)[0], port)
+    return "{0}:{1}".format(gethostbyaddr(ip)[0], port)
 
 
 def parse_cluster_slots(resp, **options):
     """
     """
-    current_host = options.get('current_host', '')
+    current_host = options.get("current_host", "")
 
     def fix_server(*args):
         return (nativestr(args[0]) or current_host, args[1])
@@ -133,8 +137,8 @@ def parse_cluster_slots(resp, **options):
         start, end, master = slot[:3]
         slaves = slot[3:]
         slots[start, end] = {
-            'master': fix_server(*master),
-            'slaves': [fix_server(*slave) for slave in slaves],
+            "master": fix_server(*master),
+            "slaves": [fix_server(*slave) for slave in slaves],
         }
 
     return slots
@@ -146,27 +150,23 @@ def parse_cluster_nodes(resp, **options):
     @see: http://redis.io/commands/cluster-slaves # list of string
     """
     resp = nativestr(resp)
-    current_host = options.get('current_host', '')
+    current_host = options.get("current_host", "")
 
     def parse_slots(s):
         slots, migrations = [], []
-        for r in s.split(' '):
-            if '->-' in r:
-                slot_id, dst_node_id = r[1:-1].split('->-', 1)
-                migrations.append({
-                    'slot': int(slot_id),
-                    'node_id': dst_node_id,
-                    'state': 'migrating'
-                })
-            elif '-<-' in r:
-                slot_id, src_node_id = r[1:-1].split('-<-', 1)
-                migrations.append({
-                    'slot': int(slot_id),
-                    'node_id': src_node_id,
-                    'state': 'importing'
-                })
-            elif '-' in r:
-                start, end = r.split('-')
+        for r in s.split(" "):
+            if "->-" in r:
+                slot_id, dst_node_id = r[1:-1].split("->-", 1)
+                migrations.append(
+                    {"slot": int(slot_id), "node_id": dst_node_id, "state": "migrating"}
+                )
+            elif "-<-" in r:
+                slot_id, src_node_id = r[1:-1].split("-<-", 1)
+                migrations.append(
+                    {"slot": int(slot_id), "node_id": src_node_id, "state": "importing"}
+                )
+            elif "-" in r:
+                start, end = r.split("-")
                 slots.extend(range(int(start), int(end) + 1))
             else:
                 slots.append(int(r))
@@ -178,30 +178,33 @@ def parse_cluster_nodes(resp, **options):
 
     nodes = []
     for line in resp:
-        parts = line.split(' ', 8)
-        self_id, addr, flags, master_id, ping_sent, \
-            pong_recv, config_epoch, link_state = parts[:8]
+        parts = line.split(" ", 8)
+        self_id, addr, flags, master_id, ping_sent, pong_recv, config_epoch, link_state = parts[
+            :8
+        ]
 
-        host, ports = addr.rsplit(':', 1)
-        port, _, cluster_port = ports.partition('@')
+        host, ports = addr.rsplit(":", 1)
+        port, _, cluster_port = ports.partition("@")
 
         node = {
-            'id': self_id,
-            'host': host or current_host,
-            'port': int(port),
-            'cluster-bus-port': int(cluster_port) if cluster_port else 10000 + int(port),
-            'flags': tuple(flags.split(',')),
-            'master': master_id if master_id != '-' else None,
-            'ping-sent': int(ping_sent),
-            'pong-recv': int(pong_recv),
-            'link-state': link_state,
-            'slots': [],
-            'migrations': [],
+            "id": self_id,
+            "host": host or current_host,
+            "port": int(port),
+            "cluster-bus-port": int(cluster_port)
+            if cluster_port
+            else 10000 + int(port),
+            "flags": tuple(flags.split(",")),
+            "master": master_id if master_id != "-" else None,
+            "ping-sent": int(ping_sent),
+            "pong-recv": int(pong_recv),
+            "link-state": link_state,
+            "slots": [],
+            "migrations": [],
         }
 
         if len(parts) >= 9:
             slots, migrations = parse_slots(parts[8])
-            node['slots'], node['migrations'] = tuple(slots), migrations
+            node["slots"], node["migrations"] = tuple(slots), migrations
 
         nodes.append(node)
 
@@ -213,7 +216,7 @@ def parse_pubsub_channels(command, res, **options):
     Result callback, handles different return types
     switchable by the `aggregate` flag.
     """
-    aggregate = options.get('aggregate', True)
+    aggregate = options.get("aggregate", True)
     if not aggregate:
         return res
     return merge_result(command, res)
@@ -224,7 +227,7 @@ def parse_pubsub_numpat(command, res, **options):
     Result callback, handles different return types
     switchable by the `aggregate` flag.
     """
-    aggregate = options.get('aggregate', True)
+    aggregate = options.get("aggregate", True)
     if not aggregate:
         return res
 
@@ -239,7 +242,7 @@ def parse_pubsub_numsub(command, res, **options):
     Result callback, handles different return types
     switchable by the `aggregate` flag.
     """
-    aggregate = options.get('aggregate', True)
+    aggregate = options.get("aggregate", True)
     if not aggregate:
         return res
 

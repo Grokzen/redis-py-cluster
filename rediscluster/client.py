@@ -8,12 +8,17 @@ import time
 
 # rediscluster imports
 from .connection import (
-    ClusterConnectionPool, ClusterReadOnlyConnectionPool,
+    ClusterConnectionPool,
+    ClusterReadOnlyConnectionPool,
     SSLClusterConnection,
 )
 from .exceptions import (
-    RedisClusterException, AskError, MovedError, ClusterDownError,
-    ClusterError, TryAgainError,
+    RedisClusterException,
+    AskError,
+    MovedError,
+    ClusterDownError,
+    ClusterError,
+    TryAgainError,
 )
 from .pubsub import ClusterPubSub
 from .utils import (
@@ -30,12 +35,20 @@ from .utils import (
     parse_pubsub_numsub,
     parse_pubsub_numpat,
 )
+
 # 3rd party imports
 from redis import StrictRedis
 from redis.client import list_or_args, parse_info
 from redis.connection import Token
 from redis._compat import iteritems, basestring, b, izip, nativestr, long
-from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
+from redis.exceptions import (
+    RedisError,
+    ResponseError,
+    TimeoutError,
+    DataError,
+    ConnectionError,
+    BusyLoadingError,
+)
 
 
 class StrictRedisCluster(StrictRedis):
@@ -43,95 +56,162 @@ class StrictRedisCluster(StrictRedis):
     If a command is implemented over the one in StrictRedis then it requires some changes compared to
     the regular implementation of the method.
     """
+
     RedisClusterRequestTTL = 16
 
     NODES_FLAGS = dict_merge(
-        string_keys_to_dict([
-            "CLIENT SETNAME", "SENTINEL GET-MASTER-ADDR-BY-NAME", 'SENTINEL MASTER', 'SENTINEL MASTERS',
-            'SENTINEL MONITOR', 'SENTINEL REMOVE', 'SENTINEL SENTINELS', 'SENTINEL SET',
-            'SENTINEL SLAVES', 'SHUTDOWN', 'SLAVEOF', 'SCRIPT KILL',
-            'MOVE', 'BITOP',
-        ], 'blocked'),
-        string_keys_to_dict([
-            "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
-            "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
-            "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
-            "TIME", "KEYS", "CLUSTER INFO", "PUBSUB CHANNELS",
-            "PUBSUB NUMSUB", "PUBSUB NUMPAT",
-        ], 'all-nodes'),
-        string_keys_to_dict([
-            "FLUSHALL", "FLUSHDB", "SCRIPT LOAD", "SCRIPT FLUSH", "SCRIPT EXISTS", "SCAN",
-        ], 'all-masters'),
-        string_keys_to_dict([
-            "RANDOMKEY", "CLUSTER NODES", "CLUSTER SLOTS",
-        ], 'random'),
-        string_keys_to_dict([
-            "CLUSTER COUNTKEYSINSLOT",
-            "CLUSTER GETKEYSINSLOT",
-        ], 'slot-id'),
+        string_keys_to_dict(
+            [
+                "CLIENT SETNAME",
+                "SENTINEL GET-MASTER-ADDR-BY-NAME",
+                "SENTINEL MASTER",
+                "SENTINEL MASTERS",
+                "SENTINEL MONITOR",
+                "SENTINEL REMOVE",
+                "SENTINEL SENTINELS",
+                "SENTINEL SET",
+                "SENTINEL SLAVES",
+                "SHUTDOWN",
+                "SLAVEOF",
+                "SCRIPT KILL",
+                "MOVE",
+                "BITOP",
+            ],
+            "blocked",
+        ),
+        string_keys_to_dict(
+            [
+                "ECHO",
+                "CONFIG GET",
+                "CONFIG SET",
+                "SLOWLOG GET",
+                "CLIENT KILL",
+                "INFO",
+                "BGREWRITEAOF",
+                "BGSAVE",
+                "CLIENT LIST",
+                "CLIENT GETNAME",
+                "CONFIG RESETSTAT",
+                "CONFIG REWRITE",
+                "DBSIZE",
+                "LASTSAVE",
+                "PING",
+                "SAVE",
+                "SLOWLOG LEN",
+                "SLOWLOG RESET",
+                "TIME",
+                "KEYS",
+                "CLUSTER INFO",
+                "PUBSUB CHANNELS",
+                "PUBSUB NUMSUB",
+                "PUBSUB NUMPAT",
+            ],
+            "all-nodes",
+        ),
+        string_keys_to_dict(
+            [
+                "FLUSHALL",
+                "FLUSHDB",
+                "SCRIPT LOAD",
+                "SCRIPT FLUSH",
+                "SCRIPT EXISTS",
+                "SCAN",
+            ],
+            "all-masters",
+        ),
+        string_keys_to_dict(["RANDOMKEY", "CLUSTER NODES", "CLUSTER SLOTS"], "random"),
+        string_keys_to_dict(
+            ["CLUSTER COUNTKEYSINSLOT", "CLUSTER GETKEYSINSLOT"], "slot-id"
+        ),
     )
 
     RESULT_CALLBACKS = dict_merge(
-        string_keys_to_dict([
-            "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
-            "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
-            "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
-            "TIME", "SCAN", "CLUSTER INFO", 'CLUSTER ADDSLOTS', 'CLUSTER COUNT-FAILURE-REPORTS',
-            'CLUSTER DELSLOTS', 'CLUSTER FAILOVER', 'CLUSTER FORGET', "FLUSHALL", "FLUSHDB",
-        ], lambda command, res: res),
-        string_keys_to_dict([
-            "SCRIPT LOAD",
-        ], lambda command, res: list(res.values()).pop()),
-        string_keys_to_dict([
-            "SCRIPT EXISTS",
-        ], lambda command, res: [all(k) for k in zip(*res.values())]),
-        string_keys_to_dict([
-            "SCRIPT FLUSH",
-        ], lambda command, res: all(res.values())),
-        string_keys_to_dict([
-            "KEYS",
-        ], merge_result),
-        string_keys_to_dict([
-            "SSCAN", "HSCAN", "ZSCAN", "RANDOMKEY",
-        ], first_key),
-        string_keys_to_dict([
-            "PUBSUB CHANNELS",
-        ], parse_pubsub_channels),
-        string_keys_to_dict([
-            "PUBSUB NUMSUB",
-        ], parse_pubsub_numsub),
-        string_keys_to_dict([
-            "PUBSUB NUMPAT",
-        ], parse_pubsub_numpat),
+        string_keys_to_dict(
+            [
+                "ECHO",
+                "CONFIG GET",
+                "CONFIG SET",
+                "SLOWLOG GET",
+                "CLIENT KILL",
+                "INFO",
+                "BGREWRITEAOF",
+                "BGSAVE",
+                "CLIENT LIST",
+                "CLIENT GETNAME",
+                "CONFIG RESETSTAT",
+                "CONFIG REWRITE",
+                "DBSIZE",
+                "LASTSAVE",
+                "PING",
+                "SAVE",
+                "SLOWLOG LEN",
+                "SLOWLOG RESET",
+                "TIME",
+                "SCAN",
+                "CLUSTER INFO",
+                "CLUSTER ADDSLOTS",
+                "CLUSTER COUNT-FAILURE-REPORTS",
+                "CLUSTER DELSLOTS",
+                "CLUSTER FAILOVER",
+                "CLUSTER FORGET",
+                "FLUSHALL",
+                "FLUSHDB",
+            ],
+            lambda command, res: res,
+        ),
+        string_keys_to_dict(
+            ["SCRIPT LOAD"], lambda command, res: list(res.values()).pop()
+        ),
+        string_keys_to_dict(
+            ["SCRIPT EXISTS"], lambda command, res: [all(k) for k in zip(*res.values())]
+        ),
+        string_keys_to_dict(["SCRIPT FLUSH"], lambda command, res: all(res.values())),
+        string_keys_to_dict(["KEYS"], merge_result),
+        string_keys_to_dict(["SSCAN", "HSCAN", "ZSCAN", "RANDOMKEY"], first_key),
+        string_keys_to_dict(["PUBSUB CHANNELS"], parse_pubsub_channels),
+        string_keys_to_dict(["PUBSUB NUMSUB"], parse_pubsub_numsub),
+        string_keys_to_dict(["PUBSUB NUMPAT"], parse_pubsub_numpat),
     )
 
     CLUSTER_COMMANDS_RESPONSE_CALLBACKS = {
-        'CLUSTER ADDSLOTS': bool_ok,
-        'CLUSTER COUNT-FAILURE-REPORTS': int,
-        'CLUSTER COUNTKEYSINSLOT': int,
-        'CLUSTER DELSLOTS': bool_ok,
-        'CLUSTER FAILOVER': bool_ok,
-        'CLUSTER FORGET': bool_ok,
-        'CLUSTER GETKEYSINSLOT': list,
-        'CLUSTER INFO': parse_info,
-        'CLUSTER KEYSLOT': int,
-        'CLUSTER MEET': bool_ok,
-        'CLUSTER NODES': parse_cluster_nodes,
-        'CLUSTER REPLICATE': bool_ok,
-        'CLUSTER RESET': bool_ok,
-        'CLUSTER SAVECONFIG': bool_ok,
-        'CLUSTER SET-CONFIG-EPOCH': bool_ok,
-        'CLUSTER SETSLOT': bool_ok,
-        'CLUSTER SLAVES': parse_cluster_nodes,
-        'CLUSTER SLOTS': parse_cluster_slots,
-        'ASKING': bool_ok,
-        'READONLY': bool_ok,
-        'READWRITE': bool_ok,
+        "CLUSTER ADDSLOTS": bool_ok,
+        "CLUSTER COUNT-FAILURE-REPORTS": int,
+        "CLUSTER COUNTKEYSINSLOT": int,
+        "CLUSTER DELSLOTS": bool_ok,
+        "CLUSTER FAILOVER": bool_ok,
+        "CLUSTER FORGET": bool_ok,
+        "CLUSTER GETKEYSINSLOT": list,
+        "CLUSTER INFO": parse_info,
+        "CLUSTER KEYSLOT": int,
+        "CLUSTER MEET": bool_ok,
+        "CLUSTER NODES": parse_cluster_nodes,
+        "CLUSTER REPLICATE": bool_ok,
+        "CLUSTER RESET": bool_ok,
+        "CLUSTER SAVECONFIG": bool_ok,
+        "CLUSTER SET-CONFIG-EPOCH": bool_ok,
+        "CLUSTER SETSLOT": bool_ok,
+        "CLUSTER SLAVES": parse_cluster_nodes,
+        "CLUSTER SLOTS": parse_cluster_slots,
+        "ASKING": bool_ok,
+        "READONLY": bool_ok,
+        "READWRITE": bool_ok,
     }
 
-    def __init__(self, host=None, port=None, startup_nodes=None, max_connections=None, max_connections_per_node=False, init_slot_cache=True,
-                 readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
-                 connection_class=None, **kwargs):
+    def __init__(
+        self,
+        host=None,
+        port=None,
+        startup_nodes=None,
+        max_connections=None,
+        max_connections_per_node=False,
+        init_slot_cache=True,
+        readonly_mode=False,
+        reinitialize_steps=None,
+        skip_full_coverage_check=False,
+        nodemanager_follow_cluster=False,
+        connection_class=None,
+        **kwargs
+    ):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -159,13 +239,15 @@ class StrictRedisCluster(StrictRedis):
         """
         # Tweaks to StrictRedis client arguments when running in cluster mode
         if "db" in kwargs:
-            raise RedisClusterException("Argument 'db' is not possible to use in cluster mode")
+            raise RedisClusterException(
+                "Argument 'db' is not possible to use in cluster mode"
+            )
 
-        if kwargs.get('ssl', False):
+        if kwargs.get("ssl", False):
             connection_class = SSLClusterConnection
 
         if "connection_pool" in kwargs:
-            pool = kwargs.pop('connection_pool')
+            pool = kwargs.pop("connection_pool")
         else:
             startup_nodes = [] if startup_nodes is None else startup_nodes
 
@@ -196,10 +278,14 @@ class StrictRedisCluster(StrictRedis):
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
         self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
-        self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
+        self.response_callbacks = dict_merge(
+            self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS
+        )
 
     @classmethod
-    def from_url(cls, url, db=None, skip_full_coverage_check=False, readonly_mode=False, **kwargs):
+    def from_url(
+        cls, url, db=None, skip_full_coverage_check=False, readonly_mode=False, **kwargs
+    ):
         """
         Return a Redis client object configured from the given URL, which must
         use either `the ``redis://`` scheme
@@ -224,15 +310,25 @@ class StrictRedisCluster(StrictRedis):
         else:
             connection_pool_cls = ClusterConnectionPool
 
-        connection_pool = connection_pool_cls.from_url(url, db=db, skip_full_coverage_check=skip_full_coverage_check, **kwargs)
-        return cls(connection_pool=connection_pool, skip_full_coverage_check=skip_full_coverage_check)
+        connection_pool = connection_pool_cls.from_url(
+            url, db=db, skip_full_coverage_check=skip_full_coverage_check, **kwargs
+        )
+        return cls(
+            connection_pool=connection_pool,
+            skip_full_coverage_check=skip_full_coverage_check,
+        )
 
     def __repr__(self):
         """
         """
-        servers = list({'{0}:{1}'.format(nativestr(info['host']), info['port']) for info in self.connection_pool.nodes.startup_nodes})
+        servers = list(
+            {
+                "{0}:{1}".format(nativestr(info["host"]), info["port"])
+                for info in self.connection_pool.nodes.startup_nodes
+            }
+        )
         servers.sort()
-        return "{0}<{1}>".format(type(self).__name__, ', '.join(servers))
+        return "{0}<{1}>".format(type(self).__name__, ", ".join(servers))
 
     def set_result_callback(self, command, callback):
         "Set a custom Result Callback"
@@ -267,22 +363,28 @@ class StrictRedisCluster(StrictRedis):
         """
         Transaction is not implemented in cluster mode yet.
         """
-        raise RedisClusterException("method StrictRedisCluster.transaction() is not implemented")
+        raise RedisClusterException(
+            "method StrictRedisCluster.transaction() is not implemented"
+        )
 
     def _determine_slot(self, *args):
         """
         figure out what slot based on command and args
         """
         if len(args) <= 1:
-            raise RedisClusterException("No way to dispatch this command to Redis Cluster. Missing key.")
+            raise RedisClusterException(
+                "No way to dispatch this command to Redis Cluster. Missing key."
+            )
         command = args[0]
 
-        if command in ['EVAL', 'EVALSHA']:
+        if command in ["EVAL", "EVALSHA"]:
             numkeys = args[2]
-            keys = args[3: 3 + numkeys]
+            keys = args[3 : 3 + numkeys]
             slots = {self.connection_pool.nodes.keyslot(key) for key in keys}
             if len(slots) != 1:
-                raise RedisClusterException("{0} - all keys must map to the same key slot".format(command))
+                raise RedisClusterException(
+                    "{0} - all keys must map to the same key slot".format(command)
+                )
             return slots.pop()
 
         key = args[1]
@@ -305,15 +407,15 @@ class StrictRedisCluster(StrictRedis):
         command = args[0]
         node_flag = self.nodes_flags.get(command)
 
-        if node_flag == 'blocked':
+        if node_flag == "blocked":
             return blocked_command(self, command)
-        elif node_flag == 'random':
+        elif node_flag == "random":
             return [self.connection_pool.nodes.random_node()]
-        elif node_flag == 'all-masters':
+        elif node_flag == "all-masters":
             return self.connection_pool.nodes.all_masters()
-        elif node_flag == 'all-nodes':
+        elif node_flag == "all-nodes":
             return self.connection_pool.nodes.all_nodes()
-        elif node_flag == 'slot-id':
+        elif node_flag == "slot-id":
             return [self.connection_pool.nodes.node_from_slot(args[1])]
         else:
             return None
@@ -363,7 +465,7 @@ class StrictRedisCluster(StrictRedis):
 
             try:
                 if asking:
-                    r.send_command('ASKING')
+                    r.send_command("ASKING")
                     self.parse_response(r, "ASKING", **kwargs)
                     asking = False
 
@@ -390,7 +492,9 @@ class StrictRedisCluster(StrictRedis):
                 self.refresh_table_asap = True
                 self.connection_pool.nodes.increment_reinitialize_counter()
 
-                node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
+                node = self.connection_pool.nodes.set_node(
+                    e.host, e.port, server_type="master"
+                )
                 self.connection_pool.nodes.slots[e.slot_id][0] = node
             except TryAgainError as e:
                 if ttl < self.RedisClusterRequestTTL / 2:
@@ -400,7 +504,7 @@ class StrictRedisCluster(StrictRedis):
             finally:
                 self.connection_pool.release(r)
 
-        raise ClusterError('TTL exhausted.')
+        raise ClusterError("TTL exhausted.")
 
     def _execute_command_on_nodes(self, nodes, *args, **kwargs):
         """
@@ -448,8 +552,8 @@ class StrictRedisCluster(StrictRedis):
         """
         out = {}
         for node in mapping:
-            for slot in node['slots']:
-                out[str(slot)] = node['id']
+            for slot in node["slots"]:
+                out[str(slot)] = node["id"]
         return out
 
     def cluster_addslots(self, node_id, *slots):
@@ -458,7 +562,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to specefied node
         """
-        return self.execute_command('CLUSTER ADDSLOTS', *slots, node_id=node_id)
+        return self.execute_command("CLUSTER ADDSLOTS", *slots, node_id=node_id)
 
     def cluster_countkeysinslot(self, slot_id):
         """
@@ -466,7 +570,7 @@ class StrictRedisCluster(StrictRedis):
 
         Send to node based on specefied slot_id
         """
-        return self.execute_command('CLUSTER COUNTKEYSINSLOT', slot_id)
+        return self.execute_command("CLUSTER COUNTKEYSINSLOT", slot_id)
 
     def cluster_count_failure_report(self, node_id):
         """
@@ -474,7 +578,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to specefied node
         """
-        return self.execute_command('CLUSTER COUNT-FAILURE-REPORTS', node_id=node_id)
+        return self.execute_command("CLUSTER COUNT-FAILURE-REPORTS", node_id=node_id)
 
     def cluster_delslots(self, *slots):
         """
@@ -486,7 +590,7 @@ class StrictRedisCluster(StrictRedis):
         cluster_nodes = self._nodes_slots_to_slots_nodes(self.cluster_nodes())
 
         return [
-            self.execute_command('CLUSTER DELSLOTS', slot, node_id=cluster_nodes[slot])
+            self.execute_command("CLUSTER DELSLOTS", slot, node_id=cluster_nodes[slot])
             for slot in slots
         ]
 
@@ -496,8 +600,11 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to specefied node
         """
-        assert option.upper() in ('FORCE', 'TAKEOVER')  # TODO: change this option handling
-        return self.execute_command('CLUSTER FAILOVER', Token(option))
+        assert option.upper() in (
+            "FORCE",
+            "TAKEOVER",
+        )  # TODO: change this option handling
+        return self.execute_command("CLUSTER FAILOVER", Token(option))
 
     def cluster_info(self):
         """
@@ -505,7 +612,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to random node in the cluster
         """
-        return self.execute_command('CLUSTER INFO')
+        return self.execute_command("CLUSTER INFO")
 
     def cluster_keyslot(self, name):
         """
@@ -513,7 +620,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to random node in the cluster
         """
-        return self.execute_command('CLUSTER KEYSLOT', name)
+        return self.execute_command("CLUSTER KEYSLOT", name)
 
     def cluster_meet(self, node_id, host, port):
         """
@@ -521,7 +628,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to specefied node
         """
-        return self.execute_command('CLUSTER MEET', host, port, node_id=node_id)
+        return self.execute_command("CLUSTER MEET", host, port, node_id=node_id)
 
     def cluster_nodes(self):
         """
@@ -529,7 +636,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to random node in the cluster
         """
-        return self.execute_command('CLUSTER NODES')
+        return self.execute_command("CLUSTER NODES")
 
     def cluster_replicate(self, target_node_id):
         """
@@ -537,7 +644,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to specefied node
         """
-        return self.execute_command('CLUSTER REPLICATE', target_node_id)
+        return self.execute_command("CLUSTER REPLICATE", target_node_id)
 
     def cluster_reset(self, node_id, soft=True):
         """
@@ -548,7 +655,9 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to specefied node
         """
-        return self.execute_command('CLUSTER RESET', Token('SOFT' if soft else 'HARD'), node_id=node_id)
+        return self.execute_command(
+            "CLUSTER RESET", Token("SOFT" if soft else "HARD"), node_id=node_id
+        )
 
     def cluster_reset_all_nodes(self, soft=True):
         """
@@ -561,9 +670,7 @@ class StrictRedisCluster(StrictRedis):
         """
         return [
             self.execute_command(
-                'CLUSTER RESET',
-                Token('SOFT' if soft else 'HARD'),
-                node_id=node['id'],
+                "CLUSTER RESET", Token("SOFT" if soft else "HARD"), node_id=node["id"]
             )
             for node in self.cluster_nodes()
         ]
@@ -574,13 +681,13 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to all nodes in the cluster
         """
-        return self.execute_command('CLUSTER SAVECONFIG')
+        return self.execute_command("CLUSTER SAVECONFIG")
 
     def cluster_get_keys_in_slot(self, slot, num_keys):
         """
         Returns the number of keys in the specefied cluster slot
         """
-        return self.execute_command('CLUSTER GETKEYSINSLOT', slot, num_keys)
+        return self.execute_command("CLUSTER GETKEYSINSLOT", slot, num_keys)
 
     def cluster_set_config_epoch(self, node_id, epoch):
         """
@@ -588,7 +695,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to specefied node
         """
-        return self.execute_command('CLUSTER SET-CONFIG-EPOCH', epoch, node_id=node_id)
+        return self.execute_command("CLUSTER SET-CONFIG-EPOCH", epoch, node_id=node_id)
 
     # TODO: Determine what the purpose of bind_to_node_ip is going to be
     def cluster_setslot(self, node_id, slot_id, state, bind_to_node_id=None):
@@ -597,12 +704,14 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to specefied node
         """
-        if state.upper() in ('IMPORTING', 'MIGRATING', 'NODE') and node_id is not None:
-            return self.execute_command('CLUSTER SETSLOT', slot_id, Token(state), node_id)
-        elif state.upper() == 'STABLE':
-            return self.execute_command('CLUSTER SETSLOT', slot_id, Token('STABLE'))
+        if state.upper() in ("IMPORTING", "MIGRATING", "NODE") and node_id is not None:
+            return self.execute_command(
+                "CLUSTER SETSLOT", slot_id, Token(state), node_id
+            )
+        elif state.upper() == "STABLE":
+            return self.execute_command("CLUSTER SETSLOT", slot_id, Token("STABLE"))
         else:
-            raise RedisError('Invalid slot state: {0}'.format(state))
+            raise RedisError("Invalid slot state: {0}".format(state))
 
     def cluster_slaves(self, target_node_id):
         """
@@ -610,7 +719,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to targeted cluster node
         """
-        return self.execute_command('CLUSTER SLAVES', target_node_id)
+        return self.execute_command("CLUSTER SLAVES", target_node_id)
 
     def cluster_slots(self):
         """
@@ -618,7 +727,7 @@ class StrictRedisCluster(StrictRedis):
 
         Sends to random node in the cluster
         """
-        return self.execute_command('CLUSTER SLOTS')
+        return self.execute_command("CLUSTER SLOTS")
 
     ##########
     # All methods that must have custom implementation
@@ -654,11 +763,11 @@ class StrictRedisCluster(StrictRedis):
 
                 conn = self.connection_pool.get_connection_by_node(nodeData[node])
 
-                pieces = ['SCAN', cursors[node]]
+                pieces = ["SCAN", cursors[node]]
                 if match is not None:
-                    pieces.extend([Token('MATCH'), match])
+                    pieces.extend([Token("MATCH"), match])
                 if count is not None:
-                    pieces.extend([Token('COUNT'), count])
+                    pieces.extend([Token("COUNT"), count])
 
                 conn.send_command(*pieces)
 
@@ -696,7 +805,7 @@ class StrictRedisCluster(StrictRedis):
         """
         if args:
             if len(args) != 1 or not isinstance(args[0], dict):
-                raise RedisError('MSET requires **kwargs or a single dict arg')
+                raise RedisError("MSET requires **kwargs or a single dict arg")
             kwargs.update(args[0])
 
         for pair in iteritems(kwargs):
@@ -716,7 +825,7 @@ class StrictRedisCluster(StrictRedis):
         """
         if args:
             if len(args) != 1 or not isinstance(args[0], dict):
-                raise RedisError('MSETNX requires **kwargs or a single dict arg')
+                raise RedisError("MSETNX requires **kwargs or a single dict arg")
             kwargs.update(args[0])
 
         # Itterate over all items and fail fast if one value is True.
@@ -766,7 +875,7 @@ class StrictRedisCluster(StrictRedis):
         count = 0
 
         for arg in names:
-            count += self.execute_command('DEL', arg)
+            count += self.execute_command("DEL", arg)
 
         return count
 
@@ -784,19 +893,19 @@ class StrictRedisCluster(StrictRedis):
 
         return False
 
-    def pubsub_channels(self, pattern='*', aggregate=True):
+    def pubsub_channels(self, pattern="*", aggregate=True):
         """
         Return a list of channels that have at least one subscriber.
         Aggregate toggles merging of response.
         """
-        return self.execute_command('PUBSUB CHANNELS', pattern, aggregate=aggregate)
+        return self.execute_command("PUBSUB CHANNELS", pattern, aggregate=aggregate)
 
     def pubsub_numpat(self, aggregate=True):
         """
         Returns the number of subscriptions to patterns.
         Aggregate toggles merging of response.
         """
-        return self.execute_command('PUBSUB NUMPAT', aggregate=aggregate)
+        return self.execute_command("PUBSUB NUMPAT", aggregate=aggregate)
 
     def pubsub_numsub(self, *args, **kwargs):
         """
@@ -805,8 +914,8 @@ class StrictRedisCluster(StrictRedis):
 
         ``aggregate`` keyword argument toggles merging of response.
         """
-        options = {'aggregate': kwargs.get('aggregate', True)}
-        return self.execute_command('PUBSUB NUMSUB', *args, **options)
+        options = {"aggregate": kwargs.get("aggregate", True)}
+        return self.execute_command("PUBSUB NUMSUB", *args, **options)
 
     ####
     # List commands
@@ -854,7 +963,18 @@ class StrictRedisCluster(StrictRedis):
 
         return None
 
-    def sort(self, name, start=None, num=None, by=None, get=None, desc=False, alpha=False, store=None, groups=None):
+    def sort(
+        self,
+        name,
+        start=None,
+        num=None,
+        by=None,
+        get=None,
+        desc=False,
+        alpha=False,
+        store=None,
+        groups=None,
+    ):
         """Sort and return the list, set or sorted set at ``name``.
 
         :start: and :num:
@@ -882,8 +1002,7 @@ class StrictRedisCluster(StrictRedis):
             A full implementation of the server side sort mechanics because many of the
             options work on multiple keys that can exist on multiple servers.
         """
-        if (start is None and num is not None) or \
-           (start is not None and num is None):
+        if (start is None and num is not None) or (start is not None and num is None):
             raise RedisError("RedisError: ``start`` and ``num`` must both be specified")
         try:
             data_type = b(self.type(name))
@@ -895,7 +1014,9 @@ class StrictRedisCluster(StrictRedis):
             elif data_type == b("list"):
                 data = self.lrange(name, 0, -1)
             else:
-                raise RedisClusterException("Unable to sort data type : {0}".format(data_type))
+                raise RedisClusterException(
+                    "Unable to sort data type : {0}".format(data_type)
+                )
             if by is not None:
                 # _sort_using_by_arg mutates data so we don't
                 # need need a return value.
@@ -907,7 +1028,7 @@ class StrictRedisCluster(StrictRedis):
             if desc:
                 data = data[::-1]
             if not (start is None and num is None):
-                data = data[start:start + num]
+                data = data[start : start + num]
 
             if get:
                 data = self._retrive_data_from_sort(data, get)
@@ -920,15 +1041,21 @@ class StrictRedisCluster(StrictRedis):
                     self.delete(store)
                     self.rpush(store, *data)
                 else:
-                    raise RedisClusterException("Unable to store sorted data for data type : {0}".format(data_type))
+                    raise RedisClusterException(
+                        "Unable to store sorted data for data type : {0}".format(
+                            data_type
+                        )
+                    )
 
                 return len(data)
 
             if groups:
                 if not get or isinstance(get, basestring) or len(get) < 2:
-                    raise DataError('when using "groups" the "get" argument '
-                                    'must be specified and contain at least '
-                                    'two keys')
+                    raise DataError(
+                        'when using "groups" the "get" argument '
+                        "must be specified and contain at least "
+                        "two keys"
+                    )
                 n = len(get)
                 return list(izip(*[data[i::n] for i in range(n)]))
             else:
@@ -958,14 +1085,14 @@ class StrictRedisCluster(StrictRedis):
         if getattr(k, "decode", None):
             k = k.decode("utf-8")
 
-        if '*' in g:
-            g = g.replace('*', k)
-            if '->' in g:
-                key, hash_key = g.split('->')
+        if "*" in g:
+            g = g.replace("*", k)
+            if "->" in g:
+                key, hash_key = g.split("->")
                 single_item = self.get(key, {}).get(hash_key)
             else:
                 single_item = self.get(g)
-        elif '#' in g:
+        elif "#" in g:
             single_item = k
         else:
             single_item = None
@@ -988,9 +1115,9 @@ class StrictRedisCluster(StrictRedis):
             if getattr(arg, "decode", None):
                 arg = arg.decode("utf-8")
 
-            key = by.replace('*', arg)
-            if '->' in by:
-                key, hash_key = key.split('->')
+            key = by.replace("*", arg)
+            if "->" in by:
+                key, hash_key = key.split("->")
                 v = self.hget(key, hash_key)
                 if alpha:
                     return v
@@ -998,6 +1125,7 @@ class StrictRedisCluster(StrictRedis):
                     return float(v)
             else:
                 return self.get(key)
+
         data.sort(key=_by_key)
 
     ###
@@ -1186,7 +1314,7 @@ class StrictRedisCluster(StrictRedis):
         By default it will generate a 16 character long string based on
         ascii uppercase letters and digits.
         """
-        return ''.join(random.choice(chars) for _ in range(size))
+        return "".join(random.choice(chars) for _ in range(size))
 
 
 class RedisCluster(StrictRedisCluster):
@@ -1195,13 +1323,11 @@ class RedisCluster(StrictRedisCluster):
     changed arguments to some commands to be more Pythonic, sane, or by
     accident.
     """
+
     # Overridden callbacks
     RESPONSE_CALLBACKS = dict_merge(
         StrictRedis.RESPONSE_CALLBACKS,
-        {
-            'TTL': lambda r: r >= 0 and r or None,
-            'PTTL': lambda r: r >= 0 and r or None,
-        }
+        {"TTL": lambda r: r >= 0 and r or None, "PTTL": lambda r: r >= 0 and r or None},
     )
 
     def pipeline(self, transaction=True, shard_hint=None):
@@ -1221,7 +1347,7 @@ class RedisCluster(StrictRedisCluster):
         return StrictClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
-            response_callbacks=self.response_callbacks
+            response_callbacks=self.response_callbacks,
         )
 
     def setex(self, name, value, time):
@@ -1233,7 +1359,7 @@ class RedisCluster(StrictRedisCluster):
         if isinstance(time, datetime.timedelta):
             time = time.seconds + time.days * 24 * 3600
 
-        return self.execute_command('SETEX', name, time, value)
+        return self.execute_command("SETEX", name, time, value)
 
     def lrem(self, name, value, num=0):
         """
@@ -1244,7 +1370,7 @@ class RedisCluster(StrictRedisCluster):
             num < 0: Remove elements equal to value moving from tail to head.
             num = 0: Remove all elements equal to value.
         """
-        return self.execute_command('LREM', name, num, value)
+        return self.execute_command("LREM", name, num, value)
 
     def zadd(self, name, *args, **kwargs):
         """
@@ -1273,7 +1399,7 @@ class RedisCluster(StrictRedisCluster):
             pieces.append(pair[1])
             pieces.append(pair[0])
 
-        return self.execute_command('ZADD', name, *pieces)
+        return self.execute_command("ZADD", name, *pieces)
 
 
 from rediscluster.pipeline import StrictClusterPipeline

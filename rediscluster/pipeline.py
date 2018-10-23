@@ -5,9 +5,7 @@ import sys
 
 # rediscluster imports
 from .client import StrictRedisCluster
-from .exceptions import (
-    RedisClusterException, AskError, MovedError, TryAgainError,
-)
+from .exceptions import RedisClusterException, AskError, MovedError, TryAgainError
 from .utils import clusterdown_wrapper, dict_merge
 
 # 3rd party imports
@@ -16,25 +14,40 @@ from redis.exceptions import ConnectionError, RedisError, TimeoutError
 from redis._compat import imap, unicode
 
 
-ERRORS_ALLOW_RETRY = (ConnectionError, TimeoutError, MovedError, AskError, TryAgainError)
+ERRORS_ALLOW_RETRY = (
+    ConnectionError,
+    TimeoutError,
+    MovedError,
+    AskError,
+    TryAgainError,
+)
 
 
 class StrictClusterPipeline(StrictRedisCluster):
     """
     """
 
-    def __init__(self, connection_pool, result_callbacks=None,
-                 response_callbacks=None, startup_nodes=None):
+    def __init__(
+        self,
+        connection_pool,
+        result_callbacks=None,
+        response_callbacks=None,
+        startup_nodes=None,
+    ):
         """
         """
         self.command_stack = []
         self.refresh_table_asap = False
         self.connection_pool = connection_pool
-        self.result_callbacks = result_callbacks or self.__class__.RESULT_CALLBACKS.copy()
+        self.result_callbacks = (
+            result_callbacks or self.__class__.RESULT_CALLBACKS.copy()
+        )
         self.startup_nodes = startup_nodes if startup_nodes else []
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
-        self.response_callbacks = dict_merge(response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy(),
-                                             self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
+        self.response_callbacks = dict_merge(
+            response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy(),
+            self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS,
+        )
 
     def __repr__(self):
         """
@@ -69,7 +82,9 @@ class StrictClusterPipeline(StrictRedisCluster):
     def pipeline_execute_command(self, *args, **options):
         """
         """
-        self.command_stack.append(PipelineCommand(args, options, len(self.command_stack)))
+        self.command_stack.append(
+            PipelineCommand(args, options, len(self.command_stack))
+        )
         return self
 
     def raise_first_error(self, stack):
@@ -84,9 +99,10 @@ class StrictClusterPipeline(StrictRedisCluster):
     def annotate_exception(self, exception, number, command):
         """
         """
-        cmd = unicode(' ').join(imap(unicode, command))
-        msg = unicode('Command # {0} ({1}) of pipeline caused error: {2}').format(
-            number, cmd, unicode(exception.args[0]))
+        cmd = unicode(" ").join(imap(unicode, command))
+        msg = unicode("Command # {0} ({1}) of pipeline caused error: {2}").format(
+            number, cmd, unicode(exception.args[0])
+        )
         exception.args = (msg,) + exception.args[1:]
 
     def execute(self, raise_on_error=True):
@@ -135,7 +151,9 @@ class StrictClusterPipeline(StrictRedisCluster):
         #     self.connection = None
 
     @clusterdown_wrapper
-    def send_cluster_commands(self, stack, raise_on_error=True, allow_redirections=True):
+    def send_cluster_commands(
+        self, stack, raise_on_error=True, allow_redirections=True
+    ):
         """
         Send a bunch of cluster commands to the redis cluster.
 
@@ -162,9 +180,12 @@ class StrictClusterPipeline(StrictRedisCluster):
 
             # now that we know the name of the node ( it's just a string in the form of host:port )
             # we can build a list of commands for each node.
-            node_name = node['name']
+            node_name = node["name"]
             if node_name not in nodes:
-                nodes[node_name] = NodeCommands(self.parse_response, self.connection_pool.get_connection_by_node(node))
+                nodes[node_name] = NodeCommands(
+                    self.parse_response,
+                    self.connection_pool.get_connection_by_node(node),
+                )
 
             nodes[node_name].append(c)
 
@@ -199,7 +220,10 @@ class StrictClusterPipeline(StrictRedisCluster):
         # if we have more commands to attempt, we've run into problems.
         # collect all the commands we are allowed to retry.
         # (MOVED, ASK, or connection errors or timeout errors)
-        attempt = sorted([c for c in attempt if isinstance(c.result, ERRORS_ALLOW_RETRY)], key=lambda x: x.position)
+        attempt = sorted(
+            [c for c in attempt if isinstance(c.result, ERRORS_ALLOW_RETRY)],
+            key=lambda x: x.position,
+        )
         if attempt and allow_redirections:
             # RETRY MAGIC HAPPENS HERE!
             # send these remaing comamnds one at a time using `execute_command`
@@ -220,7 +244,9 @@ class StrictClusterPipeline(StrictRedisCluster):
             for c in attempt:
                 try:
                     # send each command individually like we do in the main client.
-                    c.result = super(StrictClusterPipeline, self).execute_command(*c.args, **c.options)
+                    c.result = super(StrictClusterPipeline, self).execute_command(
+                        *c.args, **c.options
+                    )
                 except RedisError as e:
                     c.result = e
 
@@ -237,7 +263,9 @@ class StrictClusterPipeline(StrictRedisCluster):
         """
         """
         if not allow_redirections:
-            raise RedisClusterException("ASK & MOVED redirection not allowed in this pipeline")
+            raise RedisClusterException(
+                "ASK & MOVED redirection not allowed in this pipeline"
+            )
 
     def multi(self):
         """
@@ -247,7 +275,9 @@ class StrictClusterPipeline(StrictRedisCluster):
     def immediate_execute_command(self, *args, **options):
         """
         """
-        raise RedisClusterException("method immediate_execute_command() is not implemented")
+        raise RedisClusterException(
+            "method immediate_execute_command() is not implemented"
+        )
 
     def _execute_transaction(self, *args, **kwargs):
         """
@@ -272,24 +302,33 @@ class StrictClusterPipeline(StrictRedisCluster):
     def script_load_for_pipeline(self, *args, **kwargs):
         """
         """
-        raise RedisClusterException("method script_load_for_pipeline() is not implemented")
+        raise RedisClusterException(
+            "method script_load_for_pipeline() is not implemented"
+        )
 
     def delete(self, *names):
         """
         "Delete a key specified by ``names``"
         """
         if len(names) != 1:
-            raise RedisClusterException("deleting multiple keys is not implemented in pipeline command")
+            raise RedisClusterException(
+                "deleting multiple keys is not implemented in pipeline command"
+            )
 
-        return self.execute_command('DEL', names[0])
+        return self.execute_command("DEL", names[0])
 
 
 def block_pipeline_command(func):
     """
     Prints error because some pipelined commands should be blocked when running in cluster-mode
     """
+
     def inner(*args, **kwargs):
-        raise RedisClusterException("ERROR: Calling pipelined function {0} is blocked when running redis in cluster mode...".format(func.__name__))
+        raise RedisClusterException(
+            "ERROR: Calling pipelined function {0} is blocked when running redis in cluster mode...".format(
+                func.__name__
+            )
+        )
 
     return inner
 
@@ -299,13 +338,21 @@ StrictClusterPipeline.bgrewriteaof = block_pipeline_command(StrictRedis.bgrewrit
 StrictClusterPipeline.bgsave = block_pipeline_command(StrictRedis.bgsave)
 StrictClusterPipeline.bitop = block_pipeline_command(StrictRedis.bitop)
 StrictClusterPipeline.brpoplpush = block_pipeline_command(StrictRedis.brpoplpush)
-StrictClusterPipeline.client_getname = block_pipeline_command(StrictRedis.client_getname)
+StrictClusterPipeline.client_getname = block_pipeline_command(
+    StrictRedis.client_getname
+)
 StrictClusterPipeline.client_kill = block_pipeline_command(StrictRedis.client_kill)
 StrictClusterPipeline.client_list = block_pipeline_command(StrictRedis.client_list)
-StrictClusterPipeline.client_setname = block_pipeline_command(StrictRedis.client_setname)
+StrictClusterPipeline.client_setname = block_pipeline_command(
+    StrictRedis.client_setname
+)
 StrictClusterPipeline.config_get = block_pipeline_command(StrictRedis.config_get)
-StrictClusterPipeline.config_resetstat = block_pipeline_command(StrictRedis.config_resetstat)
-StrictClusterPipeline.config_rewrite = block_pipeline_command(StrictRedis.config_rewrite)
+StrictClusterPipeline.config_resetstat = block_pipeline_command(
+    StrictRedis.config_resetstat
+)
+StrictClusterPipeline.config_rewrite = block_pipeline_command(
+    StrictRedis.config_rewrite
+)
 StrictClusterPipeline.config_set = block_pipeline_command(StrictRedis.config_set)
 StrictClusterPipeline.dbsize = block_pipeline_command(StrictRedis.dbsize)
 StrictClusterPipeline.echo = block_pipeline_command(StrictRedis.echo)
@@ -335,14 +382,28 @@ StrictClusterPipeline.script_kill = block_pipeline_command(StrictRedis.script_ki
 StrictClusterPipeline.script_load = block_pipeline_command(StrictRedis.script_load)
 StrictClusterPipeline.sdiff = block_pipeline_command(StrictRedis.sdiff)
 StrictClusterPipeline.sdiffstore = block_pipeline_command(StrictRedis.sdiffstore)
-StrictClusterPipeline.sentinel_get_master_addr_by_name = block_pipeline_command(StrictRedis.sentinel_get_master_addr_by_name)
-StrictClusterPipeline.sentinel_master = block_pipeline_command(StrictRedis.sentinel_master)
-StrictClusterPipeline.sentinel_masters = block_pipeline_command(StrictRedis.sentinel_masters)
-StrictClusterPipeline.sentinel_monitor = block_pipeline_command(StrictRedis.sentinel_monitor)
-StrictClusterPipeline.sentinel_remove = block_pipeline_command(StrictRedis.sentinel_remove)
-StrictClusterPipeline.sentinel_sentinels = block_pipeline_command(StrictRedis.sentinel_sentinels)
+StrictClusterPipeline.sentinel_get_master_addr_by_name = block_pipeline_command(
+    StrictRedis.sentinel_get_master_addr_by_name
+)
+StrictClusterPipeline.sentinel_master = block_pipeline_command(
+    StrictRedis.sentinel_master
+)
+StrictClusterPipeline.sentinel_masters = block_pipeline_command(
+    StrictRedis.sentinel_masters
+)
+StrictClusterPipeline.sentinel_monitor = block_pipeline_command(
+    StrictRedis.sentinel_monitor
+)
+StrictClusterPipeline.sentinel_remove = block_pipeline_command(
+    StrictRedis.sentinel_remove
+)
+StrictClusterPipeline.sentinel_sentinels = block_pipeline_command(
+    StrictRedis.sentinel_sentinels
+)
 StrictClusterPipeline.sentinel_set = block_pipeline_command(StrictRedis.sentinel_set)
-StrictClusterPipeline.sentinel_slaves = block_pipeline_command(StrictRedis.sentinel_slaves)
+StrictClusterPipeline.sentinel_slaves = block_pipeline_command(
+    StrictRedis.sentinel_slaves
+)
 StrictClusterPipeline.shutdown = block_pipeline_command(StrictRedis.shutdown)
 StrictClusterPipeline.sinter = block_pipeline_command(StrictRedis.sinter)
 StrictClusterPipeline.sinterstore = block_pipeline_command(StrictRedis.sinterstore)
@@ -403,7 +464,9 @@ class NodeCommands(object):
         # build up all commands into a single request to increase network perf
         # send all the commands and catch connection and timeout errors.
         try:
-            connection.send_packed_command(connection.pack_commands([c.args for c in commands]))
+            connection.send_packed_command(
+                connection.pack_commands([c.args for c in commands])
+            )
         except (ConnectionError, TimeoutError) as e:
             for c in commands:
                 c.result = e

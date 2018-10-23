@@ -1,45 +1,49 @@
 # -*- coding: utf-8 -*-
 
-from redis.exceptions import (
-    ResponseError, RedisError,
-)
+from redis.exceptions import ResponseError, RedisError
 
 
 class RedisClusterException(Exception):
     """
     """
+
     pass
 
 
 class RedisClusterError(Exception):
     """
     """
+
     pass
 
 
 class ClusterDownException(Exception):
     """
     """
+
     pass
 
 
 class ClusterError(RedisError):
     """
     """
+
     pass
 
 
 class ClusterCrossSlotError(ResponseError):
     """
     """
+
     message = "Keys in request don't hash to the same slot"
 
 
 class ClusterDownError(ClusterError, ResponseError):
     """
     """
+
     def __init__(self, resp):
-        self.args = (resp, )
+        self.args = (resp,)
         self.message = resp
 
 
@@ -55,10 +59,10 @@ class AskError(ResponseError):
 
     def __init__(self, resp):
         """should only redirect to master node"""
-        self.args = (resp, )
+        self.args = (resp,)
         self.message = resp
-        slot_id, new_node = resp.split(' ')
-        host, port = new_node.rsplit(':', 1)
+        slot_id, new_node = resp.split(" ")
+        host, port = new_node.rsplit(":", 1)
         self.slot_id = int(slot_id)
         self.node_addr = self.host, self.port = host, int(port)
 
@@ -66,6 +70,7 @@ class AskError(ResponseError):
 class TryAgainError(ResponseError):
     """
     """
+
     def __init__(self, *args, **kwargs):
         pass
 
@@ -73,9 +78,12 @@ class TryAgainError(ResponseError):
 class MovedError(AskError):
     """
     """
+
     pass
+
 
 class MasterDownError(ClusterDownError):
     """
     """
+
     pass
