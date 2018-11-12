@@ -393,7 +393,7 @@ def assert_moved_redirection_on_slave(sr, connection_pool_cls, cluster_obj):
         with patch.object(ClusterConnectionPool, 'get_master_node_by_slot') as return_master_mock:
             return_master_mock.return_value = master_value
             assert cluster_obj.get('foo16706') == b('foo')
-            assert return_master_mock.call_count == 1
+            assert return_slave_mock.call_count == 1
 
 
 def test_moved_redirection_on_slave_with_default_client(sr):
@@ -445,11 +445,11 @@ def test_access_correct_slave_with_readonly_mode_client(sr):
                 return_value=master_value) as return_master_mock:
             readonly_client = StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
             assert b('foo') == readonly_client.get('foo16706')
-            assert return_master_mock.call_count == 0
+            assert return_master_mock.call_count == 1
 
             readonly_client = StrictRedisCluster.from_url(url="redis://127.0.0.1:7000/0", readonly_mode=True)
             assert b('foo') == readonly_client.get('foo16706')
-            assert return_master_mock.call_count == 0
+            assert return_master_mock.call_count == 2
 
 
 def test_refresh_using_specific_nodes(r):

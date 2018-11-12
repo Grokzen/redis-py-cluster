@@ -389,7 +389,9 @@ class StrictRedisCluster(StrictRedis):
                     asking = False
                 if is_read_replica:
                     # Ask read replica to accept reads (see https://redis.io/commands/readonly)
+                    # TODO: do we need to handle errors from this response?
                     r.send_command('READONLY')
+                    self.parse_response(r, 'READONLY', **kwargs)
                     is_read_replica = False
 
                 r.send_command(*args)
