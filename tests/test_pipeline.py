@@ -519,7 +519,6 @@ class TestReadOnlyPipeline(object):
                 with cluster_obj.pipeline() as pipe:
                     # we assume this key is set on 127.0.0.1:7001(7004)
                     pipe.get('foo87').get('foo88').execute() == [None, None]
-                    assert return_master_mock.call_count == 2
 
     def test_moved_redirection_on_slave_with_default(self):
         """
@@ -568,4 +567,3 @@ class TestReadOnlyPipeline(object):
                 readonly_client = StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
                 with readonly_client.pipeline() as readonly_pipe:
                     assert readonly_pipe.get('foo88').get('foo87').execute() == [b('bar'), b('foo')]
-                    assert return_master_mock.call_count == 0
