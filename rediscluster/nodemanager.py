@@ -3,14 +3,14 @@
 # python std lib
 import random
 
+# 3rd party imports
+from redis import ConnectionError, TimeoutError, ResponseError
+from redis import StrictRedis
+from redis._compat import b, unicode, bytes, long, basestring
+
 # rediscluster imports
 from .crc import crc16
 from .exceptions import RedisClusterException
-
-# 3rd party imports
-from redis import StrictRedis
-from redis._compat import b, unicode, bytes, long, basestring
-from redis import ConnectionError, TimeoutError, ResponseError
 
 
 class NodeManager(object):
@@ -18,7 +18,8 @@ class NodeManager(object):
     """
     RedisClusterHashSlots = 16384
 
-    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False, **connection_kwargs):
+    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False,
+                 nodemanager_follow_cluster=False, **connection_kwargs):
         """
         :skip_full_coverage_check:
             Skips the check of cluster-require-full-coverage config, useful for clusters
@@ -148,7 +149,9 @@ class NodeManager(object):
             'port',
             'decode_responses',
         )
-        connection_kwargs = {k: v for k, v in self.connection_kwargs.items() if k in set(allowed_keys) - set(disabled_keys)}
+        connection_kwargs = {
+            k: v for k, v in self.connection_kwargs.items() if k in set(allowed_keys) - set(disabled_keys)
+        }
         return StrictRedis(host=host, port=port, decode_responses=decode_responses, **connection_kwargs)
 
     def initialize(self):
@@ -164,13 +167,16 @@ class NodeManager(object):
 
         nodes = self.orig_startup_nodes
 
-        # With this option the client will attempt to connect to any of the previous set of nodes instead of the original set of nodes
+        # With this option the client will attempt to connect to any of
+        # the previous set of nodes instead of the original set of nodes
         if self.nodemanager_follow_cluster:
             nodes = self.startup_nodes
 
         for node in nodes:
             try:
-                r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
+                r = self.get_redis_link(
+                    host=node["host"], port=node["port"], decode_responses=True
+                )
                 cluster_slots = r.execute_command("cluster", "slots")
                 startup_nodes_reachable = True
             except (ConnectionError, TimeoutError):
@@ -180,16 +186,27 @@ class NodeManager(object):
                 if 'CLUSTERDOWN' in e.message or 'MASTERDOWN' in e.message:
                     continue
                 else:
-                    raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {0}".format(node))
+                    raise RedisClusterException(
+                        "ERROR sending 'cluster slots' command to redis server: {0}".format(node)
+                    )
             except Exception:
-                raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {0}".format(node))
+                raise RedisClusterException(
+                    "ERROR sending 'cluster slots' command to redis server: {0}".format(node)
+                )
 
             all_slots_covered = True
 
             # If there's only one server in the cluster, its ``host`` is ''
             # Fix it to the host in startup_nodes
-            if (len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0 and len(self.startup_nodes) == 1):
+            if len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0 and len(self.startup_nodes) == 1:
                 cluster_slots[0][2][0] = self.startup_nodes[0]['host']
+
+            original_node_hostname = node['host']
+
+            def get_proper_hostname(hostname):
+                if hostname == '127.0.0.1':
+                    return original_node_hostname
+                return hostname
 
             # No need to decode response because StrictRedis should handle that for us...
             for slot in cluster_slots:
@@ -199,7 +216,9 @@ class NodeManager(object):
                     master_node[0] = node['host']
                 master_node[1] = int(master_node[1])
 
-                node, node_name = self.make_node_obj(master_node[0], master_node[1], 'master')
+                node, node_name = self.make_node_obj(
+                    get_proper_hostname(master_node[0]), master_node[1], 'master'
+                )
                 nodes_cache[node_name] = node
 
                 for i in range(int(slot[0]), int(slot[1]) + 1):
@@ -208,7 +227,11 @@ class NodeManager(object):
                         slave_nodes = [slot[j] for j in range(3, len(slot))]
 
                         for slave_node in slave_nodes:
-                            target_slave_node, slave_node_name = self.make_node_obj(slave_node[0], slave_node[1], 'slave')
+                            target_slave_node, slave_node_name = self.make_node_obj(
+                                get_proper_hostname(slave_node[0]),
+                                slave_node[1],
+                                'slave'
+                            )
                             nodes_cache[slave_node_name] = target_slave_node
                             tmp_slots[i].append(target_slave_node)
                     else:
@@ -219,7 +242,11 @@ class NodeManager(object):
                             )
 
                             if len(disagreements) > 5:
-                                raise RedisClusterException("startup_nodes could not agree on a valid slots cache. {0}".format(", ".join(disagreements)))
+                                raise RedisClusterException(
+                                    "startup_nodes could not agree on a valid slots cache. {0}".format(
+                                        ", ".join(disagreements)
+                                    )
+                                )
 
                 self.populate_startup_nodes()
                 self.refresh_table_asap = False
@@ -239,11 +266,12 @@ class NodeManager(object):
                 break
 
         if not startup_nodes_reachable:
-            raise RedisClusterException("Redis Cluster cannot be connected. Please provide at least one reachable node.")
+            raise RedisClusterException("Redis Cluster cannot be connected. "
+                                        "Please provide at least one reachable node.")
 
         if not all_slots_covered:
-            raise RedisClusterException("All slots are not covered after query all startup_nodes. {0} of {1} covered...".format(
-                len(tmp_slots), self.RedisClusterHashSlots))
+            raise RedisClusterException("All slots are not covered after query all startup_nodes. "
+                                        "{0} of {1} covered...".format(len(tmp_slots), self.RedisClusterHashSlots))
 
         # Set the tmp variables to the real variables
         self.slots = tmp_slots
@@ -266,12 +294,14 @@ class NodeManager(object):
 
         def node_require_full_coverage(node):
             try:
-                r_node = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
+                r_node = self.get_redis_link(
+                    host=node["host"], port=node["port"], decode_responses=True)
                 return "yes" in r_node.config_get("cluster-require-full-coverage").values()
             except ConnectionError:
                 return False
             except Exception:
-                raise RedisClusterException("ERROR sending 'config get cluster-require-full-coverage' command to redis server: {0}".format(node))
+                raise RedisClusterException("ERROR sending 'config get cluster-require-full-coverage' "
+                                            "command to redis server: {0}".format(node))
 
         # at least one node should have cluster-require-full-coverage yes
         return any(node_require_full_coverage(node) for node in nodes.values())
