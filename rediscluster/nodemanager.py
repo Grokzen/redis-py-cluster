@@ -191,6 +191,14 @@ class NodeManager(object):
             if (len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0 and len(self.startup_nodes) == 1):
                 cluster_slots[0][2][0] = self.startup_nodes[0]['host']
 
+            # handling node response considering own perspective,
+            # sending 127.0.0.1
+            original_host = node['host']
+            def get_proper_host(_host):
+                if _host == '127.0.0.1':
+                    return original_host
+                return _host
+
             # No need to decode response because StrictRedis should handle that for us...
             for slot in cluster_slots:
                 master_node = slot[2]
@@ -199,7 +207,7 @@ class NodeManager(object):
                     master_node[0] = node['host']
                 master_node[1] = int(master_node[1])
 
-                node, node_name = self.make_node_obj(master_node[0], master_node[1], 'master')
+                node, node_name = self.make_node_obj(get_proper_host(master_node[0]), master_node[1], 'master')
                 nodes_cache[node_name] = node
 
                 for i in range(int(slot[0]), int(slot[1]) + 1):
@@ -208,7 +216,7 @@ class NodeManager(object):
                         slave_nodes = [slot[j] for j in range(3, len(slot))]
 
                         for slave_node in slave_nodes:
-                            target_slave_node, slave_node_name = self.make_node_obj(slave_node[0], slave_node[1], 'slave')
+                            target_slave_node, slave_node_name = self.make_node_obj(get_proper_host(slave_node[0]), slave_node[1], 'slave')
                             nodes_cache[slave_node_name] = target_slave_node
                             tmp_slots[i].append(target_slave_node)
                     else:
