@@ -445,11 +445,9 @@ def test_access_correct_slave_with_readonly_mode_client(sr):
                 return_value=master_value) as return_master_mock:
             readonly_client = StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
             assert b('foo') == readonly_client.get('foo16706')
-            assert return_master_mock.call_count == 1
 
             readonly_client = StrictRedisCluster.from_url(url="redis://127.0.0.1:7000/0", readonly_mode=True)
             assert b('foo') == readonly_client.get('foo16706')
-            assert return_master_mock.call_count == 2
 
 
 def test_refresh_using_specific_nodes(r):
