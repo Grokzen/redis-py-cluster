@@ -20,7 +20,7 @@ with open(os.path.join('docs', 'release-notes.rst')) as f:
 
 setup(
     name="redis-py-cluster",
-    version="1.3.5",
+    version="1.3.6",
     description="Library for communicating with Redis Clusters. Built on top of redis-py lib",
     long_description=readme + '\n\n' + history,
     author="Johan Andersson",
@@ -31,7 +31,7 @@ setup(
     url='http://github.com/grokzen/redis-py-cluster',
     license='MIT',
     install_requires=[
-        'redis>=2.10.6'
+        'redis==2.10.6'
     ],
     keywords=[
         'redis',
