@@ -1,8 +1,14 @@
 Release Notes
 =============
 
+1.3.6 (Nov 16, 2018)
+--------------------
+
+    * Pin upstream redis-py package to release 2.10.6 to avoid issues with incompatible version 3.0.0
+
+
 1.3.5 (July 22, 2018)
---------------
+---------------------
 
     * Add Redis 4 compatability fix to CLUSTER NODES command (See issue #217)
     * Fixed bug with command "CLUSTER GETKEYSINSLOT" that was throwing exceptions
