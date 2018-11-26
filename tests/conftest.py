@@ -6,11 +6,11 @@ import sys
 import json
 
 # rediscluster imports
-from rediscluster import StrictRedisCluster, RedisCluster
+from rediscluster import RedisCluster
 
 # 3rd party imports
 import pytest
-from redis import StrictRedis
+from redis import Redis
 from distutils.version import StrictVersion
 
 # put our path in front so we can be sure we are testing locally not against the global package
@@ -100,33 +100,33 @@ def skip_if_redis_py_version_lt(min_version):
 @pytest.fixture()
 def o(request, *args, **kwargs):
     """
-    Create a StrictRedisCluster instance with decode_responses set to True.
+    Create a RedisCluster instance with decode_responses set to True.
     """
-    return _init_client(request, cls=StrictRedisCluster, decode_responses=True, **kwargs)
+    return _init_client(request, cls=RedisCluster, decode_responses=True, **kwargs)
 
 
 @pytest.fixture()
 def r(request, *args, **kwargs):
     """
-    Create a StrictRedisCluster instance with default settings.
+    Create a RedisCluster instance with default settings.
     """
-    return _init_client(request, cls=StrictRedisCluster, **kwargs)
+    return _init_client(request, cls=RedisCluster, **kwargs)
 
 
 @pytest.fixture()
 def ro(request, *args, **kwargs):
     """
-    Create a StrictRedisCluster instance with readonly mode
+    Create a RedisCluster instance with readonly mode
     """
     params = {'readonly_mode': True}
     params.update(kwargs)
-    return _init_client(request, cls=StrictRedisCluster, **params)
+    return _init_client(request, cls=RedisCluster, **params)
 
 
 @pytest.fixture()
 def s(*args, **kwargs):
     """
-    Create a StrictRedisCluster instance with 'init_slot_cache' set to false
+    Create a RedisCluster instance with 'init_slot_cache' set to false
     """
     s = _get_client(init_slot_cache=False, **kwargs)
     assert s.connection_pool.nodes.slots == {}
@@ -137,14 +137,14 @@ def s(*args, **kwargs):
 @pytest.fixture()
 def t(*args, **kwargs):
     """
-    Create a regular StrictRedis object instance
+    Create a regular Redis object instance
     """
-    return StrictRedis(*args, **kwargs)
+    return Redis(*args, **kwargs)
 
 
 @pytest.fixture()
 def sr(request, *args, **kwargs):
     """
-    Returns a instance of StrictRedisCluster
+    Returns a instance of RedisCluster
     """
-    return _init_client(request, reinitialize_steps=1, cls=StrictRedisCluster, **kwargs)
+    return _init_client(request, reinitialize_steps=1, cls=RedisCluster, **kwargs)

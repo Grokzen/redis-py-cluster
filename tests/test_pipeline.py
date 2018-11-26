@@ -5,7 +5,7 @@ from __future__ import with_statement
 import re
 
 # rediscluster imports
-from rediscluster.client import StrictRedisCluster
+from rediscluster.client import RedisCluster
 from rediscluster.connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
 from rediscluster.exceptions import RedisClusterException
 from tests.conftest import _get_client
@@ -527,7 +527,7 @@ class TestReadOnlyPipeline(object):
         """
         self.assert_moved_redirection_on_slave(
             ClusterConnectionPool,
-            StrictRedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
+            RedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
         )
 
     def test_moved_redirection_on_slave_with_readonly_mode_client(self):
@@ -536,7 +536,7 @@ class TestReadOnlyPipeline(object):
         """
         self.assert_moved_redirection_on_slave(
             ClusterReadOnlyConnectionPool,
-            StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True, reinitialize_steps=1)
+            RedisCluster(host="127.0.0.1", port=7000, readonly_mode=True, reinitialize_steps=1)
         )
 
     def test_access_correct_slave_with_readonly_mode_client(self, sr):
@@ -564,6 +564,6 @@ class TestReadOnlyPipeline(object):
                     ClusterConnectionPool,
                     'get_master_node_by_slot',
                     return_value=master_value) as return_master_mock:
-                readonly_client = StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
+                readonly_client = RedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
                 with readonly_client.pipeline() as readonly_pipe:
                     assert readonly_pipe.get('foo88').get('foo87').execute() == [b('bar'), b('foo')]

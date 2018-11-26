@@ -378,16 +378,16 @@ redis-install:
 
 benchmark:
 	@echo ""
-	@echo " -- Running Simple benchmark with StrictRedis lib and non cluster server --"
+	@echo " -- Running Simple benchmark with Redis lib and non cluster server --"
 	python benchmarks/simple.py --port 7007 --timeit --nocluster
 	@echo ""
-	@echo " -- Running Simple benchmark with StrictRedisCluster lib and cluster server --"
+	@echo " -- Running Simple benchmark with RedisCluster lib and cluster server --"
 	python benchmarks/simple.py --port 7001 --timeit
 	@echo ""
-	@echo " -- Running Simple benchmark with pipelines & StrictRedis lib and non cluster server --"
+	@echo " -- Running Simple benchmark with pipelines & Redis lib and non cluster server --"
 	python benchmarks/simple.py --port 7007 --timeit --pipeline --nocluster
 	@echo ""
-	@echo " -- Running Simple benchmark with StrictRedisCluster lib and cluster server"
+	@echo " -- Running Simple benchmark with RedisCluster lib and cluster server"
 	python benchmarks/simple.py --port 7001 --timeit --pipeline
 
 ptp:

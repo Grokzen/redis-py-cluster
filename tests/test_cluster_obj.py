@@ -6,7 +6,7 @@ import re
 import time
 
 # rediscluster imports
-from rediscluster import StrictRedisCluster
+from rediscluster import RedisCluster
 from rediscluster.connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
 from rediscluster.exceptions import (
     RedisClusterException, MovedError, AskError, ClusterDownError,
@@ -17,7 +17,7 @@ from tests.conftest import _get_client, skip_if_server_version_lt, skip_if_not_p
 # 3rd party imports
 from mock import patch, Mock, MagicMock
 from redis._compat import b, unicode
-from redis import StrictRedis
+from redis import Redis
 import pytest
 
 pytestmark = skip_if_server_version_lt('2.9.0')
@@ -32,7 +32,7 @@ class DummyConnection(object):
 
 
 def test_representation(r):
-    assert re.search('^StrictRedisCluster<[0-9\.\:\,].+>$', str(r))
+    assert re.search('^RedisCluster<[0-9\.\:\,].+>$', str(r))
 
 
 def test_blocked_strict_redis_args():
@@ -40,7 +40,7 @@ def test_blocked_strict_redis_args():
     Some arguments should explicitly be blocked because they will not work in a cluster setup
     """
     params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}]}
-    c = StrictRedisCluster(**params)
+    c = RedisCluster(**params)
     assert c.connection_pool.connection_kwargs["socket_timeout"] == ClusterConnectionPool.RedisClusterDefaultTimeout
 
     with pytest.raises(RedisClusterException) as ex:
@@ -72,7 +72,7 @@ def test_host_port_startup_node():
     """
     h = "192.168.0.1"
     p = 7000
-    c = StrictRedisCluster(host=h, port=p, init_slot_cache=False)
+    c = RedisCluster(host=h, port=p, init_slot_cache=False)
     assert {"host": h, "port": p} in c.connection_pool.nodes.startup_nodes
 
 
@@ -95,25 +95,25 @@ def test_readonly_instance(ro):
 
 def test_custom_connectionpool():
     """
-    Test that a custom connection pool will be used by StrictRedisCluster
+    Test that a custom connection pool will be used by RedisCluster
     """
     h = "192.168.0.1"
     p = 7001
     pool = DummyConnectionPool(host=h, port=p, connection_class=DummyConnection,
                                startup_nodes=[{'host': h, 'port': p}],
                                init_slot_cache=False)
-    c = StrictRedisCluster(connection_pool=pool, init_slot_cache=False)
+    c = RedisCluster(connection_pool=pool, init_slot_cache=False)
     assert c.connection_pool is pool
     assert c.connection_pool.connection_class == DummyConnection
     assert {"host": h, "port": p} in c.connection_pool.nodes.startup_nodes
 
 
-@patch('rediscluster.nodemanager.StrictRedis', new=MagicMock())
+@patch('rediscluster.nodemanager.Redis', new=MagicMock())
 def test_skip_full_coverage_check():
     """
     Test if the cluster_require_full_coverage NodeManager method was not called with the flag activated
     """
-    c = StrictRedisCluster("192.168.0.1", 7001, init_slot_cache=False, skip_full_coverage_check=True)
+    c = RedisCluster("192.168.0.1", 7001, init_slot_cache=False, skip_full_coverage_check=True)
     c.connection_pool.nodes.cluster_require_full_coverage = MagicMock()
     c.connection_pool.nodes.initialize()
     assert not c.connection_pool.nodes.cluster_require_full_coverage.called
@@ -144,7 +144,7 @@ def test_blocked_transaction(r):
     """
     with pytest.raises(RedisClusterException) as ex:
         r.transaction(None)
-    assert unicode(ex.value).startswith("method StrictRedisCluster.transaction() is not implemented"), unicode(ex.value)
+    assert unicode(ex.value).startswith("method RedisCluster.transaction() is not implemented"), unicode(ex.value)
 
 
 def test_cluster_of_one_instance():
@@ -153,10 +153,10 @@ def test_cluster_of_one_instance():
     one server.
 
     There is another redis server joining the cluster, hold slot 0, and
-    eventually quit the cluster. The StrictRedisCluster instance may get confused
+    eventually quit the cluster. The RedisCluster instance may get confused
     when slots mapping and nodes change during the test.
     """
-    with patch.object(StrictRedisCluster, 'parse_response') as parse_response_mock:
+    with patch.object(RedisCluster, 'parse_response') as parse_response_mock:
         with patch.object(NodeManager, 'initialize', autospec=True) as init_mock:
             def side_effect(self, *args, **kwargs):
                 def ok_call(self, *args, **kwargs):
@@ -198,7 +198,7 @@ def test_cluster_of_one_instance():
             parse_response_mock.side_effect = side_effect
             init_mock.side_effect = side_effect_rebuild_slots_cache
 
-            rc = StrictRedisCluster(host='127.0.0.1', port=7006)
+            rc = RedisCluster(host='127.0.0.1', port=7006)
             rc.set("foo", "bar")
 
 
@@ -226,12 +226,12 @@ def test_refresh_table_asap():
         mock_initialize.return_value = None
 
         # Patch parse_response to avoid issues when the cluster sometimes return MOVED
-        with patch.object(StrictRedisCluster, 'parse_response') as mock_parse_response:
+        with patch.object(RedisCluster, 'parse_response') as mock_parse_response:
             def side_effect(self, *args, **kwargs):
                 return None
             mock_parse_response.side_effect = side_effect
 
-            r = StrictRedisCluster(host="127.0.0.1", port=7000)
+            r = RedisCluster(host="127.0.0.1", port=7000)
             r.connection_pool.nodes.slots[12182] = [{
                 "host": "127.0.0.1",
                 "port": 7002,
@@ -261,14 +261,14 @@ def test_ask_redirection():
 
     Important thing to verify is that it tries to talk to the second node.
     """
-    r = StrictRedisCluster(host="127.0.0.1", port=7000)
+    r = RedisCluster(host="127.0.0.1", port=7000)
     r.connection_pool.nodes.nodes['127.0.0.1:7001'] = {
         'host': u'127.0.0.1',
         'server_type': 'master',
         'port': 7001,
         'name': '127.0.0.1:7001'
     }
-    with patch.object(StrictRedisCluster,
+    with patch.object(RedisCluster,
                       'parse_response') as parse_response:
 
         host_ip = find_node_ip_based_on_port(r, '7001')
@@ -296,8 +296,8 @@ def test_pipeline_ask_redirection():
 
     Important thing to verify is that it tries to talk to the second node.
     """
-    r = StrictRedisCluster(host="127.0.0.1", port=7000)
-    with patch.object(StrictRedisCluster,
+    r = RedisCluster(host="127.0.0.1", port=7000)
+    with patch.object(RedisCluster,
                       'parse_response') as parse_response:
 
         def response(connection, *args, **options):
@@ -329,7 +329,7 @@ def test_moved_redirection():
 
     Important thing to verify is that it tries to talk to the second node.
     """
-    r = StrictRedisCluster(host="127.0.0.1", port=7000)
+    r = RedisCluster(host="127.0.0.1", port=7000)
     m = Mock(autospec=True)
 
     def ask_redirect_effect(connection, *args, **options):
@@ -356,7 +356,7 @@ def test_moved_redirection_pipeline():
 
     Important thing to verify is that it tries to talk to the second node.
     """
-    with patch.object(StrictRedisCluster, 'parse_response') as parse_response:
+    with patch.object(RedisCluster, 'parse_response') as parse_response:
         def moved_redirect_effect(connection, *args, **options):
             def ok_response(connection, *args, **options):
                 assert connection.host == "127.0.0.1"
@@ -368,7 +368,7 @@ def test_moved_redirection_pipeline():
 
         parse_response.side_effect = moved_redirect_effect
 
-        r = StrictRedisCluster(host="127.0.0.1", port=7000)
+        r = RedisCluster(host="127.0.0.1", port=7000)
         p = r.pipeline()
         p.set("foo", "bar")
         assert p.execute() == ["MOCK_OK"]
@@ -404,7 +404,7 @@ def test_moved_redirection_on_slave_with_default_client(sr):
     assert_moved_redirection_on_slave(
         sr,
         ClusterConnectionPool,
-        StrictRedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
+        RedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
     )
 
 
@@ -415,7 +415,7 @@ def test_moved_redirection_on_slave_with_readonly_mode_client(sr):
     assert_moved_redirection_on_slave(
         sr,
         ClusterReadOnlyConnectionPool,
-        StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True, reinitialize_steps=1)
+        RedisCluster(host="127.0.0.1", port=7000, readonly_mode=True, reinitialize_steps=1)
     )
 
 
@@ -443,10 +443,10 @@ def test_access_correct_slave_with_readonly_mode_client(sr):
                 ClusterConnectionPool,
                 'get_master_node_by_slot',
                 return_value=master_value) as return_master_mock:
-            readonly_client = StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
+            readonly_client = RedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
             assert b('foo') == readonly_client.get('foo16706')
 
-            readonly_client = StrictRedisCluster.from_url(url="redis://127.0.0.1:7000/0", readonly_mode=True)
+            readonly_client = RedisCluster.from_url(url="redis://127.0.0.1:7000/0", readonly_mode=True)
             assert b('foo') == readonly_client.get('foo16706')
 
 
@@ -455,7 +455,7 @@ def test_refresh_using_specific_nodes(r):
     Test making calls on specific nodes when the cluster has failed over to
     another node
     """
-    with patch.object(StrictRedisCluster, 'parse_response') as parse_response_mock:
+    with patch.object(RedisCluster, 'parse_response') as parse_response_mock:
         with patch.object(NodeManager, 'initialize', autospec=True) as init_mock:
             # simulate 7006 as a failed node
             def side_effect(self, *args, **kwargs):
@@ -498,7 +498,7 @@ def test_refresh_using_specific_nodes(r):
 
             init_mock.side_effect = side_effect_rebuild_slots_cache
 
-            rc = StrictRedisCluster(host='127.0.0.1', port=7006)
+            rc = RedisCluster(host='127.0.0.1', port=7006)
             assert len(rc.connection_pool.nodes.nodes) == 1
             assert '127.0.0.1:7006' in rc.connection_pool.nodes.nodes
 

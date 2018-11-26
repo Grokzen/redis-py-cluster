@@ -8,7 +8,7 @@ from .crc import crc16
 from .exceptions import RedisClusterException
 
 # 3rd party imports
-from redis import StrictRedis
+from redis import Redis
 from redis._compat import b, unicode, bytes, long, basestring
 from redis import ConnectionError, TimeoutError, ResponseError
 
@@ -149,7 +149,7 @@ class NodeManager(object):
             'decode_responses',
         )
         connection_kwargs = {k: v for k, v in self.connection_kwargs.items() if k in set(allowed_keys) - set(disabled_keys)}
-        return StrictRedis(host=host, port=port, decode_responses=decode_responses, **connection_kwargs)
+        return Redis(host=host, port=port, decode_responses=decode_responses, **connection_kwargs)
 
     def initialize(self):
         """
@@ -191,7 +191,7 @@ class NodeManager(object):
             if (len(cluster_slots) == 1 and len(cluster_slots[0][2][0]) == 0 and len(self.startup_nodes) == 1):
                 cluster_slots[0][2][0] = self.startup_nodes[0]['host']
 
-            # No need to decode response because StrictRedis should handle that for us...
+            # No need to decode response because Redis should handle that for us...
             for slot in cluster_slots:
                 master_node = slot[2]
 
