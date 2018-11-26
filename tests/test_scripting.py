@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
-from __future__ import with_statement
+from __future__ import unicode_literals
 
 # rediscluster imports
 from rediscluster.exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import exceptions
-from redis._compat import b
 import pytest
 
 
@@ -114,7 +113,7 @@ class TestScripting(object):
         assert multiply.sha
         assert r.script_exists(multiply.sha) == [True]
         # [SET worked, GET 'a', result of multiple script]
-        assert pipe.execute() == [True, b('2'), 6]
+        assert pipe.execute() == [True, b'2', 6]
 
         # purge the script from redis's cache and re-run the pipeline
         # the multiply script object knows it's sha, so it shouldn't get
@@ -127,7 +126,7 @@ class TestScripting(object):
         multiply(keys=['a'], args=[3], client=pipe)
         assert r.script_exists(multiply.sha) == [False]
         # [SET worked, GET 'a', result of multiple script]
-        assert pipe.execute() == [True, b('2'), 6]
+        assert pipe.execute() == [True, b'2', 6]
 
     @pytest.mark.xfail(reason="Not Yet Implemented")
     def test_eval_msgpack_pipeline_error_in_lua(self, r):
