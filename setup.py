@@ -33,6 +33,12 @@ setup(
     install_requires=[
         'redis>=3.0.0,<3.1.0'
     ],
+    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
+    extras_require={
+        'hiredis': [
+            "hiredis>=0.1.3",
+        ],
+    },
     keywords=[
         'redis',
         'redis cluster',
