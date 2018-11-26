@@ -101,7 +101,7 @@ This code do NOT wrap `MULTI/EXEC` around the commands when packed
 
 .. code-block:: python
 
-    >>> from rediscluster import StrictRedisCluster as s
+    >>> from rediscluster import RedisCluster as s
     >>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
     >>> # Simulate that a slot is migrating to another node
     >>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}
@@ -120,7 +120,7 @@ This code DO wrap MULTI/EXEC around the commands when packed
 
 .. code-block:: python
 
-    >>> from rediscluster import StrictRedisCluster as s
+    >>> from rediscluster import RedisCluster as s
     >>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
     >>> # Simulate that a slot is migrating to another node
     >>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}

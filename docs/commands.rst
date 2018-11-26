@@ -1,9 +1,9 @@
 Implemented commands
 ====================
 
-This will describe all changes that StrictRedisCluster have done to make a command to work in a cluster environment.
+This will describe all changes that RedisCluster have done to make a command to work in a cluster environment.
 
-If a command is not listed here then the default implementation from `StrictRedis` in the `redis-py` library is used.
+If a command is not listed here then the default implementation from `Redis` in the `redis-py` library is used.
 
 
 
@@ -107,7 +107,7 @@ Either because they do not work, there is no working implementation or it is not
 Overridden methods
 ------------------
 
-The following methods is overridden from StrictRedis with a custom implementation.
+The following methods is overridden from Redis with a custom implementation.
 
 They can operate on keys that exists in different hashslots and require a client side implementation to work.
 

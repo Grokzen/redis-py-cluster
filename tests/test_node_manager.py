@@ -5,14 +5,14 @@ from __future__ import with_statement
 
 # rediscluster imports
 from tests.conftest import skip_if_server_version_lt
-from rediscluster import StrictRedisCluster
+from rediscluster import RedisCluster
 from rediscluster.exceptions import RedisClusterException
 from rediscluster.nodemanager import NodeManager
 
 # 3rd party imports
 import pytest
 from mock import patch, Mock
-from redis import StrictRedis
+from redis import Redis
 from redis._compat import unicode
 from redis import ConnectionError
 
@@ -57,7 +57,7 @@ def test_init_slots_cache_not_all_slots(s):
     """
     # Create wrapper function so we can inject custom 'CLUSTER SLOTS' command result
     def get_redis_link_wrapper(*args, **kwargs):
-        link = StrictRedis(host="127.0.0.1", port=7000, decode_responses=True)
+        link = Redis(host="127.0.0.1", port=7000, decode_responses=True)
 
         orig_exec_method = link.execute_command
 
@@ -91,7 +91,7 @@ def test_init_slots_cache_not_all_slots_not_require_full_coverage(s):
     """
     # Create wrapper function so we can inject custom 'CLUSTER SLOTS' command result
     def get_redis_link_wrapper(*args, **kwargs):
-        link = StrictRedis(host="127.0.0.1", port=7000, decode_responses=True)
+        link = Redis(host="127.0.0.1", port=7000, decode_responses=True)
 
         orig_exec_method = link.execute_command
 
@@ -130,7 +130,7 @@ def test_init_slots_cache(s):
         [10923, 16383, [b'127.0.0.1', 7002], [b'127.0.0.2', 7005]],
     ]
 
-    with patch.object(StrictRedis, 'execute_command') as execute_command_mock:
+    with patch.object(Redis, 'execute_command') as execute_command_mock:
         def patch_execute_command(*args, **kwargs):
             if args == ('CONFIG GET', 'cluster-require-full-coverage'):
                 return {'cluster-require-full-coverage': 'yes'}
@@ -202,7 +202,7 @@ def test_init_slots_cache_slots_collision():
         else:
             result = []
 
-        r = StrictRedisCluster(host=host, port=port, decode_responses=True)
+        r = RedisCluster(host=host, port=port, decode_responses=True)
         orig_execute_command = r.execute_command
 
         def execute_command(*args, **kwargs):
@@ -279,7 +279,7 @@ def test_cluster_slots_error():
     Check that exception is raised if initialize can't execute
     'CLUSTER SLOTS' command.
     """
-    with patch.object(StrictRedisCluster, 'execute_command') as execute_command_mock:
+    with patch.object(RedisCluster, 'execute_command') as execute_command_mock:
         execute_command_mock.side_effect = Exception("foobar")
 
         n = NodeManager(startup_nodes=[{}])
@@ -321,7 +321,7 @@ def test_cluster_one_instance():
     If the cluster exists of only 1 node then there is some hacks that must
     be validated they work.
     """
-    with patch.object(StrictRedis, 'execute_command') as mock_execute_command:
+    with patch.object(Redis, 'execute_command') as mock_execute_command:
         return_data = [[0, 16383, ['', 7006]]]
 
         def patch_execute_command(*args, **kwargs):
@@ -367,7 +367,7 @@ def test_init_with_down_node():
     def get_redis_link(host, port, decode_responses=False):
         if port == 7000:
             raise ConnectionError('mock connection error for 7000')
-        return StrictRedis(host=host, port=port, decode_responses=decode_responses)
+        return Redis(host=host, port=port, decode_responses=decode_responses)
 
     with patch.object(NodeManager, 'get_redis_link', side_effect=get_redis_link):
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
