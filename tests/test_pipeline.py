@@ -143,6 +143,34 @@ class TestPipeline(object):
             assert pipe.set('z', 'zzz').execute() == [True]
             assert r['z'] == b'zzz'
 
+    def test_transaction_with_empty_error_command(self, r):
+        """
+        Commands with custom EMPTY_ERROR functionality return their default
+        values in the pipeline no matter the raise_on_error preference
+        """
+        for error_switch in (True, False):
+            with r.pipeline() as pipe:
+                pipe.set('a', 1).mget([]).set('c', 3)
+                result = pipe.execute(raise_on_error=error_switch)
+
+                assert result[0]
+                assert result[1] == []
+                assert result[2]
+
+    def test_pipeline_with_empty_error_command(self, r):
+        """
+        Commands with custom EMPTY_ERROR functionality return their default
+        values in the pipeline no matter the raise_on_error preference
+        """
+        for error_switch in (True, False):
+            with r.pipeline(transaction=False) as pipe:
+                pipe.set('a', 1).mget([]).set('c', 3)
+                result = pipe.execute(raise_on_error=error_switch)
+
+                assert result[0]
+                assert result[1] == []
+                assert result[2]
+
     def test_parse_error_raised(self, r):
         with r.pipeline() as pipe:
             # the zrem is invalid because we don't pass any keys to it
@@ -256,6 +284,23 @@ class TestPipeline(object):
             assert unicode(ex.value).startswith(expected)
 
         assert r[key] == b'1'
+
+    def test_pipeline_with_bitfield(self, r):
+        with r.pipeline() as pipe:
+            pipe.set('a', '1')
+            bf = pipe.bitfield('b')
+            pipe2 = (bf
+                     .set('u8', 8, 255)
+                     .get('u8', 0)
+                     .get('u4', 8)  # 1111
+                     .get('u4', 12)  # 1111
+                     .get('u4', 13)  # 1110
+                     .execute())
+            pipe.get('a')
+            response = pipe.execute()
+
+            assert pipe == pipe2
+            assert response == [True, [0, 0, 15, 15, 14], b'1']
 
     def test_blocked_methods(self, r):
         """

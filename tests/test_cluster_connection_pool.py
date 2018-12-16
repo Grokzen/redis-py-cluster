@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
-from __future__ import with_statement
 import os
 import re
 import time
@@ -428,6 +427,36 @@ class TestConnectionPoolURLParsing(object):
             'db': 3,
             'password': None,
         }
+
+    def test_extra_typed_querystring_options(self):
+        pool = redis.ConnectionPool.from_url(
+            'redis://localhost/2?socket_timeout=20&socket_connect_timeout=10'
+            '&socket_keepalive=&retry_on_timeout=Yes&max_connections=10'
+        )
+
+        assert pool.connection_class == redis.Connection
+        assert pool.connection_kwargs == {
+            'host': 'localhost',
+            'port': 6379,
+            'db': 2,
+            'socket_timeout': 20.0,
+            'socket_connect_timeout': 10.0,
+            'retry_on_timeout': True,
+            'password': None,
+        }
+        assert pool.max_connections == 10
+
+    def test_boolean_parsing(self):
+        for expected, value in (
+                (None, None),
+                (None, ''),
+                (False, 0), (False, '0'),
+                (False, 'f'), (False, 'F'), (False, 'False'),
+                (False, 'n'), (False, 'N'), (False, 'No'),
+                (True, 1), (True, '1'),
+                (True, 'y'), (True, 'Y'), (True, 'Yes'),
+        ):
+            assert expected is to_bool(value)
 
     def test_extra_querystring_options(self):
         pool = redis.ConnectionPool.from_url('redis://localhost?a=1&b=2')
