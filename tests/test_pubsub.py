@@ -504,3 +504,24 @@ class TestPubSubPubSubSubcommands(object):
         r.pubsub(ignore_subscribe_messages=True).psubscribe('*oo', '*ar', 'b*z')
         assert r.pubsub_numpat() == 3
 
+
+class TestPubSubPings(object):
+
+    @skip_if_server_version_lt('3.0.0')
+    def test_send_pubsub_ping(self, r):
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.subscribe('foo')
+        p.ping()
+        assert wait_for_message(p) == make_message(type='pong', channel=None,
+                                                   data='',
+                                                   pattern=None)
+
+    @skip_if_server_version_lt('3.0.0')
+    @pytest.mark.xfail(reason="Pattern pubsub do not work currently")
+    def test_send_pubsub_ping_message(self, r):
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.subscribe('foo')
+        p.ping(message='hello world')
+        assert wait_for_message(p) == make_message(type='pong', channel=None,
+                                                   data='hello world',
+                                                   pattern=None)

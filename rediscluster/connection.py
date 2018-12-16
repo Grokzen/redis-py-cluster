@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
+from __future__ import unicode_literals
 import os
 import random
 import threading
