@@ -161,7 +161,7 @@ class StrictRedisCluster(StrictRedis):
         if "db" in kwargs:
             raise RedisClusterException("Argument 'db' is not possible to use in cluster mode")
 
-        if kwargs.get('ssl', False):
+        if kwargs.pop('ssl', False):  # Needs to be removed to avoid exception in redis Connection init
             connection_class = SSLClusterConnection
 
         if "connection_pool" in kwargs:
