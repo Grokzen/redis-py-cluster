@@ -16,7 +16,7 @@ from tests.conftest import _get_client, skip_if_server_version_lt, skip_if_not_p
 
 # 3rd party imports
 from mock import patch, Mock, MagicMock
-from redis._compat import b, unicode
+from redis._compat import unicode
 from redis import Redis
 import pytest
 
