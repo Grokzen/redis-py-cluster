@@ -36,7 +36,7 @@ from .utils import (
 from redis import Redis
 from redis.client import list_or_args, parse_info
 from redis.connection import Token
-from redis._compat import iteritems, basestring, b, izip, nativestr, long
+from redis._compat import iteritems, basestring, izip, nativestr, long
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
 
 
@@ -282,7 +282,7 @@ class RedisCluster(Redis):
         if transaction:
             raise RedisClusterException("transaction is deprecated in cluster mode")
 
-        return StrictClusterPipeline(
+        return ClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
             result_callbacks=self.result_callbacks,
@@ -1245,4 +1245,4 @@ class RedisCluster(Redis):
         return ''.join(random.choice(chars) for _ in range(size))
 
 
-from rediscluster.pipeline import StrictClusterPipeline
+from rediscluster.pipeline import ClusterPipeline
