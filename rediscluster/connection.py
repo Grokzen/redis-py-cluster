@@ -332,7 +332,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         return self.nodes.slots[slot][0]
 
-    def get_node_by_slot(self, slot, read_command=False):
+    def get_node_by_slot(self, slot, *args, **kwargs):
         """
         """
         return self.get_master_node_by_slot(slot)
