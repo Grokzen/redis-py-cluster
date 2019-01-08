@@ -8,7 +8,9 @@ import time
 
 # rediscluster imports
 from .connection import (
-    ClusterConnectionPool, ClusterWithReadReplicasConnectionPool, ClusterReadOnlyConnectionPool,
+    ClusterConnectionPool,
+    ClusterReadOnlyConnectionPool,
+    ClusterWithReadReplicasConnectionPool,
     SSLClusterConnection,
 )
 from .exceptions import (
@@ -73,15 +75,20 @@ class StrictRedisCluster(StrictRedis):
 
     # Not complete, but covers the major ones
     # https://redis.io/commands
-    READ_COMMANDS = ["BITPOS", "BITCOUNT", "EXISTS",
+    READ_COMMANDS = [
+        "BITPOS", "BITCOUNT",
+        "EXISTS",
         "GEOHASH", "GEOPOS", "GEODIST", "GEORADIUS", "GEORADIUSBYMEMBER",
         "GET", "GETBIT", "GETRANGE",
         "HEXISTS", "HGET", "HGETALL", "HKEYS", "HLEN", "HMGET", "HSTRLEN", "HVALS",
         "KEYS",
         "LINDEX", "LLEN", "LRANGE",
-        "MGET", "PTTL", "RANDOMKEY",
+        "MGET",
+        "PTTL",
+        "RANDOMKEY",
         "SCARD", "SDIFF", "SINTER", "SISMEMBER", "SMEMBERS", "SRANDMEMBER",
-        "STRLEN", "SUNION", "TTL",
+        "STRLEN", "SUNION",
+        "TTL",
         "ZCARD", "ZCOUNT", "ZRANGE", "ZSCORE"
     ]
 
