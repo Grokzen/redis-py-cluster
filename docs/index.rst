@@ -6,7 +6,7 @@
 Welcome to redis-py-cluster's documentation!
 ============================================
 
-This project is a port of `redis-rb-cluster` by antirez, with alot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster.
+This project is a port of `redis-rb-cluster` by antirez, with a lot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster.
 
 
 The source code is `available on github`_.
