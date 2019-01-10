@@ -114,7 +114,7 @@ def test_dict_merge_value_error():
 
 def test_blocked_command():
     with pytest.raises(RedisClusterException) as ex:
-        blocked_command(None, "SET")
+        blocked_command("SET")
     assert unicode(ex.value) == "Command: SET is blocked in redis cluster mode"
 
 

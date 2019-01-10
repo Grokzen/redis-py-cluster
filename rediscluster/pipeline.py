@@ -9,6 +9,7 @@ from .exceptions import (
     RedisClusterException, AskError, MovedError, TryAgainError,
 )
 from .utils import clusterdown_wrapper, dict_merge
+from .utils import blocked_command_pipeline
 
 # 3rd party imports
 from redis import StrictRedis
@@ -64,6 +65,10 @@ class StrictClusterPipeline(StrictRedisCluster):
     def execute_command(self, *args, **kwargs):
         """
         """
+        command = args[0]
+        node_flag = self.nodes_flags.get(command)
+        if node_flag in ['blocked', 'all-masters', 'all-nodes']:
+            return blocked_command_pipeline(command)
         return self.pipeline_execute_command(*args, **kwargs)
 
     def pipeline_execute_command(self, *args, **options):
@@ -152,10 +157,14 @@ class StrictClusterPipeline(StrictRedisCluster):
         # as we move through each command that still needs to be processed,
         # we figure out the slot number that command maps to, then from the slot determine the node.
         for c in attempt:
-            # refer to our internal node -> slot table that tells us where a given
-            # command should route to.
-            slot = self._determine_slot(*c.args)
-            node = self.connection_pool.get_node_by_slot(slot)
+            node = self.determine_node(*c.args)
+            if node:
+                node = node[0]
+            else:
+                # refer to our internal node -> slot table that tells us where a given
+                # command should route to.
+                slot = self._determine_slot(*c.args)
+                node = self.connection_pool.get_node_by_slot(slot)
 
             # little hack to make sure the node name is populated. probably could clean this up.
             self.connection_pool.nodes.set_node_name(node)

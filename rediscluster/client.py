@@ -306,7 +306,7 @@ class StrictRedisCluster(StrictRedis):
         node_flag = self.nodes_flags.get(command)
 
         if node_flag == 'blocked':
-            return blocked_command(self, command)
+            return blocked_command(command)
         elif node_flag == 'random':
             return [self.connection_pool.nodes.random_node()]
         elif node_flag == 'all-masters':

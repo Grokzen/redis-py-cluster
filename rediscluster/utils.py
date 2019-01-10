@@ -42,11 +42,18 @@ def dict_merge(*dicts):
     return merged
 
 
-def blocked_command(self, command):
+def blocked_command(command):
     """
     Raises a `RedisClusterException` mentioning the command is blocked.
     """
     raise RedisClusterException("Command: {0} is blocked in redis cluster mode".format(command))
+
+
+def blocked_command_pipeline(command):
+    """
+    Raises a `RedisClusterException` mentioning the command is blocked in pipeline.
+    """
+    raise RedisClusterException("Command: {0} in pipeline is blocked in redis cluster mode".format(command))
 
 
 def merge_result(command, res):
