@@ -177,7 +177,8 @@ class NodeManager(object):
                 continue
             except ResponseError as e:
                 # Isn't a cluster connection, so it won't parse these exceptions automatically
-                if 'CLUSTERDOWN' in e.message or 'MASTERDOWN' in e.message:
+                message = e.__str__()
+                if 'CLUSTERDOWN' in message or 'MASTERDOWN' in message:
                     continue
                 else:
                     raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {0}".format(node))
