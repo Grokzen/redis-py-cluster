@@ -14,7 +14,7 @@ import pytest
 from mock import patch, Mock
 from redis import Redis
 from redis._compat import unicode
-from redis import ConnectionError
+from redis import ConnectionError, ResponseError
 
 pytestmark = skip_if_server_version_lt('2.9.0')
 
@@ -282,10 +282,28 @@ def test_cluster_slots_error():
     with patch.object(RedisCluster, 'execute_command') as execute_command_mock:
         execute_command_mock.side_effect = Exception("foobar")
 
-        n = NodeManager(startup_nodes=[{}])
+        n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
 
-        with pytest.raises(RedisClusterException):
+        with pytest.raises(RedisClusterException) as e:
             n.initialize()
+
+        assert "ERROR sending 'cluster slots' command" in unicode(e)
+
+
+def test_cluster_slots_error_expected_responseerror():
+    """
+    Check that exception is not raised if initialize can't execute
+    'CLUSTER SLOTS' command but can hit other nodes.
+    """
+    with patch.object(StrictRedis, 'execute_command') as execute_command_mock:
+        execute_command_mock.side_effect = ResponseError("MASTERDOWN")
+
+        n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+
+        with pytest.raises(RedisClusterException) as e:
+            n.initialize()
+
+        assert 'Redis Cluster cannot be connected' in unicode(e)
 
 
 def test_set_node():
