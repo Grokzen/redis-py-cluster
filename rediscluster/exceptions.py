@@ -75,7 +75,20 @@ class MovedError(AskError):
     """
     pass
 
+
 class MasterDownError(ClusterDownError):
     """
     """
     pass
+
+
+class ClusterSlotsCommandError(RedisClusterException):
+    """
+    """
+    def __init__(self, node, cause):
+        super(ClusterSlotsCommandError, self).__init__(
+            "ERROR sending 'cluster slots' command to redis server: {0} - {1}".format(node, cause)
+        )
+
+        self.node = node
+        self.cause = cause

@@ -6,7 +6,7 @@ from __future__ import with_statement
 # rediscluster imports
 from tests.conftest import skip_if_server_version_lt
 from rediscluster import StrictRedisCluster
-from rediscluster.exceptions import RedisClusterException
+from rediscluster.exceptions import RedisClusterException, ClusterSlotsCommandError
 from rediscluster.nodemanager import NodeManager
 
 # 3rd party imports
@@ -284,7 +284,7 @@ def test_cluster_slots_error():
 
         n = NodeManager(startup_nodes=[{}])
 
-        with pytest.raises(RedisClusterException):
+        with pytest.raises(ClusterSlotsCommandError):
             n.initialize()
 
 

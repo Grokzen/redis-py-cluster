@@ -5,7 +5,7 @@ import random
 
 # rediscluster imports
 from .crc import crc16
-from .exceptions import RedisClusterException
+from .exceptions import RedisClusterException, ClusterSlotsCommandError
 
 # 3rd party imports
 from redis import StrictRedis
@@ -180,9 +180,9 @@ class NodeManager(object):
                 if 'CLUSTERDOWN' in e.message or 'MASTERDOWN' in e.message:
                     continue
                 else:
-                    raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {0}".format(node))
-            except Exception:
-                raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {0}".format(node))
+                    raise ClusterSlotsCommandError(node, e)
+            except Exception as e:
+                raise ClusterSlotsCommandError(node, e)
 
             all_slots_covered = True
 
