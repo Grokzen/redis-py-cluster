@@ -9,7 +9,7 @@ from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import StrictRedis
-from redis._compat import b, unicode, bytes, long, basestring
+from redis.connection import Encoder
 from redis import ConnectionError, TimeoutError, ResponseError
 
 
@@ -37,34 +37,22 @@ class NodeManager(object):
         self.reinitialize_steps = reinitialize_steps or 25
         self._skip_full_coverage_check = skip_full_coverage_check
         self.nodemanager_follow_cluster = nodemanager_follow_cluster
+        self.encoder = Encoder(
+            connection_kwargs.get('encoding', 'utf-8'),
+            connection_kwargs.get('encoding_errors', 'strict'),
+            connection_kwargs.get('decode_responses', False)
+        )
 
         if not self.startup_nodes:
             raise RedisClusterException("No startup nodes provided")
-
-    def encode(self, value):
-        """
-        Return a bytestring representation of the value.
-        This method is copied from Redis' connection.py:Connection.encode
-        """
-        if isinstance(value, bytes):
-            return value
-        elif isinstance(value, (int, long)):
-            value = b(str(value))
-        elif isinstance(value, float):
-            value = b(repr(value))
-        elif not isinstance(value, basestring):
-            value = unicode(value)
-        if isinstance(value, unicode):
-            # The encoding should be configurable as in connection.py:Connection.encode
-            value = value.encode('utf-8')
-        return value
 
     def keyslot(self, key):
         """
         Calculate keyslot for a given key.
         Tuned for compatibility with python 2.7.x
         """
-        k = self.encode(key)
+
+        k = self.encoder.encode(key)
 
         start = k.find(b"{")
 

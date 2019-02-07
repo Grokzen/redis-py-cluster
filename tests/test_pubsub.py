@@ -14,7 +14,7 @@ import pytest
 # import redis
 from redis import StrictRedis, Redis
 from redis.exceptions import ConnectionError
-from redis._compat import basestring, u, unichr, b
+from redis._compat import basestring, u, unichr
 
 from .conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt
 
@@ -487,7 +487,7 @@ class TestPubSubPubSubSubcommands(object):
     def test_pubsub_channels(self, r):
         r.pubsub(ignore_subscribe_messages=True).subscribe('foo', 'bar', 'baz', 'quux')
         channels = sorted(r.pubsub_channels())
-        assert channels == [b('bar'), b('baz'), b('foo'), b('quux')]
+        assert channels == [b'bar', b'baz', b'foo', b'quux']
 
     @skip_if_redis_py_version_lt('2.10.6')
     def test_pubsub_numsub(self, r):
@@ -495,7 +495,7 @@ class TestPubSubPubSubSubcommands(object):
         r.pubsub(ignore_subscribe_messages=True).subscribe('bar', 'baz')
         r.pubsub(ignore_subscribe_messages=True).subscribe('baz')
 
-        channels = [(b('bar'), 2), (b('baz'), 3), (b('foo'), 1)]
+        channels = [(b'bar', 2), (b'baz', 3), (b'foo', 1)]
         assert channels == sorted(r.pubsub_numsub('foo', 'bar', 'baz'))
 
     @skip_if_redis_py_version_lt('2.10.6')
