@@ -12,7 +12,7 @@ from tests.conftest import skip_if_server_version_lt, skip_if_redis_py_version_l
 
 # 3rd party imports
 import pytest
-from redis._compat import unichr, u, ascii_letters, iteritems, iterkeys, itervalues, unicode
+from redis._compat import unichr, ascii_letters, iteritems, iterkeys, itervalues, unicode
 from redis.client import parse_info
 from redis.exceptions import ResponseError, DataError, RedisError
 
@@ -234,7 +234,7 @@ class TestRedisCommands(object):
         assert r.get('a') is None
         byte_string = b'value'
         integer = 5
-        unicode_string = unichr(3456) + u('abcd') + unichr(3421)
+        unicode_string = unichr(3456) + 'abcd' + unichr(3421)
         assert r.set('byte_string', byte_string)
         assert r.set('integer', 5)
         assert r.set('unicode_string', unicode_string)

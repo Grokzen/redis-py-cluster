@@ -13,7 +13,7 @@ from tests.conftest import _get_client
 # 3rd party imports
 import pytest
 from mock import patch
-from redis._compat import u, unichr, unicode
+from redis._compat import unichr, unicode
 from redis.exceptions import WatchError, ResponseError, ConnectionError
 
 
@@ -239,7 +239,7 @@ class TestPipeline(object):
         assert r['a'] == b'1'
 
     def test_exec_error_in_no_transaction_pipeline_unicode_command(self, r):
-        key = unichr(3456) + u('abcd') + unichr(3421)
+        key = unichr(3456) + 'abcd' + unichr(3421)
         r[key] = 1
         with r.pipeline(transaction=False) as pipe:
             pipe.llen(key)
