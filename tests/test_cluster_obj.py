@@ -16,7 +16,7 @@ from tests.conftest import _get_client, skip_if_server_version_lt, skip_if_not_p
 
 # 3rd party imports
 from mock import patch, Mock, MagicMock
-from redis._compat import b, unicode
+from redis._compat import unicode
 from redis import StrictRedis
 import pytest
 
@@ -392,7 +392,7 @@ def assert_moved_redirection_on_slave(sr, connection_pool_cls, cluster_obj):
         master_value = {'host': '127.0.0.1', 'name': '127.0.0.1:7000', 'port': 7000, 'server_type': 'master'}
         with patch.object(ClusterConnectionPool, 'get_master_node_by_slot') as return_master_mock:
             return_master_mock.return_value = master_value
-            assert cluster_obj.get('foo16706') == b('foo')
+            assert cluster_obj.get('foo16706') == b'foo'
             assert return_slave_mock.call_count == 1
 
 
@@ -444,10 +444,11 @@ def test_access_correct_slave_with_readonly_mode_client(sr):
                 'get_master_node_by_slot',
                 return_value=master_value) as return_master_mock:
             readonly_client = StrictRedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
-            assert b('foo') == readonly_client.get('foo16706')
+
+            assert b'foo' == readonly_client.get('foo16706')
 
             readonly_client = StrictRedisCluster.from_url(url="redis://127.0.0.1:7000/0", readonly_mode=True)
-            assert b('foo') == readonly_client.get('foo16706')
+            assert b'foo' == readonly_client.get('foo16706')
 
 
 def test_refresh_using_specific_nodes(r):
