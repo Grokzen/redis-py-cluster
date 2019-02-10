@@ -23,8 +23,8 @@ class TestPipeline(object):
 
     def test_pipeline(self, r):
         with r.pipeline() as pipe:
-            pipe.set('a', 'a1').get('a').zadd('z', z1=1).zadd('z', z2=4)
-            pipe.zincrby('z', 'z1').zrange('z', 0, 5, withscores=True)
+            pipe.set('a', 'a1').get('a').zadd('z', {"z1": 1}).zadd('z', {"z2": 4})
+            pipe.zincrby('z', 1, 'z1').zrange('z', 0, 5, withscores=True)
             assert pipe.execute() == [
                 True,
                 b'a1',
@@ -492,8 +492,7 @@ class TestReadOnlyPipeline(object):
         On readonly mode, we supports get related stuff only.
         """
         r.set('foo71', 'a1')   # we assume this key is set on 127.0.0.1:7001
-        r.zadd('foo88', z1=1)  # we assume this key is set on 127.0.0.1:7002
-        r.zadd('foo88', z2=4)
+        r.zadd('foo88', {"z1": 1, "z2": 4})  # we assume this key is set on 127.0.0.1:7002
 
         with ro.pipeline() as readonly_pipe:
             readonly_pipe.get('foo71').zrange('foo88', 0, 5, withscores=True)
