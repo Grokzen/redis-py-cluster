@@ -25,7 +25,7 @@ You can disable threaded execution either in the class constructor:
 
 .. code-block:: python
 
-    r = rediscluster.StrictRedisCluster( ... pipeline_use_threads=False) #true by default
+    r = rediscluster.RedisCluster( ... pipeline_use_threads=False) #true by default
     pipe = r.pipeline()
 
 Or you can disable it on a case by case basis as you instantiate the pipeline object.
@@ -34,7 +34,7 @@ Or you can disable it on a case by case basis as you instantiate the pipeline ob
 
     pipe = r.pipeline(use_threads=False)
 
-The later example always overrides if explicitly set. Otherwise, it falls back on the value passed to the StrictRedisCluster constructor.
+The later example always overrides if explicitly set. Otherwise, it falls back on the value passed to the RedisCluster constructor.
 
 
 

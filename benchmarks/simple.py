@@ -79,11 +79,11 @@ if __name__ == "__main__":
     args = docopt(__doc__, version="0.3.1")
     startup_nodes = [{"host": args['--host'], "port": args['-p']}]
     if not args["--nocluster"]:
-        from rediscluster import StrictRedisCluster
-        rc = StrictRedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1, decode_responses=True)
+        from rediscluster import RedisCluster
+        rc = RedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1, decode_responses=True)
     else:
-        from redis import StrictRedis
-        rc = StrictRedis(host=args["--host"], port=args["-p"], socket_timeout=0.1, decode_responses=True)
+        from redis import Redis
+        rc = Redis(host=args["--host"], port=args["-p"], socket_timeout=0.1, decode_responses=True)
     # create specified number processes
     processes = []
     single_request = int(args["-n"]) // int(args["-c"])

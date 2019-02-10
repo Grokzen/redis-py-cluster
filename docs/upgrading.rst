@@ -6,7 +6,7 @@ This document describes what must be done when upgrading between different versi
 1.3.2 --> Next Release
 ----------------------
 
-If you created the `StrictRedisCluster` (or `RedisCluster`) instance via the `from_url` method and were passing `readonly_mode` to it, the connection pool created will now properly allow selecting read-only slaves from the pool. Previously it always used master nodes only, even in the case of `readonly_mode=True`. Make sure your code don't attempt any write commands over connections with `readonly_mode=True`.
+If you created the `RedisCluster` (or `RedisCluster`) instance via the `from_url` method and were passing `readonly_mode` to it, the connection pool created will now properly allow selecting read-only slaves from the pool. Previously it always used master nodes only, even in the case of `readonly_mode=True`. Make sure your code don't attempt any write commands over connections with `readonly_mode=True`.
 
 
 1.3.1 --> 1.3.2
@@ -28,7 +28,7 @@ A major refactoring was performed in the pipeline system that improved error han
 1.2.0 --> Next release
 ----------------------
 
-Class RedisClusterMgt has been removed. You should use the `CLUSTER ...` methods that exists in the `StrictRedisCluster` client class.
+Class RedisClusterMgt has been removed. You should use the `CLUSTER ...` methods that exists in the `RedisCluster` client class.
 
 Method `cluster_delslots` changed argument specification from `self, node_id, *slots` to `self, *slots` and changed the behaviour of the method to now automatically determine the slot_id based on the current cluster structure and where each slot that you want to delete is loated.
 
@@ -39,7 +39,7 @@ Method pfcount no longer has custom logic and exceptions to prevent CROSSSLOT er
 1.1.0 --> 1.2.0
 --------------
 
-Discontinue passing `pipeline_use_threads` flag to `rediscluster.StrictRedisCluster` or `rediscluster.RedisCluster`.
+Discontinue passing `pipeline_use_threads` flag to `rediscluster.RedisCluster` or `rediscluster.RedisCluster`.
 
 Also discontinue passing `use_threads` flag to the pipeline() method.
 
@@ -94,9 +94,9 @@ The entire client code should now be safer to use in a threaded environment. Som
 0.2.0 --> 0.3.0
 ---------------
 
-In `0.3.0` release the name of the client class was changed from `RedisCluster` to `StrictRedisCluster` and a new implementation of `RedisCluster` was added that is based on `redis.Redis` class. This was done to enable implementation a cluster enabled version of `redis.Redis` class.
+In `0.3.0` release the name of the client class was changed from `RedisCluster` to `RedisCluster` and a new implementation of `RedisCluster` was added that is based on `redis.Redis` class. This was done to enable implementation a cluster enabled version of `redis.Redis` class.
 
-Because of this all imports and usage of `RedisCluster` must be changed to `StrictRedisCluster` so that existing code will remain working. If this is not done some issues could arise in existing code.
+Because of this all imports and usage of `RedisCluster` must be changed to `RedisCluster` so that existing code will remain working. If this is not done some issues could arise in existing code.
 
 
 

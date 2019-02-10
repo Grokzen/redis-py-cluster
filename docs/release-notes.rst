@@ -13,7 +13,7 @@ Release Notes
     * Add Redis 4 compatability fix to CLUSTER NODES command (See issue #217)
     * Fixed bug with command "CLUSTER GETKEYSINSLOT" that was throwing exceptions
     * Added new methods cluster_get_keys_in_slot() to client
-    * Fixed bug with `StrictRedisCluster.from_url` that was ignoring the `readonly_mode` parameter
+    * Fixed bug with `RedisCluster.from_url` that was ignoring the `readonly_mode` parameter
     * NodeManager will now ignore nodes showing cluster errors when initializing the cluster
     * Fix bug where RedisCluster wouldn't refresh the cluster table when executing commands on specific nodes
     * Add redis 5.0 to travis-ci tests
@@ -61,7 +61,7 @@ Release Notes
 --------------------
 
     * Rebuilt broken method scan_iter. Previous tests was to small to detect the problem but is not corrected to work on a bigger dataset during the test of that method. (korvus81, Grokzen, RedWhiteMiko)
-    * Errors in pipeline that should be retried, like connection errors, moved, errors and ask errors now fall back to single operation logic in StrictRedisCluster.execute_command. (72squared).
+    * Errors in pipeline that should be retried, like connection errors, moved, errors and ask errors now fall back to single operation logic in RedisCluster.execute_command. (72squared).
     * Moved reinitialize_steps and counter into nodemanager so it can be correctly counted across pipeline operations (72squared).
 
 
@@ -92,7 +92,7 @@ Release Notes
     * Remove Vagrant file in favor for repo maintained by 72squared
     * Add Support for password protected cluster (etng)
     * Removed assertion from code (gmolight)
-    * Fixed a bug where a regular connection pool was allocated with each StrictRedisCluster instance.
+    * Fixed a bug where a regular connection pool was allocated with each RedisCluster instance.
     * Rework pfcount to now work as expected when all arguments points to same hashslot
     * New code and important changes from redis-py 2.10.5 have been added to the codebase.
     * Removed the need for threads inside of pipeline. We write the packed commands all nodes before reading the responses which gives us even better performance than threads, especially as we add more nodes to the cluster.
@@ -137,7 +137,7 @@ Release Notes
     * simple benchmark now uses docopt for cli parsing
     * New make target to run some benchmarks 'make benchmark'
     * simple benchmark now support pipelines tests
-    * Renamed RedisCluster --> StrictRedisCluster
+    * Renamed RedisCluster --> RedisCluster
     * Implement backwards compatible redis.Redis class in cluster mode. It was named RedisCluster and everyone updating from 0.2.0 to 0.3.0 should consult docs/Upgrading.md for instructions how to change your code.
     * Added comprehensive documentation regarding pipelines
     * Meta retrieval commands(slots, nodes, info) for Redis Cluster. (iandyh)

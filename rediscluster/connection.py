@@ -64,7 +64,7 @@ class SSLClusterConnection(SSLConnection):
     Manages TCP communication over TLS/SSL to and from a Redis cluster
     Usage:
         pool = ClusterConnectionPool(connection_class=SSLClusterConnection, ...)
-        client = StrictRedisCluster(connection_pool=pool)
+        client = RedisCluster(connection_pool=pool)
     """
     description_format = "SSLClusterConnection<host=%(host)s,port=%(port)s,db=%(db)s>"
 
@@ -130,7 +130,7 @@ class ClusterConnectionPool(ConnectionPool):
         self.max_connections_per_node = max_connections_per_node
 
         if connection_class == SSLClusterConnection:
-            connection_kwargs['ssl'] = True  # needed in StrictRedis init
+            connection_kwargs['ssl'] = True  # needed in Redis init
 
         self.nodes = NodeManager(
             startup_nodes,

@@ -37,12 +37,12 @@ $ pip install redis-py-cluster
 Small sample script that shows how to get started with RedisCluster. It can also be found in [examples/basic.py](examples/basic.py)
 
 ```python
->>> from rediscluster import StrictRedisCluster
+>>> from rediscluster import RedisCluster
 
 >>> # Requires at least one node for cluster discovery. Multiple nodes is recommended.
 >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
->>> rc = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+>>> rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
 
 >>> rc.set("foo", "bar")
 True

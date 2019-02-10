@@ -31,16 +31,16 @@ from .utils import (
     parse_pubsub_numpat,
 )
 # 3rd party imports
-from redis import StrictRedis
+from redis import Redis
 from redis.client import list_or_args, parse_info
 from redis.connection import Token
 from redis._compat import iteritems, basestring, izip, nativestr, long
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
 
 
-class StrictRedisCluster(StrictRedis):
+class RedisCluster(Redis):
     """
-    If a command is implemented over the one in StrictRedis then it requires some changes compared to
+    If a command is implemented over the one in Redis then it requires some changes compared to
     the regular implementation of the method.
     """
     RedisClusterRequestTTL = 16
@@ -151,13 +151,13 @@ class StrictRedisCluster(StrictRedis):
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around alot.
         :**kwargs:
-            Extra arguments that will be sent into StrictRedis instance when created
+            Extra arguments that will be sent into Redis instance when created
             (See Official redis-py doc for supported kwargs
             [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
             Some kwargs is not supported and will raise RedisClusterException
             - db (Redis do not support database SELECT in cluster mode)
         """
-        # Tweaks to StrictRedis client arguments when running in cluster mode
+        # Tweaks to Redis client arguments when running in cluster mode
         if "db" in kwargs:
             raise RedisClusterException("Argument 'db' is not possible to use in cluster mode")
 
@@ -190,7 +190,7 @@ class StrictRedisCluster(StrictRedis):
                 **kwargs
             )
 
-        super(StrictRedisCluster, self).__init__(connection_pool=pool, **kwargs)
+        super(RedisCluster, self).__init__(connection_pool=pool, **kwargs)
 
         self.refresh_table_asap = False
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
@@ -256,7 +256,7 @@ class StrictRedisCluster(StrictRedis):
         if transaction:
             raise RedisClusterException("transaction is deprecated in cluster mode")
 
-        return StrictClusterPipeline(
+        return ClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
             result_callbacks=self.result_callbacks,
@@ -267,7 +267,7 @@ class StrictRedisCluster(StrictRedis):
         """
         Transaction is not implemented in cluster mode yet.
         """
-        raise RedisClusterException("method StrictRedisCluster.transaction() is not implemented")
+        raise RedisClusterException("method RedisCluster.transaction() is not implemented")
 
     def _determine_slot(self, *args):
         """
@@ -678,7 +678,7 @@ class StrictRedisCluster(StrictRedis):
 
         Cluster impl:
             Itterate all keys and send GET for each key.
-            This will go alot slower than a normal mget call in StrictRedis.
+            This will go alot slower than a normal mget call in Redis.
 
             Operation is no longer atomic.
         """
@@ -759,7 +759,7 @@ class StrictRedisCluster(StrictRedis):
 
         Cluster impl:
             Iterate all keys and send DELETE for each key.
-            This will go a lot slower than a normal delete call in StrictRedis.
+            This will go a lot slower than a normal delete call in Redis.
 
             Operation is no longer atomic.
         """
@@ -1189,7 +1189,7 @@ class StrictRedisCluster(StrictRedis):
         return ''.join(random.choice(chars) for _ in range(size))
 
 
-RedisCluster = StrictRedisCluster
+StrictRedisCluster = RedisCluster
 
 
-from rediscluster.pipeline import StrictClusterPipeline
+from rediscluster.pipeline import ClusterPipeline

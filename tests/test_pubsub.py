@@ -6,17 +6,17 @@ import threading
 import time
 
 # rediscluster imports
-from rediscluster.client import StrictRedisCluster
+from rediscluster.client import RedisCluster
 
 # 3rd party imports
 import pytest
 
 # import redis
-from redis import StrictRedis, Redis
+from redis import Redis
 from redis.exceptions import ConnectionError
 from redis._compat import basestring, unichr
 
-from .conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt
+from .conftest import skip_if_redis_py_version_lt
 
 def wait_for_message(pubsub, timeout=0.5, ignore_subscribe_messages=False):
     now = time.time()
@@ -221,12 +221,12 @@ class TestPubSubMessages(object):
     Bug: Currently in cluster mode publish command will behave different then in
          standard/non cluster mode. See (docs/Pubsub.md) for details.
 
-         Currently StrictRedis instances will be used to test pubsub because they
+         Currently Redis instances will be used to test pubsub because they
          are easier to work with.
     """
 
     def get_strict_redis_node(self, port, host="127.0.0.1"):
-        return StrictRedis(port=port, host=host)
+        return Redis(port=port, host=host)
 
     def setup_method(self, *args):
         self.message = None
@@ -444,7 +444,7 @@ def test_pubsub_thread_publish():
     """
     startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
-    r = StrictRedisCluster(
+    r = RedisCluster(
         startup_nodes=startup_nodes,
         decode_responses=True,
         max_connections=16,
