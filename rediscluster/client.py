@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 # python std lib
 import datetime
@@ -15,7 +16,7 @@ from .connection import (
 )
 from .exceptions import (
     RedisClusterException, AskError, MovedError, ClusterDownError,
-    ClusterError, TryAgainError,
+    ClusterError, TryAgainError
 )
 from .pubsub import ClusterPubSub
 from .utils import (
@@ -942,13 +943,13 @@ class RedisCluster(Redis):
            (start is not None and num is None):
             raise RedisError("RedisError: ``start`` and ``num`` must both be specified")
         try:
-            data_type = b(self.type(name))
+            data_type = b"{0}".format(self.type(name))
 
-            if data_type == b("none"):
+            if data_type == b"none":
                 return []
-            elif data_type == b("set"):
+            elif data_type == b"set":
                 data = list(self.smembers(name))[:]
-            elif data_type == b("list"):
+            elif data_type == b"list":
                 data = self.lrange(name, 0, -1)
             else:
                 raise RedisClusterException("Unable to sort data type : {0}".format(data_type))
@@ -969,10 +970,10 @@ class RedisCluster(Redis):
                 data = self._retrive_data_from_sort(data, get)
 
             if store is not None:
-                if data_type == b("set"):
+                if data_type == b"set":
                     self.delete(store)
                     self.rpush(store, *data)
-                elif data_type == b("list"):
+                elif data_type == b"list":
                     self.delete(store)
                     self.rpush(store, *data)
                 else:
@@ -981,7 +982,7 @@ class RedisCluster(Redis):
                 return len(data)
 
             if groups:
-                if not get or isinstance(get, basestring) or len(get) < 2:
+                if not get or isinstance(get, (bytes, basestring)) or len(get) < 2:
                     raise DataError('when using "groups" the "get" argument '
                                     'must be specified and contain at least '
                                     'two keys')
@@ -997,7 +998,7 @@ class RedisCluster(Redis):
         Used by sort()
         """
         if get is not None:
-            if isinstance(get, basestring):
+            if isinstance(get, (bytes, basestring)):
                 get = [get]
             new_data = []
             for k in data:
@@ -1025,7 +1026,7 @@ class RedisCluster(Redis):
             single_item = k
         else:
             single_item = None
-        return b(single_item)
+        return b"{0}".format(single_item)
 
     def _strtod_key_func(self, arg):
         """

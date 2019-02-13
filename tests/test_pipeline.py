@@ -150,11 +150,11 @@ class TestPipeline(object):
         """
         for error_switch in (True, False):
             with r.pipeline() as pipe:
-                pipe.set('a', 1).mget([]).set('c', 3)
+                pipe.set('a', 1).get("").set('c', 3)
                 result = pipe.execute(raise_on_error=error_switch)
 
                 assert result[0]
-                assert result[1] == []
+                assert result[1] == None
                 assert result[2]
 
     def test_pipeline_with_empty_error_command(self, r):
@@ -164,11 +164,11 @@ class TestPipeline(object):
         """
         for error_switch in (True, False):
             with r.pipeline(transaction=False) as pipe:
-                pipe.set('a', 1).mget([]).set('c', 3)
+                pipe.set('a', 1).get("").set('c', 3)
                 result = pipe.execute(raise_on_error=error_switch)
 
                 assert result[0]
-                assert result[1] == []
+                assert result[1] == None
                 assert result[2]
 
     def test_parse_error_raised(self, r):
