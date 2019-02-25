@@ -1,22 +1,16 @@
-# -*- coding: utf-8 -*-
-
-# python std lib
-from __future__ import with_statement
-import threading
+from __future__ import unicode_literals
+import pytest
 import time
 
 # rediscluster imports
 from rediscluster.client import RedisCluster
 
-# 3rd party imports
-import pytest
-
-# import redis
-from redis import Redis
+import redis
 from redis.exceptions import ConnectionError
 from redis._compat import basestring, unichr
 
-from .conftest import skip_if_redis_py_version_lt
+from .conftest import skip_if_server_version_lt
+
 
 def wait_for_message(pubsub, timeout=0.5, ignore_subscribe_messages=False):
     now = time.time()
@@ -35,7 +29,7 @@ def make_message(type, channel, data, pattern=None):
     return {
         'type': type,
         'pattern': pattern and pattern.encode('utf-8') or None,
-        'channel': channel.encode('utf-8'),
+        'channel': channel and channel.encode('utf-8') or None,
         'data': data.encode('utf-8') if isinstance(data, basestring) else data
     }
 
@@ -59,7 +53,7 @@ def make_subscribe_test_data(pubsub, type):
             'unsub_func': pubsub.punsubscribe,
             'keys': ['f*', 'b*', 'uni' + unichr(4456) + '*']
         }
-    assert False, 'invalid subscribe type: {0}'.format(type)
+    assert False, 'invalid subscribe type: %s' % type
 
 
 class TestPubSubSubscribeUnsubscribe(object):
@@ -89,7 +83,7 @@ class TestPubSubSubscribeUnsubscribe(object):
         kwargs = make_subscribe_test_data(r.pubsub(), 'pattern')
         self._test_subscribe_unsubscribe(**kwargs)
 
-    def _test_resubscribe_on_reconnection(self, p, sub_type, sub_func, keys, *args, **kwargs):
+    def _test_resubscribe_on_reconnection(self, p, sub_type, unsub_type, sub_func, unsub_func, keys):
         for key in keys:
             assert sub_func(key) is None
 
@@ -104,7 +98,7 @@ class TestPubSubSubscribeUnsubscribe(object):
         # note, we may not re-subscribe to channels in exactly the same order
         # so we have to do some extra checks to make sure we got them all
         messages = []
-        for i, _ in enumerate(keys):
+        for i in range(len(keys)):
             messages.append(wait_for_message(p))
 
         unique_channels = set()
@@ -186,6 +180,7 @@ class TestPubSubSubscribeUnsubscribe(object):
         checks = (
             (p.subscribe, 'foo'),
             (p.unsubscribe, 'foo'),
+            # Patterns pubsub does not work currently
             # (p.psubscribe, 'f*'),
             # (p.punsubscribe, 'f*'),
         )
@@ -203,6 +198,7 @@ class TestPubSubSubscribeUnsubscribe(object):
         checks = (
             (p.subscribe, 'foo'),
             (p.unsubscribe, 'foo'),
+            # Patterns pubsub does not work currently
             # (p.psubscribe, 'f*'),
             # (p.punsubscribe, 'f*'),
         )
@@ -217,56 +213,20 @@ class TestPubSubSubscribeUnsubscribe(object):
 
 
 class TestPubSubMessages(object):
-    """
-    Bug: Currently in cluster mode publish command will behave different then in
-         standard/non cluster mode. See (docs/Pubsub.md) for details.
-
-         Currently Redis instances will be used to test pubsub because they
-         are easier to work with.
-    """
-
-    def get_strict_redis_node(self, port, host="127.0.0.1"):
-        return Redis(port=port, host=host)
-
-    def setup_method(self, *args):
+    def setup_method(self, method):
         self.message = None
 
     def message_handler(self, message):
         self.message = message
 
-    def test_published_message_to_channel(self):
-        node = self.get_strict_redis_node(7000)
-        p = node.pubsub(ignore_subscribe_messages=True)
+    def test_published_message_to_channel(self, r):
+        p = r.pubsub(ignore_subscribe_messages=True)
         p.subscribe('foo')
-
-        assert node.publish('foo', 'test message') == 1
+        assert r.publish('foo', 'test message') == 1
 
         message = wait_for_message(p)
         assert isinstance(message, dict)
         assert message == make_message('message', 'foo', 'test message')
-
-        # Cleanup pubsub connections
-        p.close()
-
-    @pytest.mark.xfail(reason="This test is buggy and fails randomly")
-    def test_publish_message_to_channel_other_server(self):
-        """
-        Test that pubsub still works across the cluster on different nodes
-        """
-        node_subscriber = self.get_strict_redis_node(7000)
-        p = node_subscriber.pubsub(ignore_subscribe_messages=True)
-        p.subscribe('foo')
-
-        node_sender = self.get_strict_redis_node(7001)
-        # This should return 0 because of no connected clients to this server.
-        assert node_sender.publish('foo', 'test message') == 0
-
-        message = wait_for_message(p)
-        assert isinstance(message, dict)
-        assert message == make_message('message', 'foo', 'test message')
-
-        # Cleanup pubsub connections
-        p.close()
 
     @pytest.mark.xfail(reason="Pattern pubsub do not work currently")
     def test_published_message_to_pattern(self, r):
@@ -311,7 +271,6 @@ class TestPubSubMessages(object):
         p = r.pubsub(ignore_subscribe_messages=True)
         channel = 'uni' + unichr(4456) + 'code'
         channels = {channel: self.message_handler}
-        print(channels)
         p.subscribe(**channels)
         assert r.publish(channel, 'test message') == 1
         assert wait_for_message(p) is None
@@ -327,6 +286,14 @@ class TestPubSubMessages(object):
         assert wait_for_message(p) is None
         assert self.message == make_message('pmessage', channel,
                                             'test message', pattern=pattern)
+
+    def test_get_message_without_subscribe(self, r):
+        p = r.pubsub()
+        with pytest.raises(RuntimeError) as info:
+            p.get_message()
+        expect = ('connection not set: '
+                  'did you forget to call subscribe() or psubscribe()?')
+        assert expect in info.exconly()
 
 
 class TestPubSubAutoDecoding(object):
@@ -344,7 +311,7 @@ class TestPubSubAutoDecoding(object):
             'data': data
         }
 
-    def setup_method(self, *args):
+    def setup_method(self, _):
         self.message = None
 
     def message_handler(self, message):
@@ -430,7 +397,7 @@ class TestPubSubAutoDecoding(object):
 class TestPubSubRedisDown(object):
 
     def test_channel_subscribe(self, r):
-        r = Redis(host='localhost', port=6390)
+        r = redis.Redis(host='localhost', port=6390)
         p = r.pubsub()
         with pytest.raises(ConnectionError):
             p.subscribe('foo')
@@ -478,28 +445,49 @@ def test_pubsub_thread_publish():
 
 
 class TestPubSubPubSubSubcommands(object):
-    """
-    Test Pub/Sub subcommands of PUBSUB
-    @see https://redis.io/commands/pubsub
-    """
 
-    @skip_if_redis_py_version_lt('2.10.6')
+    @skip_if_server_version_lt('2.8.0')
     def test_pubsub_channels(self, r):
-        r.pubsub(ignore_subscribe_messages=True).subscribe('foo', 'bar', 'baz', 'quux')
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.subscribe('foo', 'bar', 'baz', 'quux')
         channels = sorted(r.pubsub_channels())
         assert channels == [b'bar', b'baz', b'foo', b'quux']
 
-    @skip_if_redis_py_version_lt('2.10.6')
+    @skip_if_server_version_lt('2.8.0')
     def test_pubsub_numsub(self, r):
-        r.pubsub(ignore_subscribe_messages=True).subscribe('foo', 'bar', 'baz')
-        r.pubsub(ignore_subscribe_messages=True).subscribe('bar', 'baz')
-        r.pubsub(ignore_subscribe_messages=True).subscribe('baz')
+        p1 = r.pubsub(ignore_subscribe_messages=True)
+        p1.subscribe('foo', 'bar', 'baz')
+        p2 = r.pubsub(ignore_subscribe_messages=True)
+        p2.subscribe('bar', 'baz')
+        p3 = r.pubsub(ignore_subscribe_messages=True)
+        p3.subscribe('baz')
 
-        channels = [(b'bar', 2), (b'baz', 3), (b'foo', 1)]
-        assert channels == sorted(r.pubsub_numsub('foo', 'bar', 'baz'))
+        channels = [(b'foo', 1), (b'bar', 2), (b'baz', 3)]
+        assert channels == r.pubsub_numsub('foo', 'bar', 'baz')
 
-    @skip_if_redis_py_version_lt('2.10.6')
+    @skip_if_server_version_lt('2.8.0')
     def test_pubsub_numpat(self, r):
-        r.pubsub(ignore_subscribe_messages=True).psubscribe('*oo', '*ar', 'b*z')
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.psubscribe('*oo', '*ar', 'b*z')
         assert r.pubsub_numpat() == 3
 
+
+class TestPubSubPings(object):
+
+    @skip_if_server_version_lt('3.0.0')
+    def test_send_pubsub_ping(self, r):
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.subscribe('foo')
+        p.ping()
+        assert wait_for_message(p) == make_message(type='pong', channel=None,
+                                                   data='',
+                                                   pattern=None)
+
+    @skip_if_server_version_lt('3.0.0')
+    def test_send_pubsub_ping_message(self, r):
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.subscribe('foo')
+        p.ping(message='hello world')
+        assert wait_for_message(p) == make_message(type='pong', channel=None,
+                                                   data='hello world',
+                                                   pattern=None)

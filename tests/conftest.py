@@ -78,11 +78,17 @@ def skip_if_not_password_protected_nodes():
 
 
 def skip_if_server_version_lt(min_version):
-    """
-    """
     versions = get_versions()
     for version in versions.values():
         if StrictVersion(version) < StrictVersion(min_version):
+            return pytest.mark.skipif(True, reason="")
+    return pytest.mark.skipif(False, reason="")
+
+
+def skip_if_server_version_gte(min_version):
+    versions = get_versions()
+    for version in versions.values():
+        if StrictVersion(version) >= StrictVersion(min_version):
             return pytest.mark.skipif(True, reason="")
     return pytest.mark.skipif(False, reason="")
 
