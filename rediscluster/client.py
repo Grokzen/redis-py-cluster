@@ -285,7 +285,10 @@ class StrictRedisCluster(StrictRedis):
                 raise RedisClusterException("{0} - all keys must map to the same key slot".format(command))
             return slots.pop()
 
-        key = args[1]
+        if command == 'OBJECT':
+            key = args[2]
+        else:
+            key = args[1]
 
         return self.connection_pool.nodes.keyslot(key)
 
