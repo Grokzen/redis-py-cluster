@@ -131,7 +131,7 @@ class RedisCluster(Redis):
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=None, max_connections_per_node=False, init_slot_cache=True,
                  readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
-                 connection_class=None, **kwargs):
+                 connection_class=None, decode_responses=False, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -187,11 +187,13 @@ class RedisCluster(Redis):
                 skip_full_coverage_check=skip_full_coverage_check,
                 nodemanager_follow_cluster=nodemanager_follow_cluster,
                 connection_class=connection_class,
+                decode_responses=decode_responses,
                 **kwargs
             )
 
         super(RedisCluster, self).__init__(connection_pool=pool, **kwargs)
 
+        self.decode_responses = decode_responses
         self.refresh_table_asap = False
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
@@ -966,7 +968,7 @@ class RedisCluster(Redis):
             else:
                 single_item = self.get(g)
         elif '#' in g:
-            single_item = k
+            single_item = str(k) if self.decode_responses else k.encode("utf-8")
         else:
             single_item = None
         return single_item
