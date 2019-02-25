@@ -51,6 +51,9 @@ class RedisCluster(Redis):
             'SENTINEL MONITOR', 'SENTINEL REMOVE', 'SENTINEL SENTINELS', 'SENTINEL SET',
             'SENTINEL SLAVES', 'SHUTDOWN', 'SLAVEOF', 'SCRIPT KILL',
             'MOVE', 'BITOP',
+            # Redis 5.0 Stream commands that aren't supported (yet)
+            'XADD', 'XACK', 'XCLAIM', 'XDEL', 'XGROUP', 'XINFO', 'XLEN', 'XPENDING', 'XRANGE', 'XREAD',
+            'XREADGROUP', 'XREVRANGE', 'XTRIM'
         ], 'blocked'),
         string_keys_to_dict([
             "ECHO", "CONFIG GET", "CONFIG SET", "SLOWLOG GET", "CLIENT KILL", "INFO",
