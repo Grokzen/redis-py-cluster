@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 # python std lib
-import datetime
 import random
 import string
 import time
@@ -457,7 +457,7 @@ class RedisCluster(Redis):
         out = {}
         for node in mapping:
             for slot in node['slots']:
-                out[str(slot)] = node['id']
+                out[nativestr(slot)] = node['id']
         return out
 
     def cluster_addslots(self, node_id, *slots):
@@ -815,7 +815,7 @@ class RedisCluster(Redis):
         """
         options = {
             'aggregate': kwargs.get('aggregate', True),
-            'order': [str(a) if self.decode_responses else str(a).encode("utf-8") for a in args]
+            'order': [nativestr(a) if self.decode_responses else nativestr(a).encode("utf-8") for a in args]
         }
         return self.execute_command('PUBSUB NUMSUB', *args, **options)
 
@@ -977,7 +977,7 @@ class RedisCluster(Redis):
             else:
                 single_item = self.get(g)
         elif '#' in g:
-            single_item = str(k) if self.decode_responses else k.encode("utf-8")
+            single_item = nativestr(k) if self.decode_responses else nativestr(k).encode("utf-8")
         else:
             single_item = None
         return single_item
