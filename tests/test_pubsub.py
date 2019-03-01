@@ -461,9 +461,17 @@ class TestPubSubPubSubSubcommands(object):
         p2.subscribe('bar', 'baz')
         p3 = r.pubsub(ignore_subscribe_messages=True)
         p3.subscribe('baz')
+        p4 = r.pubsub(ignore_subscribe_messages=True)
+        p4.subscribe('uni' + unichr(4456) + 'code')
 
-        channels = [(b'foo', 1), (b'bar', 2), (b'baz', 3)]
-        assert channels == r.pubsub_numsub('foo', 'bar', 'baz')
+        expected_channels = [
+            (b'foo', 1),
+            (b'bar', 2),
+            (b'baz', 3),
+            (('uni' + unichr(4456) + 'code').encode('utf-8'), 1)
+        ]
+        actual_channels = r.pubsub_numsub('foo', 'bar', 'baz', 'uni' + unichr(4456) + 'code')
+        assert expected_channels == actual_channels
 
     @skip_if_server_version_lt('2.8.0')
     def test_pubsub_numpat(self, r):

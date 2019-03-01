@@ -813,7 +813,10 @@ class RedisCluster(Redis):
 
         ``aggregate`` keyword argument toggles merging of response.
         """
-        options = {'aggregate': kwargs.get('aggregate', True)}
+        options = {
+            'aggregate': kwargs.get('aggregate', True),
+            'order': [str(a) if self.decode_responses else str(a).encode("utf-8") for a in args]
+        }
         return self.execute_command('PUBSUB NUMSUB', *args, **options)
 
     ####

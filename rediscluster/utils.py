@@ -252,6 +252,12 @@ def parse_pubsub_numsub(command, res, **options):
                 numsub_d[channel] = numsubbed
 
     ret_numsub = []
-    for channel, numsub in numsub_d.items():
-        ret_numsub.append((channel, numsub))
+
+    if 'order' in options:
+        for channel in options.get('order'):
+            if channel in numsub_d:
+                ret_numsub.append((channel, numsub_d[channel]))
+    else:
+        for channel, numsub in numsub_d.items():
+            ret_numsub.append((channel, numsub))
     return ret_numsub
