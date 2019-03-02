@@ -769,12 +769,30 @@ class StrictRedisCluster(StrictRedis):
         Rename key ``src`` to ``dst``
 
         Cluster impl:
-            This operation is no longer atomic because each key must be querried
-            then set in separate calls because they maybe will change cluster node
+            If the src and dsst keys is in the same slot then send a plain RENAME
+            command to that node to do the rename inside the server.
+
+            If the keys is in crossslots then use the client side implementation
+            as fallback method. In this case this operation is no longer atomic as
+            the key is dumped and posted back to the server through the client.
         """
         if src == dst:
             raise ResponseError("source and destination objects are the same")
 
+        #
+        # Optimization where if both keys is in the same slot then we can use the
+        # plain upstream rename method.
+        #
+        src_slot = self.connection_pool.keyslot(src)
+        dst_slot = self.connection_pool.keyslot(dst)
+
+        if src_slot == dst_slot:
+            return self.execute_command('RENAME', src, dst)
+
+        #
+        # To provide cross slot support we implement rename by doing the internal command
+        # redis server runs but in the client instead.
+        #
         data = self.dump(src)
 
         if data is None:
