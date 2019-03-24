@@ -31,6 +31,41 @@ class DummyConnection(object):
     pass
 
 
+def get_mocked_redis_client(*args, **kwargs):
+    """
+    Return a stable RedisCluster object that have deterministic
+    nodes and slots setup to remove the problem of different IP addresses
+    on different installations and machines.
+    """
+    with patch.object(Redis, 'execute_command') as execute_command_mock:
+        def execute_command(self, *args, **kwargs):
+            if args[0] == 'slots':
+                mock_cluster_slots = [
+                    [
+                        0, 5460,
+                        ['127.0.0.1', 7000, 'node_0'],
+                        ['127.0.0.1', 7004, 'node_4']
+                    ],
+                    [
+                        5461, 10922,
+                        ['127.0.0.1', 7001, 'node_1'],
+                        ['127.0.0.1', 7005, 'node_5']
+                    ],
+                    [
+                        10923, 16383,
+                        ['127.0.0.1', 7002, 'node_2'],
+                        ['127.0.0.1', 7003, '2node_3']
+                    ]
+                ]
+                return mock_cluster_slots
+            elif args[0] == 'cluster-require-full-coverage':
+                return {'cluster-require-full-coverage': 'yes'}
+
+        execute_command_mock.side_effect = execute_command
+
+        return RedisCluster(*args, **kwargs)
+
+
 def test_representation(r):
     assert re.search('^RedisCluster<[0-9\.\:\,].+>$', str(r))
 
@@ -296,7 +331,7 @@ def test_pipeline_ask_redirection():
 
     Important thing to verify is that it tries to talk to the second node.
     """
-    r = RedisCluster(host="127.0.0.1", port=7000)
+    r = get_mocked_redis_client(host="127.0.0.1", port=7000)
     with patch.object(RedisCluster,
                       'parse_response') as parse_response:
 
