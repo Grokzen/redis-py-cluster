@@ -318,14 +318,13 @@ class TestRedisCommands(object):
         assert float(r['a']) == float(2.1)
 
     def test_keys(self, r):
-        keys = r.keys()
-        assert keys == []
+        assert r.keys() == []
         keys_with_underscores = {b'test_a', b'test_b'}
         keys = keys_with_underscores.union({b'testc'})
         for key in keys:
             r[key] = 1
-        assert set(r.keys(pattern='test_*')) == {b"{0}".format(k) for k in keys_with_underscores}
-        assert set(r.keys(pattern='test*')) == {b"{0}".format(k) for k in keys}
+        assert set(r.keys(pattern='test_*')) == keys_with_underscores
+        assert set(r.keys(pattern='test*')) == keys
 
     def test_mget(self, r):
         assert r.mget([]) == []
