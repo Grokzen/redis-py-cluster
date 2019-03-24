@@ -119,7 +119,7 @@ class TestPipeline(object):
             # we can't lpush to a key that's a string value, so this should
             # be a ResponseError exception
             assert isinstance(result[2], ResponseError)
-            assert r['c'] == 'a'
+            assert r['c'] == b'a'
 
             # since this isn't a transaction, the other commands after the
             # error are still executed
