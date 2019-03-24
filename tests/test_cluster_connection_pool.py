@@ -17,7 +17,7 @@ from tests.conftest import skip_if_server_version_lt
 import pytest
 import redis
 from mock import patch, Mock
-from redis.connection import ssl_available
+from redis.connection import ssl_available, to_bool
 from redis._compat import unicode
 
 
