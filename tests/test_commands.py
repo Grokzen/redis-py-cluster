@@ -201,7 +201,7 @@ class TestRedisCommands(object):
         r['b'] = 'bar'
         assert r.exists('a') == 1
         assert r.exists('b') == 1
-        # This no longer works in cluster. See test_exists_fail_not_same_slots() for failing test        
+        # This no longer works in cluster. See test_exists_fail_not_same_slots() for failing test
         # assert r.exists('a', 'b') == 2
 
     def test_exists_fail_not_same_slots(self, r):
@@ -891,7 +891,7 @@ class TestRedisCommands(object):
     def test_zinterstore_min(self, r):
         r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
         r.zadd('b', {'a1': 2, 'a2': 3, 'a3': 5})
-        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4}) 
+        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
         assert r.zinterstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'], aggregate='MIN') == 2
         assert r.zrange('d{foo}', 0, -1, withscores=True) == \
             [(b'a1', 1), (b'a3', 3)]
@@ -1412,7 +1412,7 @@ class TestBinarySave(object):
         # load up 100K of data into a key
         data = ''.join([ascii_letters] * (100000 // len(ascii_letters)))
         r['a'] = data
-        assert r['a'] == bdata
+        assert r['a'] == data.encode()
 
     def test_floating_point_encoding(self, r):
         """
