@@ -479,19 +479,10 @@ def test_access_correct_slave_with_readonly_mode_client(sr):
                 'get_master_node_by_slot',
                 return_value=master_value) as return_master_mock:
             readonly_client = RedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
-<<<<<<< HEAD
             assert b('foo') == readonly_client.get('foo16706')
 
             readonly_client = RedisCluster.from_url(url="redis://127.0.0.1:7000/0", readonly_mode=True)
             assert b('foo') == readonly_client.get('foo16706')
-=======
-            assert b'foo' == readonly_client.get('foo16706')
-            assert return_master_mock.call_count == 0
-
-            readonly_client = RedisCluster.from_url(url="redis://127.0.0.1:7000/0", readonly_mode=True)
-            assert b'foo' == readonly_client.get('foo16706')
-            assert return_master_mock.call_count == 0
->>>>>>> Fix more byte method conversion calls
 
 
 def test_refresh_using_specific_nodes(r):
