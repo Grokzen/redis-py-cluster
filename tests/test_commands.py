@@ -15,6 +15,7 @@ import pytest
 from redis._compat import unichr, ascii_letters, iteritems, iterkeys, itervalues, unicode
 from redis.client import parse_info
 from redis.exceptions import ResponseError, DataError, RedisError, DataError
+from redis import exceptions
 
 
 pytestmark = skip_if_server_version_lt('2.9.0')
@@ -823,16 +824,44 @@ class TestRedisCommands(object):
             [(b'a1', 1.0), (b'a2', 2.0), (b'a3', 3.0)]
 
         # error cases
-        with pytest.raises(DataError):
+        with pytest.raises(exceptions.DataError):
             r.zadd('a', {})
 
         # cannot use both nx and xx options
-        with pytest.raises(DataError):
+        with pytest.raises(exceptions.DataError):
             r.zadd('a', mapping, nx=True, xx=True)
 
         # cannot use the incr options with more than one value
-        with pytest.raises(DataError):
+        with pytest.raises(exceptions.DataError):
             r.zadd('a', mapping, incr=True)
+
+    def test_zadd_nx(self, r):
+        assert r.zadd('a', {'a1': 1}) == 1
+        assert r.zadd('a', {'a1': 99, 'a2': 2}, nx=True) == 1
+        assert r.zrange('a', 0, -1, withscores=True) == \
+            [(b'a1', 1.0), (b'a2', 2.0)]
+
+    def test_zadd_xx(self, r):
+        assert r.zadd('a', {'a1': 1}) == 1
+        assert r.zadd('a', {'a1': 99, 'a2': 2}, xx=True) == 0
+        assert r.zrange('a', 0, -1, withscores=True) == \
+            [(b'a1', 99.0)]
+
+    def test_zadd_ch(self, r):
+        assert r.zadd('a', {'a1': 1}) == 1
+        assert r.zadd('a', {'a1': 99, 'a2': 2}, ch=True) == 2
+        assert r.zrange('a', 0, -1, withscores=True) == \
+            [(b'a2', 2.0), (b'a1', 99.0)]
+
+    def test_zadd_incr(self, r):
+        assert r.zadd('a', {'a1': 1}) == 1
+        assert r.zadd('a', {'a1': 4.5}, incr=True) == 5.5
+
+    def test_zadd_incr_with_xx(self, r):
+        # this asks zadd to incr 'a1' only if it exists, but it clearly
+        # doesn't. Redis returns a null value in this case and so should
+        # redis-py
+        assert r.zadd('a', {'a1': 1}, xx=True, incr=True) is None
 
     def test_zcard(self, r):
         r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
@@ -842,6 +871,8 @@ class TestRedisCommands(object):
         r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
         assert r.zcount('a', '-inf', '+inf') == 3
         assert r.zcount('a', 1, 2) == 2
+        assert r.zcount('a', '(' + str(1), 2) == 1
+        assert r.zcount('a', 1, '(' + str(2)) == 1
         assert r.zcount('a', 10, 20) == 0
 
     def test_zincrby(self, r):
@@ -851,6 +882,7 @@ class TestRedisCommands(object):
         assert r.zscore('a', 'a2') == 3.0
         assert r.zscore('a', 'a3') == 8.0
 
+    @skip_if_server_version_lt('2.8.9')
     def test_zlexcount(self, r):
         r.zadd('a', {'a': 0, 'b': 0, 'c': 0, 'd': 0, 'e': 0, 'f': 0, 'g': 0})
         assert r.zlexcount('a', '-', '+') == 7
@@ -868,14 +900,6 @@ class TestRedisCommands(object):
         r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
         r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
         r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zinterstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}']) == 2
-        assert r.zrange('d{foo}', 0, -1, withscores=True) == \
-            [(b'a3', 8), (b'a1'), 9]
-
-    def test_zinterstore_sum(self, r):
-        r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
-        r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
-        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
         assert r.zinterstore('d', ['a', 'b', 'c']) == 2
         assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a3', 8), (b'a1', 9)]
@@ -884,28 +908,70 @@ class TestRedisCommands(object):
         r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
         r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
         r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zinterstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'], aggregate='MAX') == 2
-        assert r.zrange('d{foo}', 0, -1, withscores=True) == \
+        assert r.zinterstore('d', ['a', 'b', 'c'], aggregate='MAX') == 2
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a3', 5), (b'a1', 6)]
 
     def test_zinterstore_min(self, r):
         r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
         r.zadd('b', {'a1': 2, 'a2': 3, 'a3': 5})
         r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zinterstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'], aggregate='MIN') == 2
-        assert r.zrange('d{foo}', 0, -1, withscores=True) == \
+        assert r.zinterstore('d', ['a', 'b', 'c'], aggregate='MIN') == 2
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a1', 1), (b'a3', 3)]
 
     def test_zinterstore_with_weight(self, r):
         r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
         r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
         r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zinterstore('d{foo}', {'a{foo}': 1, 'b{foo}': 2, 'c{foo}': 3}) == 2
-        assert r.zrange('d{foo}', 0, -1, withscores=True) == \
+        assert r.zinterstore('d', {'a': 1, 'b': 2, 'c': 3}) == 2
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a3', 20), (b'a1', 23)]
 
+    @skip_if_server_version_lt('4.9.0')
+    def test_zpopmax(self, r):
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
+        assert r.zpopmax('a') == [(b'a3', 3)]
+
+        # with count
+        assert r.zpopmax('a', count=2) == \
+            [(b'a2', 2), (b'a1', 1)]
+
+    @skip_if_server_version_lt('4.9.0')
+    def test_zpopmin(self, r):
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
+        assert r.zpopmin('a') == [(b'a1', 1)]
+
+        # with count
+        assert r.zpopmin('a', count=2) == \
+            [(b'a2', 2), (b'a3', 3)]
+
+    @skip_if_server_version_lt('4.9.0')
+    def test_bzpopmax(self, r):
+        r.zadd('a', {'a1': 1, 'a2': 2})
+        r.zadd('b', {'b1': 10, 'b2': 20})
+        assert r.bzpopmax(['b', 'a'], timeout=1) == (b'b', b'b2', 20)
+        assert r.bzpopmax(['b', 'a'], timeout=1) == (b'b', b'b1', 10)
+        assert r.bzpopmax(['b', 'a'], timeout=1) == (b'a', b'a2', 2)
+        assert r.bzpopmax(['b', 'a'], timeout=1) == (b'a', b'a1', 1)
+        assert r.bzpopmax(['b', 'a'], timeout=1) is None
+        r.zadd('c', {'c1': 100})
+        assert r.bzpopmax('c', timeout=1) == (b'c', b'c1', 100)
+
+    @skip_if_server_version_lt('4.9.0')
+    def test_bzpopmin(self, r):
+        r.zadd('a', {'a1': 1, 'a2': 2})
+        r.zadd('b', {'b1': 10, 'b2': 20})
+        assert r.bzpopmin(['b', 'a'], timeout=1) == (b'b', b'b1', 10)
+        assert r.bzpopmin(['b', 'a'], timeout=1) == (b'b', b'b2', 20)
+        assert r.bzpopmin(['b', 'a'], timeout=1) == (b'a', b'a1', 1)
+        assert r.bzpopmin(['b', 'a'], timeout=1) == (b'a', b'a2', 2)
+        assert r.bzpopmin(['b', 'a'], timeout=1) is None
+        r.zadd('c', {'c1': 100})
+        assert r.bzpopmin('c', timeout=1) == (b'c', b'c1', 100)
+
     def test_zrange(self, r):
-        r.zadd('a', a1=1, a2=2, a3=3)
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
         assert r.zrange('a', 0, 1) == [b'a1', b'a2']
         assert r.zrange('a', 1, 2) == [b'a2', b'a3']
 
@@ -919,8 +985,9 @@ class TestRedisCommands(object):
         assert r.zrange('a', 0, 1, withscores=True, score_cast_func=int) == \
             [(b'a1', 1), (b'a2', 2)]
 
+    @skip_if_server_version_lt('2.8.9')
     def test_zrangebylex(self, r):
-        r.zadd('a', a=0, b=0, c=0, d=0, e=0, f=0, g=0)
+        r.zadd('a', {'a': 0, 'b': 0, 'c': 0, 'd': 0, 'e': 0, 'f': 0, 'g': 0})
         assert r.zrangebylex('a', '-', '[c') == [b'a', b'b', b'c']
         assert r.zrangebylex('a', '-', '(c') == [b'a', b'b']
         assert r.zrangebylex('a', '[aaa', '(g') == \
@@ -928,8 +995,19 @@ class TestRedisCommands(object):
         assert r.zrangebylex('a', '[f', '+') == [b'f', b'g']
         assert r.zrangebylex('a', '-', '+', start=3, num=2) == [b'd', b'e']
 
+    @skip_if_server_version_lt('2.9.9')
+    def test_zrevrangebylex(self, r):
+        r.zadd('a', {'a': 0, 'b': 0, 'c': 0, 'd': 0, 'e': 0, 'f': 0, 'g': 0})
+        assert r.zrevrangebylex('a', '[c', '-') == [b'c', b'b', b'a']
+        assert r.zrevrangebylex('a', '(c', '-') == [b'b', b'a']
+        assert r.zrevrangebylex('a', '(g', '[aaa') == \
+            [b'f', b'e', b'd', b'c', b'b']
+        assert r.zrevrangebylex('a', '+', '[f') == [b'g', b'f']
+        assert r.zrevrangebylex('a', '+', '-', start=3, num=2) == \
+            [b'd', b'c']
+
     def test_zrangebyscore(self, r):
-        r.zadd('a', a1=1, a2=2, a3=3, a4=4, a5=5)
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3, 'a4': 4, 'a5': 5})
         assert r.zrangebyscore('a', 2, 4) == [b'a2', b'a3', b'a4']
 
         # slicing with start/num
@@ -963,6 +1041,7 @@ class TestRedisCommands(object):
         assert r.zrem('a', 'a1', 'a2') == 2
         assert r.zrange('a', 0, 5) == [b'a3']
 
+    @skip_if_server_version_lt('2.8.9')
     def test_zremrangebylex(self, r):
         r.zadd('a', {'a': 0, 'b': 0, 'c': 0, 'd': 0, 'e': 0, 'f': 0, 'g': 0})
         assert r.zremrangebylex('a', '-', '[c') == 3
@@ -978,14 +1057,14 @@ class TestRedisCommands(object):
         assert r.zrange('a', 0, 5) == [b'a1', b'a5']
 
     def test_zremrangebyscore(self, r):
-        r.zadd('a', a1=1, a2=2, a3=3, a4=4, a5=5)
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3, 'a4': 4, 'a5': 5})
         assert r.zremrangebyscore('a', 2, 4) == 3
         assert r.zrange('a', 0, -1) == [b'a1', b'a5']
         assert r.zremrangebyscore('a', 2, 4) == 0
         assert r.zrange('a', 0, -1) == [b'a1', b'a5']
 
     def test_zrevrange(self, r):
-        r.zadd('a', a1=1, a2=2, a3=3)
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
         assert r.zrevrange('a', 0, 1) == [b'a3', b'a2']
         assert r.zrevrange('a', 1, 2) == [b'a2', b'a1']
 
@@ -1001,7 +1080,7 @@ class TestRedisCommands(object):
             [(b'a3', 3.0), (b'a2', 2.0)]
 
     def test_zrevrangebyscore(self, r):
-        r.zadd('a', a1=1, a2=2, a3=3, a4=4, a5=5)
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3, 'a4': 4, 'a5': 5})
         assert r.zrevrangebyscore('a', 4, 2) == [b'a4', b'a3', b'a2']
 
         # slicing with start/num
@@ -1041,32 +1120,32 @@ class TestRedisCommands(object):
         r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
         r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
         r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zunionstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}']) == 4
-        assert r.zrange('d{foo}', 0, -1, withscores=True) == \
+        assert r.zunionstore('d', ['a', 'b', 'c']) == 4
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a2', 3), (b'a4', 4), (b'a3', 8), (b'a1', 9)]
 
     def test_zunionstore_max(self, r):
         r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
         r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
         r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zunionstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'], aggregate='MAX') == 4
-        assert r.zrange('d{foo}', 0, -1, withscores=True) == \
+        assert r.zunionstore('d', ['a', 'b', 'c'], aggregate='MAX') == 4
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a2', 2), (b'a4', 4), (b'a3', 5), (b'a1', 6)]
 
     def test_zunionstore_min(self, r):
         r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
         r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 4})
         r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zunionstore('d{foo}', ['a{foo}', 'b{foo}', 'c{foo}'], aggregate='MIN') == 4
-        assert r.zrange('d{foo}', 0, -1, withscores=True) == \
+        assert r.zunionstore('d', ['a', 'b', 'c'], aggregate='MIN') == 4
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a1', 1), (b'a2', 2), (b'a3', 3), (b'a4', 4)]
 
     def test_zunionstore_with_weight(self, r):
         r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
         r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
         r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zunionstore('d{foo}', {'a{foo}': 1, 'b{foo}': 2, 'c{foo}': 3}) == 4
-        assert r.zrange('d{foo}', 0, -1, withscores=True) == \
+        assert r.zunionstore('d', {'a': 1, 'b': 2, 'c': 3}) == 4
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a2', 5), (b'a4', 12), (b'a3', 20), (b'a1', 23)]
 
 #     # HYPERLOGLOG TESTS
