@@ -242,6 +242,12 @@ class TestReadOnlyConnectionPool(object):
         """
         pool = self.get_pool(connection_kwargs={})
 
+        # Set the values that we expect to be set for the NodeManager. Represents 2 nodes for 1 specific slot
+        pool.nodes.slots[0] = [
+            {'host': '172.20.0.2', 'port': 7000, 'name': '172.20.0.2:7000', 'server_type': 'master'},
+            {'host': '172.20.0.2', 'port': 7003, 'name': '172.20.0.2:7003', 'server_type': 'slave'},
+        ]
+
         expected_ports = {7000, 7003}
         actual_ports = set()
         for _ in range(0, 100):
