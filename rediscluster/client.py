@@ -315,7 +315,7 @@ class RedisCluster(Redis):
         key = args[1]
 
         # OBJEECT command uses a special keyword as first positional argument
-        if command = 'OBJECT':
+        if command == 'OBJECT':
             key = args[2]
 
         return self.connection_pool.nodes.keyslot(key)
