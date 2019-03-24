@@ -1297,47 +1297,6 @@ class TestRedisCommands(object):
             [b'vodka', b'milk', b'gin', b'apple juice']
 
 
-class TestStrictCommands(object):
-
-    def test_strict_zadd(self, sr):
-        sr.zadd('a', 1.0, 'a1', 2.0, 'a2', a3=3.0)
-        assert sr.zrange('a', 0, -1, withscores=True) == \
-            [(b'a1', 1.0), (b'a2', 2.0), (b'a3', 3.0)]
-
-    def test_strict_lrem(self, sr):
-        sr.rpush('a', 'a1', 'a2', 'a3', 'a1')
-        sr.lrem('a', 0, 'a1')
-        assert sr.lrange('a', 0, -1) == [b'a2', b'a3']
-
-    def test_strict_setex(self, sr):
-        assert sr.setex('a', 60, '1')
-        assert sr['a'] == b'1'
-        assert 0 < sr.ttl('a') <= 60
-
-    def test_strict_ttl(self, sr):
-        assert not sr.expire('a', 10)
-        sr['a'] = '1'
-        assert sr.expire('a', 10)
-        assert 0 < sr.ttl('a') <= 10
-        assert sr.persist('a')
-        assert sr.ttl('a') == -1
-
-    def test_strict_pttl(self, sr):
-        assert not sr.pexpire('a', 10000)
-        sr['a'] = '1'
-        assert sr.pexpire('a', 10000)
-        assert 0 < sr.pttl('a') <= 10000
-        assert sr.persist('a')
-        assert sr.pttl('a') == -1
-
-    def test_eval(self, sr):
-        res = sr.eval("return {KEYS[1],KEYS[2],ARGV[1],ARGV[2]}", 2, "A{foo}", "B{foo}", "first", "second")
-        assert res[0] == b'A{foo}'
-        assert res[1] == b'B{foo}'
-        assert res[2] == b'first'
-        assert res[3] == b'second'
-
-
 class TestBinarySave(object):
     def test_binary_get_set(self, r):
         assert r.set(' foo bar ', '123')
