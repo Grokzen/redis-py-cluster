@@ -313,8 +313,8 @@ class StrictRedisCluster(StrictRedis):
 
         key = args[1]
 
-        # OBJEECT command uses a special keyword as first positional argument
-        if command = 'OBJECT':
+        # OBJECT command uses a special keyword as first positional argument
+        if command == 'OBJECT':
             key = args[2]
 
         return self.connection_pool.nodes.keyslot(key)
