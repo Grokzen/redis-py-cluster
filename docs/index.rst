@@ -71,15 +71,10 @@ Supported python versions
 -------------------------
 
 - 2.7
-- 3.3
 - 3.4.1+ (See note)
 - 3.5
 - 3.6
-
-Experimental:
-
-- 3.7-dev
-
+- 3.7
 
 .. note:: Python 3.4.0
 
