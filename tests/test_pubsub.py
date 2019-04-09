@@ -479,29 +479,30 @@ def test_pubsub_thread_publish():
 
 
 class TestPubSubPubSubSubcommands(object):
-    """
-    Test Pub/Sub subcommands of PUBSUB
-    @see https://redis.io/commands/pubsub
-    """
 
-    @skip_if_redis_py_version_lt('2.10.6')
+    @skip_if_server_version_lt('2.8.0')
     def test_pubsub_channels(self, r):
-        r.pubsub(ignore_subscribe_messages=True).subscribe('foo', 'bar', 'baz', 'quux')
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.subscribe('foo', 'bar', 'baz', 'quux')
         channels = sorted(r.pubsub_channels())
         assert channels == [b'bar', b'baz', b'foo', b'quux']
 
-    @skip_if_redis_py_version_lt('2.10.6')
+    @skip_if_server_version_lt('2.8.0')
     def test_pubsub_numsub(self, r):
-        r.pubsub(ignore_subscribe_messages=True).subscribe('foo', 'bar', 'baz')
-        r.pubsub(ignore_subscribe_messages=True).subscribe('bar', 'baz')
-        r.pubsub(ignore_subscribe_messages=True).subscribe('baz')
+        p1 = r.pubsub(ignore_subscribe_messages=True)
+        p1.subscribe('foo', 'bar', 'baz')
+        p2 = r.pubsub(ignore_subscribe_messages=True)
+        p2.subscribe('bar', 'baz')
+        p3 = r.pubsub(ignore_subscribe_messages=True)
+        p3.subscribe('baz')
 
         channels = [(b'foo', 1), (b'bar', 2), (b'baz', 3)]
-        assert channels == sorted(r.pubsub_numsub('foo', 'bar', 'baz'))
+        assert channels == r.pubsub_numsub('foo', 'bar', 'baz')
 
-    @skip_if_redis_py_version_lt('2.10.6')
+    @skip_if_server_version_lt('2.8.0')
     def test_pubsub_numpat(self, r):
-        r.pubsub(ignore_subscribe_messages=True).psubscribe('*oo', '*ar', 'b*z')
+        p = r.pubsub(ignore_subscribe_messages=True)
+        p.psubscribe('*oo', '*ar', 'b*z')
         assert r.pubsub_numpat() == 3
 
 
