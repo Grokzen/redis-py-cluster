@@ -364,7 +364,7 @@ def test_moved_redirection():
 
     Important thing to verify is that it tries to talk to the second node.
     """
-    r = RedisCluster(host="127.0.0.1", port=7000)
+    r = get_mocked_redis_client(host="127.0.0.1", port=7000)
     m = Mock(autospec=True)
 
     def ask_redirect_effect(connection, *args, **options):
@@ -403,7 +403,8 @@ def test_moved_redirection_pipeline():
 
         parse_response.side_effect = moved_redirect_effect
 
-        r = RedisCluster(host="127.0.0.1", port=7000)
+        # r = RedisCluster(host="127.0.0.1", port=7000)
+        r = get_mocked_redis_client(host="127.0.0.1", port=7000)
         p = r.pipeline()
         p.set("foo", "bar")
         assert p.execute() == ["MOCK_OK"]
