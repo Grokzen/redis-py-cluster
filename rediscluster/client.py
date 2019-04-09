@@ -784,8 +784,8 @@ class RedisCluster(Redis):
         # Optimization where if both keys is in the same slot then we can use the
         # plain upstream rename method.
         #
-        src_slot = self.connection_pool.keyslot(src)
-        dst_slot = self.connection_pool.keyslot(dst)
+        src_slot = self.connection_pool.nodes.keyslot(src)
+        dst_slot = self.connection_pool.nodes.keyslot(dst)
 
         if src_slot == dst_slot:
             return self.execute_command('RENAME', src, dst)
