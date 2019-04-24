@@ -7,7 +7,9 @@ import re
 import time
 
 # rediscluster imports
+import rediscluster
 from rediscluster.exceptions import RedisClusterException, ClusterCrossSlotError
+from rediscluster.utils import dict_merge
 from tests.conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt
 
 # 3rd party imports
@@ -18,13 +20,53 @@ from redis.exceptions import ResponseError, DataError, RedisError, DataError
 from redis import exceptions
 
 
-pytestmark = skip_if_server_version_lt('2.9.0')
+@pytest.fixture()
+def slowlog(request, r):
+    current_config = r.config_get()
+    old_slower_than_value = current_config['slowlog-log-slower-than']
+    old_max_legnth_value = current_config['slowlog-max-len']
+
+    def cleanup():
+        r.config_set('slowlog-log-slower-than', old_slower_than_value)
+        r.config_set('slowlog-max-len', old_max_legnth_value)
+    request.addfinalizer(cleanup)
+
+    r.config_set('slowlog-log-slower-than', 0)
+    r.config_set('slowlog-max-len', 128)
 
 
 def redis_server_time(client):
-    seconds, milliseconds = list(client.time().values())[0]
-    timestamp = float('{0}.{1}'.format(seconds, milliseconds))
+    all_clients_time = client.time()
+    for server_id, server_time_data in all_clients_time.items():
+        if '7000' in server_id:
+            seconds, milliseconds = server_time_data
+
+    timestamp = float('%s.%s' % (seconds, milliseconds))
     return datetime.datetime.fromtimestamp(timestamp)
+
+
+def get_stream_message(client, stream, message_id):
+    "Fetch a stream message and format it as a (message_id, fields) pair"
+    response = client.xrange(stream, min=message_id, max=message_id)
+    assert len(response) == 1
+    return response[0]
+
+
+# RESPONSE CALLBACKS
+class TestResponseCallbacks(object):
+    "Tests for the response callback system"
+
+    def test_response_callbacks(self, r):
+        all_response_callbacks = dict_merge(
+            rediscluster.RedisCluster.RESPONSE_CALLBACKS,
+            rediscluster.RedisCluster.CLUSTER_COMMANDS_RESPONSE_CALLBACKS,
+        )
+
+        assert r.response_callbacks == all_response_callbacks
+        assert id(r.response_callbacks) != id(all_response_callbacks)
+        r.set_response_callback('GET', lambda x: 'static')
+        r['a'] = 'foo'
+        assert r['a'] == 'static'
 
 
 class TestRedisCommands(object):

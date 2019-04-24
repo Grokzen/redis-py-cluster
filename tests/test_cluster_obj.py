@@ -425,7 +425,13 @@ def assert_moved_redirection_on_slave(sr, connection_pool_cls, cluster_obj):
             'server_type': 'slave',
         }
 
-        master_value = {'host': '127.0.0.1', 'name': '127.0.0.1:7000', 'port': 7000, 'server_type': 'master'}
+        master_value = {
+            'host': '127.0.0.1',
+            'name': '127.0.0.1:7000',
+            'port': 7000,
+            'server_type': 'master',
+        }
+
         with patch.object(ClusterConnectionPool, 'get_master_node_by_slot') as return_master_mock:
             return_master_mock.return_value = master_value
             assert cluster_obj.get('foo16706') == b'foo'
@@ -437,10 +443,13 @@ def test_moved_redirection_on_slave_with_default_client(sr):
     Test that the client is redirected normally with default
     (readonly_mode=False) client even when we connect always to slave.
     """
+    r = get_mocked_redis_client(host="127.0.0.1", port=7000)
+
     assert_moved_redirection_on_slave(
         sr,
         ClusterConnectionPool,
-        RedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
+        # RedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
+        get_mocked_redis_client(host="127.0.0.1", port=7000, reinitialize_steps=1)
     )
 
 
