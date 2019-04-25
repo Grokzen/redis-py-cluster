@@ -60,7 +60,7 @@ class RedisCluster(Redis):
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
             "TIME", "KEYS", "CLUSTER INFO", "PUBSUB CHANNELS",
-            "PUBSUB NUMSUB", "PUBSUB NUMPAT",
+            "PUBSUB NUMSUB", "PUBSUB NUMPAT", "CLIENT ID",
         ], 'all-nodes'),
         string_keys_to_dict([
             "FLUSHALL", "FLUSHDB", "SCRIPT LOAD", "SCRIPT FLUSH", "SCRIPT EXISTS", "SCAN",
@@ -99,7 +99,7 @@ class RedisCluster(Redis):
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
             "TIME", "SCAN", "CLUSTER INFO", 'CLUSTER ADDSLOTS', 'CLUSTER COUNT-FAILURE-REPORTS',
-            'CLUSTER DELSLOTS', 'CLUSTER FAILOVER', 'CLUSTER FORGET', "FLUSHALL", "FLUSHDB",
+            'CLUSTER DELSLOTS', 'CLUSTER FAILOVER', 'CLUSTER FORGET', "FLUSHALL", "FLUSHDB", "CLIENT ID",
         ], lambda command, res: res),
         string_keys_to_dict([
             "SCRIPT LOAD",
