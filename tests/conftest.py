@@ -11,6 +11,7 @@ from rediscluster import RedisCluster
 # 3rd party imports
 import pytest
 from redis import Redis
+from redis.exceptions import ResponseError
 from distutils.version import StrictVersion
 
 # put our path in front so we can be sure we are testing locally not against the global package
@@ -72,6 +73,10 @@ def _init_mgt_client(request, cls=None, **kwargs):
             client.connection_pool.disconnect()
         request.addfinalizer(teardown)
     return client
+
+
+def skip_for_no_cluster_impl():
+    return pytest.mark.skipif(True, reason="Cluster has no or working implementation for this test")
 
 
 def skip_if_not_password_protected_nodes():
