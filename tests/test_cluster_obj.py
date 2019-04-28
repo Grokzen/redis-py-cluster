@@ -67,7 +67,7 @@ def get_mocked_redis_client(*args, **kwargs):
 
 
 def test_representation(r):
-    assert re.search('^RedisCluster<[0-9\.\:\,].+>$', str(r))
+    assert re.search('^RedisCluster<[a-z0-9\.\:\,].+>$', str(r))
 
 
 def test_blocked_strict_redis_args():
@@ -116,7 +116,7 @@ def test_empty_startup_nodes():
     Test that exception is raised when empty providing empty startup_nodes
     """
     with pytest.raises(RedisClusterException) as ex:
-        _get_client(RedisCluster, init_slot_cache=False, startup_nodes=[])
+        r = RedisCluster(startup_nodes=[])
 
     assert unicode(ex.value).startswith("No startup nodes provided"), unicode(ex.value)
 
