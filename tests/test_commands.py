@@ -1005,6 +1005,7 @@ class TestRedisCommands(object):
         assert value in s
         assert r.smembers('a') == set(s) - {value}
 
+    @skip_if_server_version_lt('3.2.0')
     def test_spop_multi_value(self, r):
         s = [b'1', b'2', b'3']
         r.sadd('a', *s)
@@ -2385,6 +2386,7 @@ class TestRedisCommands(object):
         # 1 message is trimmed
         assert r.xtrim(stream, 3, approximate=False) == 1
 
+    @skip_if_server_version_lt('3.2.0')
     def test_bitfield_operations(self, r):
         # comments show affected bits
         bf = r.bitfield('a')
