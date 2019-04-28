@@ -20,6 +20,7 @@ install:
   - pip install -e .
   - "if [[ $HIREDIS == '1' ]]; then pip install hiredis; fi"
   - "pip freeze | grep redis"
+  - "pip freeze"
 env:
   # Redis 3.0 & HIREDIS
   - HIREDIS=0 REDIS_VERSION=3.0
