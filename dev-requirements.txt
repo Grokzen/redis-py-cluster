@@ -9,3 +9,4 @@ tox
 python-coveralls
 ptpdb
 ptpython
+pysnooper
