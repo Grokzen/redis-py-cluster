@@ -352,7 +352,7 @@ class TestPipeline(object):
         """
         Test that we can use a pipeline with the RedisCluster class
         """
-        r = _get_client(cls=None)
+        r = _get_client(RedisCluster)
         with r.pipeline(transaction=False) as pipe:
             pipe.get("foobar")
 
