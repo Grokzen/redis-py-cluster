@@ -10,9 +10,10 @@ from rediscluster import RedisCluster
 
 # 3rd party imports
 import pytest
+from distutils.version import StrictVersion
+from mock import Mock
 from redis import Redis
 from redis.exceptions import ResponseError
-from distutils.version import StrictVersion
 
 # put our path in front so we can be sure we are testing locally not against the global package
 basepath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
