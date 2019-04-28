@@ -79,7 +79,7 @@ def test_blocked_strict_redis_args():
     assert c.connection_pool.connection_kwargs["socket_timeout"] == ClusterConnectionPool.RedisClusterDefaultTimeout
 
     with pytest.raises(RedisClusterException) as ex:
-        _get_client(db=1)
+        _get_client(RedisCluster, db=1)
     assert unicode(ex.value).startswith("Argument 'db' is not possible to use in cluster mode")
 
 
@@ -91,14 +91,14 @@ def test_password_procted_nodes():
     startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
     password_protected_startup_nodes = [{"host": "127.0.0.1", "port": "7100"}]
     with pytest.raises(RedisClusterException) as ex:
-        _get_client(startup_nodes=password_protected_startup_nodes)
+        _get_client(RedisCluster, startup_nodes=password_protected_startup_nodes)
     assert unicode(ex.value).startswith("ERROR sending 'cluster slots' command to redis server:")
-    _get_client(startup_nodes=password_protected_startup_nodes, password='password_is_protected')
+    _get_client(RedisCluster, startup_nodes=password_protected_startup_nodes, password='password_is_protected')
 
     with pytest.raises(RedisClusterException) as ex:
-        _get_client(startup_nodes=startup_nodes, password='password_is_protected')
+        _get_client(RedisCluster, startup_nodes=startup_nodes, password='password_is_protected')
     assert unicode(ex.value).startswith("ERROR sending 'cluster slots' command to redis server:")
-    _get_client(startup_nodes=startup_nodes)
+    _get_client(RedisCluster, startup_nodes=startup_nodes)
 
 
 def test_host_port_startup_node():
@@ -116,7 +116,7 @@ def test_empty_startup_nodes():
     Test that exception is raised when empty providing empty startup_nodes
     """
     with pytest.raises(RedisClusterException) as ex:
-        _get_client(init_slot_cache=False, startup_nodes=[])
+        _get_client(RedisCluster, init_slot_cache=False, startup_nodes=[])
 
     assert unicode(ex.value).startswith("No startup nodes provided"), unicode(ex.value)
 
