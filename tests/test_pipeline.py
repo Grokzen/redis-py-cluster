@@ -8,7 +8,7 @@ import re
 from rediscluster.client import RedisCluster
 from rediscluster.connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
 from rediscluster.exceptions import RedisClusterException
-from tests.conftest import _get_client
+from tests.conftest import _get_client, skip_if_server_version_lt
 
 # 3rd party imports
 import pytest
@@ -285,6 +285,7 @@ class TestPipeline(object):
 
         assert r[key] == b'1'
 
+    @skip_if_server_version_lt('3.2.0')
     def test_pipeline_with_bitfield(self, r):
         with r.pipeline() as pipe:
             pipe.set('a', '1')
