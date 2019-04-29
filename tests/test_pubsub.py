@@ -481,6 +481,7 @@ def test_pubsub_thread_publish():
 class TestPubSubPubSubSubcommands(object):
 
     @skip_if_server_version_lt('2.8.0')
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
     def test_pubsub_channels(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         p.subscribe('foo', 'bar', 'baz', 'quux')
@@ -488,6 +489,7 @@ class TestPubSubPubSubSubcommands(object):
         assert channels == [b'bar', b'baz', b'foo', b'quux']
 
     @skip_if_server_version_lt('2.8.0')
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
     def test_pubsub_numsub(self, r):
         p1 = r.pubsub(ignore_subscribe_messages=True)
         p1.subscribe('foo', 'bar', 'baz')
@@ -500,6 +502,7 @@ class TestPubSubPubSubSubcommands(object):
         assert channels == r.pubsub_numsub('foo', 'bar', 'baz')
 
     @skip_if_server_version_lt('2.8.0')
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
     def test_pubsub_numpat(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         p.psubscribe('*oo', '*ar', 'b*z')
@@ -509,6 +512,7 @@ class TestPubSubPubSubSubcommands(object):
 class TestPubSubPings(object):
 
     @skip_if_server_version_lt('3.0.0')
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
     def test_send_pubsub_ping(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         p.subscribe('foo')
@@ -518,7 +522,7 @@ class TestPubSubPings(object):
                                                    pattern=None)
 
     @skip_if_server_version_lt('3.0.0')
-    @pytest.mark.xfail(reason="Pattern pubsub do not work currently")
+    @pytest.mark.xfail(reason="Pattern pubsub is not fully supported in cluster mode")
     def test_send_pubsub_ping_message(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         p.subscribe('foo')
