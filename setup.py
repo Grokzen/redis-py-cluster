@@ -23,6 +23,7 @@ setup(
     version="1.3.6",
     description="Library for communicating with Redis Clusters. Built on top of redis-py lib",
     long_description=readme + '\n\n' + history,
+    long_description_content_type="text/markdown",
     author="Johan Andersson",
     author_email="Grokzen@gmail.com",
     maintainer='Johan Andersson',
