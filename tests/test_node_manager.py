@@ -279,7 +279,7 @@ def test_cluster_slots_error():
     Check that exception is raised if initialize can't execute
     'CLUSTER SLOTS' command.
     """
-    with patch.object(RedisCluster, 'execute_command') as execute_command_mock:
+    with patch.object(Redis, 'execute_command') as execute_command_mock:
         execute_command_mock.side_effect = Exception("foobar")
 
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
@@ -295,7 +295,7 @@ def test_cluster_slots_error_expected_responseerror():
     Check that exception is not raised if initialize can't execute
     'CLUSTER SLOTS' command but can hit other nodes.
     """
-    with patch.object(StrictRedis, 'execute_command') as execute_command_mock:
+    with patch.object(Redis, 'execute_command') as execute_command_mock:
         execute_command_mock.side_effect = ResponseError("MASTERDOWN")
 
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
