@@ -116,7 +116,6 @@ The Usage Guide
    commands
    limitations-and-differences
    pipelines
-   threads
    pubsub
    readonly-mode
 
