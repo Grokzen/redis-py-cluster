@@ -38,8 +38,8 @@ def get_mocked_redis_client(*args, **kwargs):
     on different installations and machines.
     """
     with patch.object(Redis, 'execute_command') as execute_command_mock:
-        def execute_command(self, *args, **kwargs):
-            if args[0] == 'slots':
+        def execute_command(self, *_args, **_kwargs):
+            if _args[0] == 'slots':
                 mock_cluster_slots = [
                     [
                         0, 5460,
@@ -58,7 +58,7 @@ def get_mocked_redis_client(*args, **kwargs):
                     ]
                 ]
                 return mock_cluster_slots
-            elif args[0] == 'cluster-require-full-coverage':
+            elif _args[0] == 'cluster-require-full-coverage':
                 return {'cluster-require-full-coverage': 'yes'}
 
         execute_command_mock.side_effect = execute_command
@@ -408,60 +408,6 @@ def test_moved_redirection_pipeline():
         p = r.pipeline()
         p.set("foo", "bar")
         assert p.execute() == ["MOCK_OK"]
-
-
-def assert_moved_redirection_on_slave(sr, connection_pool_cls, cluster_obj):
-    """
-    """
-    # we assume this key is set on 127.0.0.1:7000(7003)
-    sr.set('foo16706', 'foo')
-    time.sleep(1)
-
-    with patch.object(connection_pool_cls, 'get_node_by_slot') as return_slave_mock:
-        return_slave_mock.return_value = {
-            'name': '127.0.0.1:7004',
-            'host': '127.0.0.1',
-            'port': 7004,
-            'server_type': 'slave',
-        }
-
-        master_value = {
-            'host': '127.0.0.1',
-            'name': '127.0.0.1:7000',
-            'port': 7000,
-            'server_type': 'master',
-        }
-
-        with patch.object(ClusterConnectionPool, 'get_master_node_by_slot') as return_master_mock:
-            return_master_mock.return_value = master_value
-            assert cluster_obj.get('foo16706') == b'foo'
-            assert return_master_mock.call_count == 1
-
-
-def test_moved_redirection_on_slave_with_default_client(sr):
-    """
-    Test that the client is redirected normally with default
-    (readonly_mode=False) client even when we connect always to slave.
-    """
-    r = get_mocked_redis_client(host="127.0.0.1", port=7000)
-
-    assert_moved_redirection_on_slave(
-        sr,
-        ClusterConnectionPool,
-        # RedisCluster(host="127.0.0.1", port=7000, reinitialize_steps=1)
-        get_mocked_redis_client(host="127.0.0.1", port=7000, reinitialize_steps=1)
-    )
-
-
-def test_moved_redirection_on_slave_with_readonly_mode_client(sr):
-    """
-    Ditto with READONLY mode.
-    """
-    assert_moved_redirection_on_slave(
-        sr,
-        ClusterReadOnlyConnectionPool,
-        RedisCluster(host="127.0.0.1", port=7000, readonly_mode=True, reinitialize_steps=1)
-    )
 
 
 def test_access_correct_slave_with_readonly_mode_client(sr):
