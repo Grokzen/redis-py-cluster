@@ -6,8 +6,9 @@
 Welcome to redis-py-cluster's documentation!
 ============================================
 
-This project is a port of `redis-rb-cluster` by antirez, with a lot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster.
+This project is a port of `redis-rb-cluster` by antirez, with a lot of added functionality.
 
+The original source can be found at https://github.com/antirez/redis-rb-cluster.
 
 The source code is `available on github`_.
 
@@ -52,18 +53,29 @@ Small sample script that shows how to get started with RedisCluster. It can also
     >>> print(rc.get("foo"))
     'bar'
 
-
 .. note:: Python 3
 
-    Since Python 3 changed to Unicode strings from Python 2's ASCII, the return type of *most* commands will be binary strings, unless the class is instantiated with the option ``decode_responses=True``. In this case, the responses will be Python 3 strings (Unicode). For the init argument `decode_responses`, when set to False, redis-py-cluster will not attempt to decode the responses it receives. In Python 3, this means the responses will be of type `bytes`. In Python 2, they will be native strings (`str`). If `decode_responses` is set to True, for Python 3 responses will be `str`, for Python 2 they will be `unicode`.
+    Since Python 3 changed to Unicode strings from Python 2's ASCII, the return type of *most* commands will be binary strings,
+    unless the class is instantiated with the option ``decode_responses=True``.
+
+    In this case, the responses will be Python 3 strings (Unicode).
+
+    For the init argument `decode_responses`, when set to False, redis-py-cluster will not attempt to decode the responses it receives.
+
+    In Python 3, this means the responses will be of type `bytes`. In Python 2, they will be native strings (`str`).
+
+    If `decode_responses` is set to True, for Python 3 responses will be `str`, for Python 2 they will be `unicode`.
+
+
 
 Dependencies & supported python versions
 ----------------------------------------
 
-- Python: redis >= `2.10.2`, <= `2.10.5` is required.
-  Older versions in the `2.10.x` series can work but using the latest one is allways recommended.
+It is always recommended to use the latest version of the dependencies of this project.
+
+- Redis-py: 'redis>=3.0.0,<3.1.0' is required in this major version of this cluster lib.
 - Optional Python: hiredis >= `0.2.0`. Older versions might work but is not tested.
-- A working Redis cluster based on version >= `3.0.0` is required. Only `3.0.x` releases is supported.
+- A working Redis cluster based on version `>=3.0.0` is required.
 
 
 
@@ -78,7 +90,13 @@ Supported python versions
 
 .. note:: Python 3.4.0
 
-    A segfault was found when running `redis-py` in python `3.4.0` that was introduced into the codebase in python `3.4.0`. Because of this both `redis-py` and `redis-py-cluster` will not work when running with `3.4.0`. This lib has decided to block the lib from execution on `3.4.0` and you will get a exception when trying to import the code. The only solution is to use python `3.4.1` or some other higher minor version in the `3.4` series.
+    A segfault was found when running `redis-py` in python `3.4.0` that was introduced into the codebase in python `3.4.0`.
+    
+    Because of this both `redis-py` and `redis-py-cluster` will not work when running with `3.4.0`.
+    
+    This lib has decided to block the lib from execution on `3.4.0` and you will get a exception when trying to import the code.
+    
+    The only solution is to use python `3.4.1` or some other higher minor version in the `3.4` series.
 
 
 
