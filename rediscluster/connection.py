@@ -308,7 +308,7 @@ class ClusterConnectionPool(ConnectionPool):
 
         try:
             return self.get_connection_by_node(self.get_node_by_slot(slot))
-        except KeyError:
+        except (KeyError, RedisClusterException) as exc:
             return self.get_random_connection()
 
     def get_connection_by_node(self, node):
@@ -331,7 +331,12 @@ class ClusterConnectionPool(ConnectionPool):
     def get_master_node_by_slot(self, slot):
         """
         """
-        return self.nodes.slots[slot][0]
+        try:
+            return self.nodes.slots[slot][0]
+        except KeyError as ke:
+            raise RedisClusterException('Slot "{slot}" not covered by the cluster. "skip_full_coverage_check={skip_full_coverage_check}"'.format(
+                slot=slot, skip_full_coverage_check=self.nodes._skip_full_coverage_check,
+            ))
 
     def get_node_by_slot(self, slot, *args, **kwargs):
         """
