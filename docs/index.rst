@@ -10,7 +10,7 @@ This project is a port of `redis-rb-cluster` by antirez, with a lot of added fun
 
 The original source can be found at https://github.com/antirez/redis-rb-cluster.
 
-The source code is `available on github`_.
+The source code for this project is `available on github`_.
 
 .. _available on github: http://github.com/grokzen/redis-py-cluster
 
@@ -33,10 +33,12 @@ or from source code
 
 
 
-Usage example
+Basic usage example
 -------------
 
-Small sample script that shows how to get started with RedisCluster. It can also be found in the file `exmaples/basic.py`
+Small sample script that shows how to get started with RedisCluster. It can also be found in the file `exmaples/basic.py`.
+
+Additional code examples of more advance functionality can be found in the `examples/` folder in the source code git repo.
 
 .. code-block:: python
 
@@ -68,8 +70,8 @@ Small sample script that shows how to get started with RedisCluster. It can also
 
 
 
-Dependencies & supported python versions
-----------------------------------------
+Library Dependencies
+--------------------
 
 It is always recommended to use the latest version of the dependencies of this project.
 
@@ -82,15 +84,19 @@ It is always recommended to use the latest version of the dependencies of this p
 Supported python versions
 -------------------------
 
-- 2.7
+Python versions should follow the same supported python versions as specificed by the upstream package `redis-py`, based on what major version(s) that is specified.
+
+If this library supports more then one major version line of `redis-py`, then the supported python versions must include the set of supported python versions by all major version lines.
+
+- 2.7.x
 - 3.4.1+ (See note)
-- 3.5
-- 3.6
-- 3.7
+- 3.5.x
+- 3.6.x
+- 3.7.x
 
 .. note:: Python 3.4.0
 
-    A segfault was found when running `redis-py` in python `3.4.0` that was introduced into the codebase in python `3.4.0`.
+    A segfault was found when running `redis-py` in python `3.4.0` that was introduced into the codebase in python itself in the version `3.4.0`.
     
     Because of this both `redis-py` and `redis-py-cluster` will not work when running with `3.4.0`.
     
@@ -98,14 +104,16 @@ Supported python versions
     
     The only solution is to use python `3.4.1` or some other higher minor version in the `3.4` series.
 
+    When python `3.8.0` is released and when it is added to as a supported pythoon version, python 3.4.x will be removed from supported versions and this hard block will be removed from the source code.
 
 
-Regarding duplicate pypi and python naming
-------------------------------------------
+
+Regarding duplicate package name on pypi
+----------------------------------------
 
 It has been found that the python module name that is used in this library (rediscluster) is already shared with a similar but older project.
 
-This lib will not change the naming of the module to something else to prevent collisions between the libs.
+This lib will `NOT` change the naming of the module to something else to prevent collisions between the libs.
 
 My reasoning for this is the following
 
