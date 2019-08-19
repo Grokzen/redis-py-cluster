@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
+from __future__ import unicode_literals
 import os
 import random
 import threading
@@ -64,7 +65,7 @@ class SSLClusterConnection(SSLConnection):
     Manages TCP communication over TLS/SSL to and from a Redis cluster
     Usage:
         pool = ClusterConnectionPool(connection_class=SSLClusterConnection, ...)
-        client = StrictRedisCluster(connection_pool=pool)
+        client = RedisCluster(connection_pool=pool)
     """
     description_format = "SSLClusterConnection<host=%(host)s,port=%(port)s,db=%(db)s>"
 
@@ -130,7 +131,7 @@ class ClusterConnectionPool(ConnectionPool):
         self.max_connections_per_node = max_connections_per_node
 
         if connection_class == SSLClusterConnection:
-            connection_kwargs['ssl'] = True  # needed in StrictRedis init
+            connection_kwargs['ssl'] = True  # needed in Redis init
 
         self.nodes = NodeManager(
             startup_nodes,
@@ -307,7 +308,7 @@ class ClusterConnectionPool(ConnectionPool):
 
         try:
             return self.get_connection_by_node(self.get_node_by_slot(slot))
-        except KeyError:
+        except (KeyError, RedisClusterException) as exc:
             return self.get_random_connection()
 
     def get_connection_by_node(self, node):
@@ -330,7 +331,12 @@ class ClusterConnectionPool(ConnectionPool):
     def get_master_node_by_slot(self, slot):
         """
         """
-        return self.nodes.slots[slot][0]
+        try:
+            return self.nodes.slots[slot][0]
+        except KeyError as ke:
+            raise RedisClusterException('Slot "{slot}" not covered by the cluster. "skip_full_coverage_check={skip_full_coverage_check}"'.format(
+                slot=slot, skip_full_coverage_check=self.nodes._skip_full_coverage_check,
+            ))
 
     def get_node_by_slot(self, slot, *args, **kwargs):
         """

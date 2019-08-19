@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
-from __future__ import with_statement
 import os
 import re
 import time
@@ -18,7 +17,7 @@ from tests.conftest import skip_if_server_version_lt
 import pytest
 import redis
 from mock import patch, Mock
-from redis.connection import ssl_available
+from redis.connection import ssl_available, to_bool
 from redis._compat import unicode
 
 
@@ -243,6 +242,12 @@ class TestReadOnlyConnectionPool(object):
         """
         pool = self.get_pool(connection_kwargs={})
 
+        # Set the values that we expect to be set for the NodeManager. Represents 2 nodes for 1 specific slot
+        pool.nodes.slots[0] = [
+            {'host': '172.20.0.2', 'port': 7000, 'name': '172.20.0.2:7000', 'server_type': 'master'},
+            {'host': '172.20.0.2', 'port': 7003, 'name': '172.20.0.2:7003', 'server_type': 'slave'},
+        ]
+
         expected_ports = {7000, 7003}
         actual_ports = set()
         for _ in range(0, 100):
@@ -429,6 +434,36 @@ class TestConnectionPoolURLParsing(object):
             'password': None,
         }
 
+    def test_extra_typed_querystring_options(self):
+        pool = redis.ConnectionPool.from_url(
+            'redis://localhost/2?socket_timeout=20&socket_connect_timeout=10'
+            '&socket_keepalive=&retry_on_timeout=Yes&max_connections=10'
+        )
+
+        assert pool.connection_class == redis.Connection
+        assert pool.connection_kwargs == {
+            'host': 'localhost',
+            'port': 6379,
+            'db': 2,
+            'socket_timeout': 20.0,
+            'socket_connect_timeout': 10.0,
+            'retry_on_timeout': True,
+            'password': None,
+        }
+        assert pool.max_connections == 10
+
+    def test_boolean_parsing(self):
+        for expected, value in (
+                (None, None),
+                (None, ''),
+                (False, 0), (False, '0'),
+                (False, 'f'), (False, 'F'), (False, 'False'),
+                (False, 'n'), (False, 'N'), (False, 'No'),
+                (True, 1), (True, '1'),
+                (True, 'y'), (True, 'Y'), (True, 'Yes'),
+        ):
+            assert expected is to_bool(value)
+
     def test_extra_querystring_options(self):
         pool = redis.ConnectionPool.from_url('redis://localhost?a=1&b=2')
         assert pool.connection_class == redis.Connection
@@ -446,7 +481,7 @@ class TestConnectionPoolURLParsing(object):
         assert isinstance(pool, redis.BlockingConnectionPool)
 
     def test_client_creates_connection_pool(self):
-        r = redis.StrictRedis.from_url('redis://myhost')
+        r = redis.Redis.from_url('redis://myhost')
         assert r.connection_pool.connection_class == redis.Connection
         assert r.connection_pool.connection_kwargs == {
             'host': 'myhost',

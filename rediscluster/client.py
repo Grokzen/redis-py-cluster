@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 # python std lib
 import datetime
@@ -15,7 +16,7 @@ from .connection import (
 )
 from .exceptions import (
     RedisClusterException, AskError, MovedError, ClusterDownError,
-    ClusterError, TryAgainError,
+    ClusterError, TryAgainError
 )
 from .pubsub import ClusterPubSub
 from .utils import (
@@ -33,16 +34,16 @@ from .utils import (
     parse_pubsub_numpat,
 )
 # 3rd party imports
-from redis import StrictRedis
+from redis import Redis
 from redis.client import list_or_args, parse_info
 from redis.connection import Token
-from redis._compat import iteritems, basestring, b, izip, nativestr, long
+from redis._compat import iteritems, basestring, izip, nativestr, long
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
 
 
-class StrictRedisCluster(StrictRedis):
+class RedisCluster(Redis):
     """
-    If a command is implemented over the one in StrictRedis then it requires some changes compared to
+    If a command is implemented over the one in Redis then it requires some changes compared to
     the regular implementation of the method.
     """
     RedisClusterRequestTTL = 16
@@ -59,7 +60,7 @@ class StrictRedisCluster(StrictRedis):
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
             "TIME", "KEYS", "CLUSTER INFO", "PUBSUB CHANNELS",
-            "PUBSUB NUMSUB", "PUBSUB NUMPAT",
+            "PUBSUB NUMSUB", "PUBSUB NUMPAT", "CLIENT ID",
         ], 'all-nodes'),
         string_keys_to_dict([
             "FLUSHALL", "FLUSHDB", "SCRIPT LOAD", "SCRIPT FLUSH", "SCRIPT EXISTS", "SCAN",
@@ -98,7 +99,7 @@ class StrictRedisCluster(StrictRedis):
             "BGREWRITEAOF", "BGSAVE", "CLIENT LIST", "CLIENT GETNAME", "CONFIG RESETSTAT",
             "CONFIG REWRITE", "DBSIZE", "LASTSAVE", "PING", "SAVE", "SLOWLOG LEN", "SLOWLOG RESET",
             "TIME", "SCAN", "CLUSTER INFO", 'CLUSTER ADDSLOTS', 'CLUSTER COUNT-FAILURE-REPORTS',
-            'CLUSTER DELSLOTS', 'CLUSTER FAILOVER', 'CLUSTER FORGET', "FLUSHALL", "FLUSHDB",
+            'CLUSTER DELSLOTS', 'CLUSTER FAILOVER', 'CLUSTER FORGET', "FLUSHALL", "FLUSHDB", "CLIENT ID",
         ], lambda command, res: res),
         string_keys_to_dict([
             "SCRIPT LOAD",
@@ -172,13 +173,13 @@ class StrictRedisCluster(StrictRedis):
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around alot.
         :**kwargs:
-            Extra arguments that will be sent into StrictRedis instance when created
+            Extra arguments that will be sent into Redis instance when created
             (See Official redis-py doc for supported kwargs
             [https://github.com/andymccurdy/redis-py/blob/master/redis/client.py])
             Some kwargs is not supported and will raise RedisClusterException
             - db (Redis do not support database SELECT in cluster mode)
         """
-        # Tweaks to StrictRedis client arguments when running in cluster mode
+        # Tweaks to Redis client arguments when running in cluster mode
         if "db" in kwargs:
             raise RedisClusterException("Argument 'db' is not possible to use in cluster mode")
 
@@ -213,7 +214,7 @@ class StrictRedisCluster(StrictRedis):
                 **kwargs
             )
 
-        super(StrictRedisCluster, self).__init__(connection_pool=pool, **kwargs)
+        super(RedisCluster, self).__init__(connection_pool=pool, **kwargs)
 
         self.refresh_table_asap = False
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
@@ -282,7 +283,7 @@ class StrictRedisCluster(StrictRedis):
         if transaction:
             raise RedisClusterException("transaction is deprecated in cluster mode")
 
-        return StrictClusterPipeline(
+        return ClusterPipeline(
             connection_pool=self.connection_pool,
             startup_nodes=self.connection_pool.nodes.startup_nodes,
             result_callbacks=self.result_callbacks,
@@ -293,7 +294,7 @@ class StrictRedisCluster(StrictRedis):
         """
         Transaction is not implemented in cluster mode yet.
         """
-        raise RedisClusterException("method StrictRedisCluster.transaction() is not implemented")
+        raise RedisClusterException("method RedisCluster.transaction() is not implemented")
 
     def _determine_slot(self, *args):
         """
@@ -716,7 +717,7 @@ class StrictRedisCluster(StrictRedis):
 
         Cluster impl:
             Itterate all keys and send GET for each key.
-            This will go alot slower than a normal mget call in StrictRedis.
+            This will go alot slower than a normal mget call in Redis.
 
             Operation is no longer atomic.
         """
@@ -764,7 +765,7 @@ class StrictRedisCluster(StrictRedis):
 
         return self.mset(**kwargs)
 
-    def rename(self, src, dst):
+    def rename(self, src, dst, replace=False):
         """
         Rename key ``src`` to ``dst``
 
@@ -804,7 +805,7 @@ class StrictRedisCluster(StrictRedis):
             ttl = 0
 
         self.delete(dst)
-        self.restore(dst, ttl, data)
+        self.restore(dst, ttl, data, replace)
         self.delete(src)
 
         return True
@@ -815,7 +816,7 @@ class StrictRedisCluster(StrictRedis):
 
         Cluster impl:
             Iterate all keys and send DELETE for each key.
-            This will go a lot slower than a normal delete call in StrictRedis.
+            This will go a lot slower than a normal delete call in Redis.
 
             Operation is no longer atomic.
         """
@@ -909,152 +910,6 @@ class StrictRedisCluster(StrictRedis):
             return value
 
         return None
-
-    def sort(self, name, start=None, num=None, by=None, get=None, desc=False, alpha=False, store=None, groups=None):
-        """Sort and return the list, set or sorted set at ``name``.
-
-        :start: and :num:
-            allow for paging through the sorted data
-
-        :by:
-            allows using an external key to weight and sort the items.
-            Use an "*" to indicate where in the key the item value is located
-
-        :get:
-            allows for returning items from external keys rather than the
-            sorted data itself.  Use an "*" to indicate where int he key
-            the item value is located
-
-        :desc:
-            allows for reversing the sort
-
-        :alpha:
-            allows for sorting lexicographically rather than numerically
-
-        :store:
-            allows for storing the result of the sort into the key `store`
-
-        ClusterImpl:
-            A full implementation of the server side sort mechanics because many of the
-            options work on multiple keys that can exist on multiple servers.
-        """
-        if (start is None and num is not None) or \
-           (start is not None and num is None):
-            raise RedisError("RedisError: ``start`` and ``num`` must both be specified")
-        try:
-            data_type = b(self.type(name))
-
-            if data_type == b("none"):
-                return []
-            elif data_type == b("set"):
-                data = list(self.smembers(name))[:]
-            elif data_type == b("list"):
-                data = self.lrange(name, 0, -1)
-            else:
-                raise RedisClusterException("Unable to sort data type : {0}".format(data_type))
-            if by is not None:
-                # _sort_using_by_arg mutates data so we don't
-                # need need a return value.
-                self._sort_using_by_arg(data, by, alpha)
-            elif not alpha:
-                data.sort(key=self._strtod_key_func)
-            else:
-                data.sort()
-            if desc:
-                data = data[::-1]
-            if not (start is None and num is None):
-                data = data[start:start + num]
-
-            if get:
-                data = self._retrive_data_from_sort(data, get)
-
-            if store is not None:
-                if data_type == b("set"):
-                    self.delete(store)
-                    self.rpush(store, *data)
-                elif data_type == b("list"):
-                    self.delete(store)
-                    self.rpush(store, *data)
-                else:
-                    raise RedisClusterException("Unable to store sorted data for data type : {0}".format(data_type))
-
-                return len(data)
-
-            if groups:
-                if not get or isinstance(get, basestring) or len(get) < 2:
-                    raise DataError('when using "groups" the "get" argument '
-                                    'must be specified and contain at least '
-                                    'two keys')
-                n = len(get)
-                return list(izip(*[data[i::n] for i in range(n)]))
-            else:
-                return data
-        except KeyError:
-            return []
-
-    def _retrive_data_from_sort(self, data, get):
-        """
-        Used by sort()
-        """
-        if get is not None:
-            if isinstance(get, basestring):
-                get = [get]
-            new_data = []
-            for k in data:
-                for g in get:
-                    single_item = self._get_single_item(k, g)
-                    new_data.append(single_item)
-            data = new_data
-        return data
-
-    def _get_single_item(self, k, g):
-        """
-        Used by sort()
-        """
-        if getattr(k, "decode", None):
-            k = k.decode("utf-8")
-
-        if '*' in g:
-            g = g.replace('*', k)
-            if '->' in g:
-                key, hash_key = g.split('->')
-                single_item = self.get(key, {}).get(hash_key)
-            else:
-                single_item = self.get(g)
-        elif '#' in g:
-            single_item = k
-        else:
-            single_item = None
-        return b(single_item)
-
-    def _strtod_key_func(self, arg):
-        """
-        Used by sort()
-        """
-        return float(arg)
-
-    def _sort_using_by_arg(self, data, by, alpha):
-        """
-        Used by sort()
-        """
-        if getattr(by, "decode", None):
-            by = by.decode("utf-8")
-
-        def _by_key(arg):
-            if getattr(arg, "decode", None):
-                arg = arg.decode("utf-8")
-
-            key = by.replace('*', arg)
-            if '->' in by:
-                key, hash_key = key.split('->')
-                v = self.hget(key, hash_key)
-                if alpha:
-                    return v
-                else:
-                    return float(v)
-            else:
-                return self.get(key)
-        data.sort(key=_by_key)
 
     ###
     # Set commands
@@ -1245,91 +1100,4 @@ class StrictRedisCluster(StrictRedis):
         return ''.join(random.choice(chars) for _ in range(size))
 
 
-class RedisCluster(StrictRedisCluster):
-    """
-    Provides backwards compatibility with older versions of redis-py that
-    changed arguments to some commands to be more Pythonic, sane, or by
-    accident.
-    """
-    # Overridden callbacks
-    RESPONSE_CALLBACKS = dict_merge(
-        StrictRedis.RESPONSE_CALLBACKS,
-        {
-            'TTL': lambda r: r >= 0 and r or None,
-            'PTTL': lambda r: r >= 0 and r or None,
-        }
-    )
-
-    def pipeline(self, transaction=True, shard_hint=None):
-        """
-        Return a new pipeline object that can queue multiple commands for
-        later execution. ``transaction`` indicates whether all commands
-        should be executed atomically. Apart from making a group of operations
-        atomic, pipelines are useful for reducing the back-and-forth overhead
-        between the client and server.
-        """
-        if shard_hint:
-            raise RedisClusterException("shard_hint is deprecated in cluster mode")
-
-        if transaction:
-            raise RedisClusterException("transaction is deprecated in cluster mode")
-
-        return StrictClusterPipeline(
-            connection_pool=self.connection_pool,
-            startup_nodes=self.connection_pool.nodes.startup_nodes,
-            response_callbacks=self.response_callbacks
-        )
-
-    def setex(self, name, value, time):
-        """
-        Set the value of key ``name`` to ``value`` that expires in ``time``
-        seconds. ``time`` can be represented by an integer or a Python
-        timedelta object.
-        """
-        if isinstance(time, datetime.timedelta):
-            time = time.seconds + time.days * 24 * 3600
-
-        return self.execute_command('SETEX', name, time, value)
-
-    def lrem(self, name, value, num=0):
-        """
-        Remove the first ``num`` occurrences of elements equal to ``value``
-        from the list stored at ``name``.
-        The ``num`` argument influences the operation in the following ways:
-            num > 0: Remove elements equal to value moving from head to tail.
-            num < 0: Remove elements equal to value moving from tail to head.
-            num = 0: Remove all elements equal to value.
-        """
-        return self.execute_command('LREM', name, num, value)
-
-    def zadd(self, name, *args, **kwargs):
-        """
-        NOTE: The order of arguments differs from that of the official ZADD
-        command. For backwards compatability, this method accepts arguments
-        in the form of name1, score1, name2, score2, while the official Redis
-        documents expects score1, name1, score2, name2.
-        If you're looking to use the standard syntax, consider using the
-        StrictRedis class. See the API Reference section of the docs for more
-        information.
-        Set any number of element-name, score pairs to the key ``name``. Pairs
-        can be specified in two ways:
-        As *args, in the form of: name1, score1, name2, score2, ...
-        or as **kwargs, in the form of: name1=score1, name2=score2, ...
-        The following example would add four values to the 'my-key' key:
-        redis.zadd('my-key', 'name1', 1.1, 'name2', 2.2, name3=3.3, name4=4.4)
-        """
-        pieces = []
-
-        if args:
-            if len(args) % 2 != 0:
-                raise RedisError("ZADD requires an equal number of values and scores")
-            pieces.extend(reversed(args))
-
-        for pair in iteritems(kwargs):
-            pieces.append(pair[1])
-            pieces.append(pair[0])
-
-        return self.execute_command('ZADD', name, *pieces)
-
-
-from rediscluster.pipeline import StrictClusterPipeline
+from rediscluster.pipeline import ClusterPipeline

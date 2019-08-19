@@ -3,17 +3,17 @@ Readonly mode
 
 By default, Redis Cluster always returns MOVE redirection response on accessing slave node. You can overcome this limitation [for scaling read with READONLY mode](http://redis.io/topics/cluster-spec#scaling-reads-using-slave-nodes).
 
-redis-py-cluster also implements this mode. You can access slave by passing `readonly_mode=True` to StrictRedisCluster (or RedisCluster) constructor.
+redis-py-cluster also implements this mode. You can access slave by passing `readonly_mode=True` to RedisCluster (or RedisCluster) constructor.
 
 .. code-block:: python
 
-    >>> from rediscluster import StrictRedisCluster
+    >>> from rediscluster import RedisCluster
     >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
-    >>> rc = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+    >>> rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
     >>> rc.set("foo16706", "bar")
     >>> rc.set("foo81", "foo")
     True
-    >>> rc_readonly = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True, readonly_mode=True)
+    >>> rc_readonly = RedisCluster(startup_nodes=startup_nodes, decode_responses=True, readonly_mode=True)
     >>> rc_readonly.get("foo16706")
     u'bar'
     >>> rc_readonly.get("foo81")
@@ -39,7 +39,7 @@ But this mode has some downside or limitations.
 
 .. code-block:: python
 
-    >>> rc_readonly = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True, readonly_mode=True)
+    >>> rc_readonly = RedisCluster(startup_nodes=startup_nodes, decode_responses=True, readonly_mode=True)
     >>> # NO: This works in almost case, but possibly emits Too many Cluster redirections error...
     >>> rc_readonly.set('foo', 'bar')
     >>> # OK: You should always use get related stuff...

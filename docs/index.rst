@@ -6,10 +6,11 @@
 Welcome to redis-py-cluster's documentation!
 ============================================
 
-This project is a port of `redis-rb-cluster` by antirez, with a lot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster.
+This project is a port of `redis-rb-cluster` by antirez, with a lot of added functionality.
 
+The original source can be found at https://github.com/antirez/redis-rb-cluster.
 
-The source code is `available on github`_.
+The source code for this project is `available on github`_.
 
 .. _available on github: http://github.com/grokzen/redis-py-cluster
 
@@ -32,62 +33,87 @@ or from source code
 
 
 
-Usage example
+Basic usage example
 -------------
 
-Small sample script that shows how to get started with RedisCluster. It can also be found in the file `exmaples/basic.py`
+Small sample script that shows how to get started with RedisCluster. It can also be found in the file `exmaples/basic.py`.
+
+Additional code examples of more advance functionality can be found in the `examples/` folder in the source code git repo.
 
 .. code-block:: python
 
-    >>> from rediscluster import StrictRedisCluster
+    >>> from rediscluster import RedisCluster
 
     >>> # Requires at least one node for cluster discovery. Multiple nodes is recommended.
     >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
     >>> # Note: See note on Python 3 for decode_responses behaviour
-    >>> rc = StrictRedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+    >>> rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
 
     >>> rc.set("foo", "bar")
     True
     >>> print(rc.get("foo"))
     'bar'
 
-
 .. note:: Python 3
 
-    Since Python 3 changed to Unicode strings from Python 2's ASCII, the return type of *most* commands will be binary strings, unless the class is instantiated with the option ``decode_responses=True``. In this case, the responses will be Python 3 strings (Unicode). For the init argument `decode_responses`, when set to False, redis-py-cluster will not attempt to decode the responses it receives. In Python 3, this means the responses will be of type `bytes`. In Python 2, they will be native strings (`str`). If `decode_responses` is set to True, for Python 3 responses will be `str`, for Python 2 they will be `unicode`.
+    Since Python 3 changed to Unicode strings from Python 2's ASCII, the return type of *most* commands will be binary strings,
+    unless the class is instantiated with the option ``decode_responses=True``.
 
-Dependencies & supported python versions
-----------------------------------------
+    In this case, the responses will be Python 3 strings (Unicode).
 
-- Python: redis >= `2.10.2`, <= `2.10.5` is required.
-  Older versions in the `2.10.x` series can work but using the latest one is allways recommended.
+    For the init argument `decode_responses`, when set to False, redis-py-cluster will not attempt to decode the responses it receives.
+
+    In Python 3, this means the responses will be of type `bytes`. In Python 2, they will be native strings (`str`).
+
+    If `decode_responses` is set to True, for Python 3 responses will be `str`, for Python 2 they will be `unicode`.
+
+
+
+Library Dependencies
+--------------------
+
+It is always recommended to use the latest version of the dependencies of this project.
+
+- Redis-py: 'redis>=3.0.0,<3.1.0' is required in this major version of this cluster lib.
 - Optional Python: hiredis >= `0.2.0`. Older versions might work but is not tested.
-- A working Redis cluster based on version >= `3.0.0` is required. Only `3.0.x` releases is supported.
+- A working Redis cluster based on version `>=3.0.0` is required.
 
 
 
 Supported python versions
 -------------------------
 
-- 2.7
+Python versions should follow the same supported python versions as specificed by the upstream package `redis-py`, based on what major version(s) that is specified.
+
+If this library supports more then one major version line of `redis-py`, then the supported python versions must include the set of supported python versions by all major version lines.
+
+- 2.7.x
 - 3.4.1+ (See note)
-- 3.5
-- 3.6
-- 3.7
+- 3.5.x
+- 3.6.x
+- 3.7.x
 
 .. note:: Python 3.4.0
 
-    A segfault was found when running `redis-py` in python `3.4.0` that was introduced into the codebase in python `3.4.0`. Because of this both `redis-py` and `redis-py-cluster` will not work when running with `3.4.0`. This lib has decided to block the lib from execution on `3.4.0` and you will get a exception when trying to import the code. The only solution is to use python `3.4.1` or some other higher minor version in the `3.4` series.
+    A segfault was found when running `redis-py` in python `3.4.0` that was introduced into the codebase in python itself in the version `3.4.0`.
+    
+    Because of this both `redis-py` and `redis-py-cluster` will not work when running with `3.4.0`.
+    
+    This lib has decided to block the lib from execution on `3.4.0` and you will get a exception when trying to import the code.
+    
+    The only solution is to use python `3.4.1` or some other higher minor version in the `3.4` series.
+
+    When python `3.8.0` is released and when it is added to as a supported pythoon version, python 3.4.x will be removed from supported versions and this hard block will be removed from the source code.
 
 
 
-Regarding duplicate pypi and python naming
-------------------------------------------
+Regarding duplicate package name on pypi
+----------------------------------------
 
 It has been found that the python module name that is used in this library (rediscluster) is already shared with a similar but older project.
 
-This lib will not change the naming of the module to something else to prevent collisions between the libs.
+This lib will `NOT` change the naming of the module to something else to prevent collisions between the libs.
 
 My reasoning for this is the following
 
@@ -116,7 +142,6 @@ The Usage Guide
    commands
    limitations-and-differences
    pipelines
-   threads
    pubsub
    readonly-mode
 

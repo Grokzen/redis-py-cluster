@@ -9,7 +9,7 @@ Options:
   -p <port>          Port on redis server [default: 7000]
   -n <request>       Request number [default: 100000]
   -c <concurrent>    Concurrent client number [default: 1]
-  --nocluster        If flag is set then StrictRedis will be used instead of cluster lib
+  --nocluster        If flag is set then Redis will be used instead of cluster lib
   --timeit           Run a mini benchmark to test performance
   --pipeline         Only usable with --timeit flag. Runs SET/GET inside pipelines.
   --resetlastkey     Reset __last__ key
@@ -78,12 +78,13 @@ def timeit_pipeline(rc, num):
 if __name__ == "__main__":
     args = docopt(__doc__, version="0.3.1")
     startup_nodes = [{"host": args['--host'], "port": args['-p']}]
+
     if not args["--nocluster"]:
-        from rediscluster import StrictRedisCluster
-        rc = StrictRedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1, decode_responses=True)
+        from rediscluster import RedisCluster
+        rc = RedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1, decode_responses=True)
     else:
-        from redis import StrictRedis
-        rc = StrictRedis(host=args["--host"], port=args["-p"], socket_timeout=0.1, decode_responses=True)
+        from redis import Redis
+        rc = Redis(host=args["--host"], port=args["-p"], socket_timeout=0.1, decode_responses=True)
     # create specified number processes
     processes = []
     single_request = int(args["-n"]) // int(args["-c"])
