@@ -40,8 +40,8 @@ The following part is from this discussion https://groups.google.com/forum/?hl=s
 
 
 
-How pubsub works in StrictRedisCluster
---------------------------------------
+How pubsub works in RedisCluster
+--------------------------------
 
 In release `1.2.0` the pubsub was code was reworked to now work like this.
 
@@ -69,4 +69,4 @@ The implemented solution will only work if other clients use/adopt the same beha
 Other solutions
 ---------------
 
-The simplest solution is to have a seperate non clustered redis instance that you have a regular `StrictRedis` instance that works with your pubsub code. It is not recommended to use pubsub until `redis` fixes the implementation in the server itself.
+The simplest solution is to have a seperate non clustered redis instance that you have a regular `Redis` instance that works with your pubsub code. It is not recommended to use pubsub until `redis` fixes the implementation in the server itself.

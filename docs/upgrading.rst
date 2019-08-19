@@ -3,6 +3,20 @@ Upgrading redis-py-cluster
 
 This document describes what must be done when upgrading between different versions to ensure that code still works.
 
+1.3.x --> 2.0.0
+---------------
+
+Redis-py upstream package dependency has now been updated to be any of the releases in the major version line 3.0.x. This means that you must upgrade your dependency from 2.10.6 to the latest version. Several internal components have been updated to reflect the code from 3.0.x.
+
+Class StrictRedisCluster was renamed to RedisCluster. All usages of this class must be updated.
+
+Class StrictRedis has been removed to mirror upstream class structure.
+
+Class StrictClusterPipeline was renamed to ClusterPipeline.
+
+Method SORT has been changed back to only allow to be executed if keys is in the same slot. No more client side parsing and handling of the keys and values.
+
+
 1.3.2 --> Next Release
 ----------------------
 

@@ -70,7 +70,18 @@ Packing Commands
 
 When issuing only a single command, there is only one network round trip to be made. But what if you issue 100 pipelined commands? In a single-instance redis configuration, you still only need to make one network hop. The commands are packed into a single request and the server responds with all the data for those requests in a single response. But with redis cluster, those keys could be spread out over many different nodes. 
 
-The client is responsible for figuring out which commands map to which nodes. Let's say for example that your 100 pipelined commands need to route to 3 different nodes? The first thing the client does is break out the commands that go to each node, so it only has 3 network requests to make instead of 100. 
+The client is responsible for figuring out which commands map to which nodes. Let's say for example that your 100 pipelined commands need to route to 3 different nodes? The first thing the client does is break out the commands that go to each node, so it only has 3 network requests to make instead of 100.
+
+
+Parallel execution of pipeline
+------------------------------
+
+In older version of `redis-py-cluster`, there was a thread implementation that helped to increaes the performance of running pipelines by running the connections and execution of all commands to all nodes in the pipeline in paralell. This implementation was later removed in favor of a much simpler and faster implementation.
+
+In this new implementation we execute everything in the same thread, but we do all the writing to all sockets in order to each different server and then start to wait for them in sequence until all of them is complete. There is no real need to run them in parralell since we still have to wait for a thread join of all parralell executions before the code can continue, so we can wait in sequence for all of them to complete. This is not the absolute fastest implementation, but it much simpler to implement and maintain and cause less issues becuase there is no threads or other parallel ipmlementation that will use some overhead and add complexity to the method.
+
+This feature is implemented by default and will be used in all pipeline requests.
+
 
 
 Transactions and WATCH
@@ -95,7 +106,7 @@ This code does NOT wrap `MULTI/EXEC` around the commands when packed
 
 .. code-block:: python
 
-    >>> from rediscluster import StrictRedisCluster as s
+    >>> from rediscluster import RedisCluster as s
     >>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
     >>> # Simulate that a slot is migrating to another node
     >>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}
@@ -114,7 +125,7 @@ This code DO wrap MULTI/EXEC around the commands when packed
 
 .. code-block:: python
 
-    >>> from rediscluster import StrictRedisCluster as s
+    >>> from rediscluster import RedisCluster as s
     >>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
     >>> # Simulate that a slot is migrating to another node
     >>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}

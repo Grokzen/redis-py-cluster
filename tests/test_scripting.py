@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
-from __future__ import with_statement
+from __future__ import unicode_literals
 
 # rediscluster imports
 from rediscluster.exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import exceptions
-from redis._compat import b
 import pytest
 
 
@@ -94,45 +93,51 @@ class TestScripting(object):
     def test_script_object(self, r):
         r.set('a', 2)
         multiply = r.register_script(multiply_script)
-        # test evalsha fail -> script load + retry
+        precalculated_sha = multiply.sha
+        assert precalculated_sha
+        assert r.script_exists(multiply.sha) == [False]
+        # Test second evalsha block (after NoScriptError)
         assert multiply(keys=['a'], args=[3]) == 6
-        assert multiply.sha
+        # At this point, the script should be loaded
         assert r.script_exists(multiply.sha) == [True]
-        # test first evalsha
+        # Test that the precalculated sha matches the one from redis
+        assert multiply.sha == precalculated_sha
+        # Test first evalsha block
         assert multiply(keys=['a'], args=[3]) == 6
 
-    @pytest.mark.xfail(reason="Not Yet Implemented")
+    @pytest.mark.xfail(reason="Script object not supported in cluster")
     def test_script_object_in_pipeline(self, r):
         multiply = r.register_script(multiply_script)
-        assert not multiply.sha
+        precalculated_sha = multiply.sha
+        assert precalculated_sha
         pipe = r.pipeline()
         pipe.set('a', 2)
         pipe.get('a')
         multiply(keys=['a'], args=[3], client=pipe)
-        # even though the pipeline wasn't executed yet, we made sure the
-        # script was loaded and got a valid sha
-        assert multiply.sha
-        assert r.script_exists(multiply.sha) == [True]
+        assert r.script_exists(multiply.sha) == [False]
         # [SET worked, GET 'a', result of multiple script]
-        assert pipe.execute() == [True, b('2'), 6]
+        assert pipe.execute() == [True, b'2', 6]
+        # The script should have been loaded by pipe.execute()
+        assert r.script_exists(multiply.sha) == [True]
+        # The precalculated sha should have been the correct one
+        assert multiply.sha == precalculated_sha
 
         # purge the script from redis's cache and re-run the pipeline
-        # the multiply script object knows it's sha, so it shouldn't get
-        # reloaded until pipe.execute()
+        # the multiply script should be reloaded by pipe.execute()
         r.script_flush()
         pipe = r.pipeline()
         pipe.set('a', 2)
         pipe.get('a')
-        assert multiply.sha
         multiply(keys=['a'], args=[3], client=pipe)
         assert r.script_exists(multiply.sha) == [False]
         # [SET worked, GET 'a', result of multiple script]
-        assert pipe.execute() == [True, b('2'), 6]
+        assert pipe.execute() == [True, b'2', 6]
+        assert r.script_exists(multiply.sha) == [True]
 
-    @pytest.mark.xfail(reason="Not Yet Implemented")
+    @pytest.mark.xfail(reason="LUA is not supported in cluster")
     def test_eval_msgpack_pipeline_error_in_lua(self, r):
         msgpack_hello = r.register_script(msgpack_hello_script)
-        assert not msgpack_hello.sha
+        assert msgpack_hello.sha
 
         pipe = r.pipeline()
 
@@ -142,8 +147,9 @@ class TestScripting(object):
 
         msgpack_hello(args=[msgpack_message_1], client=pipe)
 
-        assert r.script_exists(msgpack_hello.sha) == [True]
+        assert r.script_exists(msgpack_hello.sha) == [False]
         assert pipe.execute()[0] == b'hello Joe'
+        assert r.script_exists(msgpack_hello.sha) == [True]
 
         msgpack_hello_broken = r.register_script(msgpack_hello_script_broken)
 
