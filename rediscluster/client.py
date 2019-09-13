@@ -10,6 +10,7 @@ import time
 # rediscluster imports
 from .connection import (
     ClusterConnectionPool,
+    ClusterCrossSlotError,
     ClusterReadOnlyConnectionPool,
     ClusterWithReadReplicasConnectionPool,
     SSLClusterConnection,
@@ -308,7 +309,17 @@ class RedisCluster(Redis):
             keys = args[3: 3 + numkeys]
             slots = {self.connection_pool.nodes.keyslot(key) for key in keys}
             if len(slots) != 1:
-                raise RedisClusterException("{0} - all keys must map to the same key slot".format(command))
+                raise ClusterCrossSlotError("Keys in request don't hash to the same slot")
+            return slots.pop()
+
+        if command in ['XREADGROUP', 'XREAD']:
+            tokens = {args[i].value: i for i in range(len(args)) if type(args[i]) == Token}
+            keys_ids = list(args[tokens['STREAMS'] + 1: ])
+            idx_split = len(keys_ids) // 2
+            keys = keys_ids[: idx_split]
+            slots = {self.connection_pool.nodes.keyslot(key) for key in keys}
+            if len(slots) != 1:
+                raise ClusterCrossSlotError("Keys in request don't hash to the same slot")
             return slots.pop()
 
         key = args[1]
