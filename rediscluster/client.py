@@ -36,7 +36,6 @@ from .utils import (
 # 3rd party imports
 from redis import Redis
 from redis.client import list_or_args, parse_info
-from redis.connection import Token
 from redis._compat import iteritems, basestring, izip, nativestr, long
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
 
@@ -536,7 +535,7 @@ class RedisCluster(Redis):
         Sends to specefied node
         """
         assert option.upper() in ('FORCE', 'TAKEOVER')  # TODO: change this option handling
-        return self.execute_command('CLUSTER FAILOVER', Token(option))
+        return self.execute_command('CLUSTER FAILOVER', option)
 
     def cluster_info(self):
         """
@@ -587,7 +586,7 @@ class RedisCluster(Redis):
 
         Sends to specefied node
         """
-        return self.execute_command('CLUSTER RESET', Token('SOFT' if soft else 'HARD'), node_id=node_id)
+        return self.execute_command('CLUSTER RESET', b'SOFT' if soft else b'HARD', node_id=node_id)
 
     def cluster_reset_all_nodes(self, soft=True):
         """
@@ -601,7 +600,7 @@ class RedisCluster(Redis):
         return [
             self.execute_command(
                 'CLUSTER RESET',
-                Token('SOFT' if soft else 'HARD'),
+                'SOFT' if soft else 'HARD',
                 node_id=node['id'],
             )
             for node in self.cluster_nodes()
@@ -637,9 +636,9 @@ class RedisCluster(Redis):
         Sends to specefied node
         """
         if state.upper() in ('IMPORTING', 'MIGRATING', 'NODE') and node_id is not None:
-            return self.execute_command('CLUSTER SETSLOT', slot_id, Token(state), node_id)
+            return self.execute_command('CLUSTER SETSLOT', slot_id, state, node_id)
         elif state.upper() == 'STABLE':
-            return self.execute_command('CLUSTER SETSLOT', slot_id, Token('STABLE'))
+            return self.execute_command('CLUSTER SETSLOT', slot_id, 'STABLE')
         else:
             raise RedisError('Invalid slot state: {0}'.format(state))
 
@@ -695,9 +694,9 @@ class RedisCluster(Redis):
 
                 pieces = ['SCAN', cursors[node]]
                 if match is not None:
-                    pieces.extend([Token('MATCH'), match])
+                    pieces.extend([b'MATCH', match])
                 if count is not None:
-                    pieces.extend([Token('COUNT'), count])
+                    pieces.extend([b'COUNT', count])
 
                 conn.send_command(*pieces)
 

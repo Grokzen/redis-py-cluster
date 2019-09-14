@@ -9,7 +9,7 @@ from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis import Redis
-from redis._compat import unicode, bytes, long, basestring
+from redis._compat import unicode, long, basestring
 from redis.connection import Encoder
 from redis import ConnectionError, TimeoutError, ResponseError
 
