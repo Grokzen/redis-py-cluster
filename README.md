@@ -6,6 +6,8 @@ This project is a port of `redis-rb-cluster` by antirez, with alot of added func
 
 [![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![PyPI version](https://badge.fury.io/py/redis-py-cluster.svg)](http://badge.fury.io/py/redis-py-cluster)
 
+The branch `master` will always contain the latest unstable/development code that has been merged from Pull Requests. Use the latest commit from master branch on your own risk, there is no guarantees of compatibility or stability of non tagged commits on the master branch. Only tagged releases on the `master` branch is considered stable for use.
+
 
 
 # Documentation
