@@ -216,6 +216,54 @@ class TestPubSubSubscribeUnsubscribe(object):
             assert message is None
         assert p.subscribed is False
 
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
+    def test_sub_unsub_resub_channels(self, r):
+        kwargs = make_subscribe_test_data(r.pubsub(), 'channel')
+        self._test_sub_unsub_resub(**kwargs)
+
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
+    def test_sub_unsub_resub_patterns(self, r):
+        kwargs = make_subscribe_test_data(r.pubsub(), 'pattern')
+        self._test_sub_unsub_resub(**kwargs)
+
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
+    def _test_sub_unsub_resub(self, p, sub_type, unsub_type, sub_func,
+                              unsub_func, keys):
+        # https://github.com/andymccurdy/redis-py/issues/764
+        key = keys[0]
+        sub_func(key)
+        unsub_func(key)
+        sub_func(key)
+        assert p.subscribed is True
+        assert wait_for_message(p) == make_message(sub_type, key, 1)
+        assert wait_for_message(p) == make_message(unsub_type, key, 0)
+        assert wait_for_message(p) == make_message(sub_type, key, 1)
+        assert p.subscribed is True
+
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
+    def test_sub_unsub_all_resub_channels(self, r):
+        kwargs = make_subscribe_test_data(r.pubsub(), 'channel')
+        self._test_sub_unsub_all_resub(**kwargs)
+
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
+    def test_sub_unsub_all_resub_patterns(self, r):
+        kwargs = make_subscribe_test_data(r.pubsub(), 'pattern')
+        self._test_sub_unsub_all_resub(**kwargs)
+
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
+    def _test_sub_unsub_all_resub(self, p, sub_type, unsub_type, sub_func,
+                                  unsub_func, keys):
+        # https://github.com/andymccurdy/redis-py/issues/764
+        key = keys[0]
+        sub_func(key)
+        unsub_func()
+        sub_func(key)
+        assert p.subscribed is True
+        assert wait_for_message(p) == make_message(sub_type, key, 1)
+        assert wait_for_message(p) == make_message(unsub_type, key, 0)
+        assert wait_for_message(p) == make_message(sub_type, key, 1)
+        assert p.subscribed is True
+
 
 class TestPubSubMessages(object):
     """
@@ -237,8 +285,9 @@ class TestPubSubMessages(object):
 
     def test_published_message_to_channel(self):
         node = self.get_strict_redis_node(7000)
-        p = node.pubsub(ignore_subscribe_messages=True)
+        p = node.pubsub()
         p.subscribe('foo')
+        assert wait_for_message(p) == make_message('subscribe', 'foo', 1)
 
         assert node.publish('foo', 'test message') == 1
 
@@ -271,9 +320,11 @@ class TestPubSubMessages(object):
 
     @pytest.mark.xfail(reason="Pattern pubsub do not work currently")
     def test_published_message_to_pattern(self, r):
-        p = r.pubsub(ignore_subscribe_messages=True)
+        p = r.pubsub()
         p.subscribe('foo')
         p.psubscribe('f*')
+        assert wait_for_message(p) == make_message('subscribe', 'foo', 1)
+        assert wait_for_message(p) == make_message('psubscribe', 'f*', 2)
         # 1 to pattern, 1 to channel
         assert r.publish('foo', 'test message') == 2
 
@@ -294,6 +345,7 @@ class TestPubSubMessages(object):
     def test_channel_message_handler(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         p.subscribe(foo=self.message_handler)
+        assert wait_for_message(p) is None
         assert r.publish('foo', 'test message') == 1
         assert wait_for_message(p) is None
         assert self.message == make_message('message', 'foo', 'test message')
@@ -302,6 +354,7 @@ class TestPubSubMessages(object):
     def test_pattern_message_handler(self, r):
         p = r.pubsub(ignore_subscribe_messages=True)
         p.psubscribe(**{'f*': self.message_handler})
+        assert wait_for_message(p) is None
         assert r.publish('foo', 'test message') == 1
         assert wait_for_message(p) is None
         assert self.message == make_message('pmessage', 'foo', 'test message',
@@ -314,6 +367,8 @@ class TestPubSubMessages(object):
         channels = {channel: self.message_handler}
         print(channels)
         p.subscribe(**channels)
+        assert wait_for_message(p) is None
+        assert wait_for_message(p) is None
         assert r.publish(channel, 'test message') == 1
         assert wait_for_message(p) is None
         assert self.message == make_message('message', channel, 'test message')
@@ -372,19 +427,23 @@ class TestPubSubAutoDecoding(object):
         assert wait_for_message(p) == self.make_message('punsubscribe',
                                                         self.pattern, 0)
 
-    def test_channel_publish(self, o):
-        p = o.pubsub(ignore_subscribe_messages=True)
+    def test_channel_publish(self, r):
+        p = r.pubsub()
         p.subscribe(self.channel)
-        o.publish(self.channel, self.data)
+        assert wait_for_message(p) == self.make_message('subscribe',
+                                                        self.channel, 1)
+        r.publish(self.channel, self.data)
         assert wait_for_message(p) == self.make_message('message',
                                                         self.channel,
                                                         self.data)
 
     @pytest.mark.xfail(reason="Pattern pubsub do not work currently")
-    def test_pattern_publish(self, o):
-        p = o.pubsub(ignore_subscribe_messages=True)
+    def test_pattern_publish(self, r):
+        p = r.pubsub()
         p.psubscribe(self.pattern)
-        o.publish(self.channel, self.data)
+        assert wait_for_message(p) == self.make_message('psubscribe',
+                                                        self.pattern, 1)
+        r.publish(self.channel, self.data)
         assert wait_for_message(p) == self.make_message('pmessage',
                                                         self.channel,
                                                         self.data,
@@ -399,6 +458,7 @@ class TestPubSubAutoDecoding(object):
                                                  self.data)
 
         # test that we reconnected to the correct channel
+        self.message = None
         p.connection.disconnect()
         assert wait_for_message(p) is None  # should reconnect
         new_data = self.data + 'new data'
@@ -411,6 +471,7 @@ class TestPubSubAutoDecoding(object):
     def test_pattern_message_handler(self, o):
         p = o.pubsub(ignore_subscribe_messages=True)
         p.psubscribe(**{self.pattern: self.message_handler})
+        assert wait_for_message(p) is None
         o.publish(self.channel, self.data)
         assert wait_for_message(p) is None
         assert self.message == self.make_message('pmessage', self.channel,
@@ -418,6 +479,7 @@ class TestPubSubAutoDecoding(object):
                                                  pattern=self.pattern)
 
         # test that we reconnected to the correct pattern
+        self.message = None
         p.connection.disconnect()
         assert wait_for_message(p) is None  # should reconnect
         new_data = self.data + 'new data'
@@ -478,25 +540,35 @@ def test_pubsub_thread_publish():
         print("Error: unable to start thread")
 
 
-class TestPubSubPubSubSubcommands(object):
+class TestPubSubSubcommands(object):
 
     @skip_if_server_version_lt('2.8.0')
     @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
     def test_pubsub_channels(self, r):
-        p = r.pubsub(ignore_subscribe_messages=True)
+        p = r.pubsub()
         p.subscribe('foo', 'bar', 'baz', 'quux')
+        for i in range(4):
+            assert wait_for_message(p)['type'] == 'subscribe'
         channels = sorted(r.pubsub_channels())
-        assert channels == [b'bar', b'baz', b'foo', b'quux']
+        # assert channels == [b'bar', b'baz', b'foo', b'quux']
+        if channels != [b'bar', b'baz', b'foo', b'quux']:
+            import pdb
+            pdb.set_trace()
 
     @skip_if_server_version_lt('2.8.0')
     @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
     def test_pubsub_numsub(self, r):
-        p1 = r.pubsub(ignore_subscribe_messages=True)
+        p1 = r.pubsub()
         p1.subscribe('foo', 'bar', 'baz')
-        p2 = r.pubsub(ignore_subscribe_messages=True)
+        for i in range(3):
+            assert wait_for_message(p1)['type'] == 'subscribe'
+        p2 = r.pubsub()
         p2.subscribe('bar', 'baz')
-        p3 = r.pubsub(ignore_subscribe_messages=True)
+        for i in range(2):
+            assert wait_for_message(p2)['type'] == 'subscribe'
+        p3 = r.pubsub()
         p3.subscribe('baz')
+        assert wait_for_message(p3)['type'] == 'subscribe'
 
         channels = [(b'foo', 1), (b'bar', 2), (b'baz', 3)]
         assert channels == r.pubsub_numsub('foo', 'bar', 'baz')
@@ -504,8 +576,10 @@ class TestPubSubPubSubSubcommands(object):
     @skip_if_server_version_lt('2.8.0')
     @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
     def test_pubsub_numpat(self, r):
-        p = r.pubsub(ignore_subscribe_messages=True)
+        p = r.pubsub()
         p.psubscribe('*oo', '*ar', 'b*z')
+        for i in range(3):
+            assert wait_for_message(p)['type'] == 'psubscribe'
         assert r.pubsub_numpat() == 3
 
 
@@ -530,3 +604,27 @@ class TestPubSubPings(object):
         assert wait_for_message(p) == make_message(type='pong', channel=None,
                                                    data='hello world',
                                                    pattern=None)
+
+
+class TestPubSubConnectionKilled(object):
+
+    @skip_if_server_version_lt('3.0.0')
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
+    def test_connection_error_raised_when_connection_dies(self, r):
+        p = r.pubsub()
+        p.subscribe('foo')
+        assert wait_for_message(p) == make_message('subscribe', 'foo', 1)
+        for client in r.client_list():
+            if client['cmd'] == 'subscribe':
+                r.client_kill_filter(_id=client['id'])
+        with pytest.raises(ConnectionError):
+            wait_for_message(p)
+
+
+class TestPubSubTimeouts(object):
+    @pytest.mark.xfail(reason="Pubsub is not fully supported in cluster mode")
+    def test_get_message_with_timeout_returns_none(self, r):
+        p = r.pubsub()
+        p.subscribe('foo')
+        assert wait_for_message(p) == make_message('subscribe', 'foo', 1)
+        assert p.get_message(timeout=0.01) is None
