@@ -240,7 +240,7 @@ class NodeManager(object):
         self.reinitialize_counter = 0
 
     def increment_reinitialize_counter(self, ct=1):
-        for i in range(1, ct):
+        for i in range(min(ct, self.reinitialize_steps)):
             self.reinitialize_counter += 1
             if self.reinitialize_counter % self.reinitialize_steps == 0:
                 self.initialize()
