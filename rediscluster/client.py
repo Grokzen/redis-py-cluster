@@ -409,11 +409,13 @@ class RedisCluster(Redis):
                 return self.parse_response(r, command, **kwargs)
             except (RedisClusterException, BusyLoadingError):
                 raise
-            except (ConnectionError, TimeoutError):
-                try_random_node = True
-
-                if ttl < self.RedisClusterRequestTTL / 2:
+            except ConnectionError:
+                r.disconnect()
+            except TimeoutError:
+                if ttl > self.RedisClusterRequestTTL / 2:
                     time.sleep(0.1)
+                else:
+                    try_random_node = True
             except ClusterDownError as e:
                 self.connection_pool.disconnect()
                 self.connection_pool.reset()
@@ -425,7 +427,7 @@ class RedisCluster(Redis):
                 # This counter will increase faster when the same client object
                 # is shared between multiple threads. To reduce the frequency you
                 # can set the variable 'reinitialize_steps' in the constructor.
-                self.refresh_table_asap = True
+                # self.refresh_table_asap = True
                 self.connection_pool.nodes.increment_reinitialize_counter()
 
                 node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
