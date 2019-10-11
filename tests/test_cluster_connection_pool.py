@@ -31,6 +31,12 @@ class DummyConnection(object):
         self.port = port
         self.socket_timeout = socket_timeout
 
+    def connect(self):
+        pass
+
+    def can_read(self):
+        return False
+
 
 class TestConnectionPool(object):
     def get_pool(self, connection_kwargs=None, max_connections=None, max_connections_per_node=None,
@@ -555,14 +561,19 @@ class TestSSLConnectionURLParsing(object):
     @pytest.mark.skipif(not ssl_available, reason="SSL not installed")
     def test_cert_reqs_options(self):
         import ssl
-        pool = redis.ConnectionPool.from_url('rediss://?ssl_cert_reqs=none')
+
+        class DummyConnectionPool(redis.ConnectionPool):
+            def get_connection(self, *args, **kwargs):
+                return self.make_connection()
+
+        pool = DummyConnectionPool.from_url('rediss://?ssl_cert_reqs=none')
         assert pool.get_connection('_').cert_reqs == ssl.CERT_NONE
 
-        pool = redis.ConnectionPool.from_url(
+        pool = DummyConnectionPool.from_url(
             'rediss://?ssl_cert_reqs=optional')
         assert pool.get_connection('_').cert_reqs == ssl.CERT_OPTIONAL
 
-        pool = redis.ConnectionPool.from_url(
+        pool = DummyConnectionPool.from_url(
             'rediss://?ssl_cert_reqs=required')
         assert pool.get_connection('_').cert_reqs == ssl.CERT_REQUIRED
 
