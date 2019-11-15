@@ -2,7 +2,7 @@
 
 This client provides a client for redis cluster that was added in redis 3.0.
 
-This project is a port of `redis-rb-cluster` by antirez, with alot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster
+This project is a port of `redis-rb-cluster` by antirez, with a lot of added functionality. The original source can be found at https://github.com/antirez/redis-rb-cluster
 
 [![Build Status](https://travis-ci.org/Grokzen/redis-py-cluster.svg?branch=master)](https://travis-ci.org/Grokzen/redis-py-cluster) [![Coverage Status](https://coveralls.io/repos/Grokzen/redis-py-cluster/badge.png)](https://coveralls.io/r/Grokzen/redis-py-cluster) [![PyPI version](https://badge.fury.io/py/redis-py-cluster.svg)](http://badge.fury.io/py/redis-py-cluster)
 
@@ -18,7 +18,7 @@ This Readme contains a reduced version of the full documentation.
 
 Upgrading instructions between each released version can be found [here](docs/upgrading.rst)
 
-Changelog for next release and all older releasess can be found [here](docs/release-notes.rst)
+Changelog for next release and all older releases can be found [here](docs/release-notes.rst)
 
 
 

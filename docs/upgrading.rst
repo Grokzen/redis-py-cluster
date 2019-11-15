@@ -14,7 +14,7 @@ Class StrictRedis has been removed to mirror upstream class structure.
 
 Class StrictClusterPipeline was renamed to ClusterPipeline.
 
-Method SORT has been changed back to only allow to be executed if keys is in the same slot. No more client side parsing and handling of the keys and values.
+Method SORT has been changed back to only allow execution if keys are in the same slot. No more client side parsing and handling of the keys and values.
 
 
 1.3.2 --> Next Release
@@ -26,25 +26,25 @@ If you created the `StrictRedisCluster` (or `RedisCluster`) instance via the `fr
 1.3.1 --> 1.3.2
 ---------------
 
-If your redis instance is configured to not have the `CONFIG ...` commands enabled due to security reasons you need to pass this into the client object `skip_full_coverage_check=True`. Benefits is that the client class no longer requires the `CONFIG ...` commands to be enabled on the server. Downsides is that you can't use the option in your redis server and still use the same feature in this client.
+If your redis instance is configured to not have the `CONFIG ...` commands enabled due to security reasons you need to pass this into the client object `skip_full_coverage_check=True`. Benefits are that the client class no longer requires the `CONFIG ...` commands to be enabled on the server. A downside is that you can't use the option in your redis server and still use the same feature in this client.
 
 
 
 1.3.0 --> 1.3.1
 ---------------
 
-Method `scan_iter` was rebuilt becuase it was broken and did not perform as expected. If you are using this method you should be carefull with this new implementation and test it through before using it. The expanded testing for that method indicates it should work without problems. If you find any issues with the new method please open a issue on github.
+Method `scan_iter` was rebuilt because it was broken and did not perform as expected. If you are using this method you should be careful with this new implementation and test it through before using it. The expanded testing for that method indicates it should work without problems. If you find any issues with the new method please open a issue on github.
 
-A major refactoring was performed in the pipeline system that improved error handling and reliability of execution. It also simplified the code alot to make it easier to understand and continue to develop in the future. Becuase of this major refactoring you should really test throuhg your pipeline code to ensure that none of your code is broken because of this refactoring.
+A major refactoring was performed in the pipeline system that improved error handling and reliability of execution. It also simplified the code, making it easier to understand and to continue development in the future. Because of this major refactoring you should thoroughly test your pipeline code to ensure that none of your code is broken.
 
 
 
 1.2.0 --> Next release
 ----------------------
 
-Class RedisClusterMgt has been removed. You should use the `CLUSTER ...` methods that exists in the `StrictRedisCluster` client class.
+Class RedisClusterMgt has been removed. You should use the `CLUSTER ...` methods that exist in the `StrictRedisCluster` client class.
 
-Method `cluster_delslots` changed argument specification from `self, node_id, *slots` to `self, *slots` and changed the behaviour of the method to now automatically determine the slot_id based on the current cluster structure and where each slot that you want to delete is loated.
+Method `cluster_delslots` changed argument specification from `self, node_id, *slots` to `self, *slots` and changed the behaviour of the method to now automatically determine the slot_id based on the current cluster structure and where each slot that you want to delete is loaded.
 
 Method pfcount no longer has custom logic and exceptions to prevent CROSSSLOT errors. If method is used with different slots then a regular CROSSSLOT error (rediscluster.exceptions.ClusterCrossSlotError) will be returned.
 
@@ -59,7 +59,7 @@ Also discontinue passing `use_threads` flag to the pipeline() method.
 
 In 1.1.0 and prior, you could use `pipeline_use_threads` flag to tell the client to perform queries to the different nodes in parallel via threads. We exposed this as a flag because using threads might have been risky and we wanted people to be able to disable it if needed.
 
-With this release we figured out how to get parallelization of the commands without the need for threads. We write to all the nodes before reading from them, essentially multiplexing the connections (but without the need for complicated socket multiplexing). We found this approach to be faster and more scalable as more nodes are added to the cluster.
+With this release we figured out how parallelize commands without the need for threads. We write to all the nodes before reading from them, essentially multiplexing the connections (but without the need for complicated socket multiplexing). We found this approach to be faster and more scalable as more nodes are added to the cluster.
 
 That means we don't need the `pipeline_use_threads` flag anymore, or the `use_threads` flag that could be passed into the instantiation of the pipeline object itself.
 
@@ -99,9 +99,9 @@ Added optional `max_connections_per_node` parameter to `ClusterConnectionPool` w
 Reinitialize on `MOVED` errors will not run on every error but instead on every
 25 error to avoid excessive cluster reinitialize when used in multiple threads and resharding at the same time. If you want to go back to the old behaviour with reinitialize on every error you should pass in `reinitialize_steps=1` to the client constructor. If you want to increase or decrease the intervall of this new behaviour you should set `reinitialize_steps` in the client constructor to a value that you want.
 
-Pipelines in general have recieved alot of attention so if you are using pipelines in your code, ensure that you test the new code out alot before using it to make sure it still works as you expect.
+Pipelines in general have received a lot of attention so if you are using pipelines in your code, ensure that you test the new code out a lot before using it to make sure it still works as you expect.
 
-The entire client code should now be safer to use in a threaded environment. Some race conditions was found and have now been fixed and it should prevent the code from behaving wierd during reshard operations.
+The entire client code should now be safer to use in a threaded environment. Some race conditions was found and have now been fixed and it should prevent the code from behaving weird during reshard operations.
 
 
 
