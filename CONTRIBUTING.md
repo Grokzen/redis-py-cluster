@@ -7,11 +7,11 @@ All CI tests must pass (Travis-CI)
 
 Follow the code quality standards described in this file.
 
-You are responsible for ensuring the code is mergeable and fix any issues that can occur if other code was merged before your code.
+You are responsible for ensuring the code is mergeable and for fixing any issues that can occur if other code was merged before your code.
 
-Always ensure docs is up to date based on your changes. If docs is missing and you think it should exists you are responsible to write it.
+Always ensure docs are up to date based on your changes. If docs are missing and you think it should exists you are responsible for writing it.
 
-For all PR you should do/include the following
+For all PRs you should do/include the following
  - A line about the change in the `CHANGES` file Add it in the section `Next release`, create it if needed.
  - If you change something already implemented, for example adding/removing an argument you should add a line in `docs/Upgrading.md` describing how to migrate existing code from the old to the new code. Add it in the section `Next release`, create it if needed.
  - Add yourself to `docs/Authors` file (This is optional if you want)
