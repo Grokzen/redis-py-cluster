@@ -7,13 +7,13 @@ All CI tests must pass (Travis-CI)
 
 Follow the code quality standards described in this file.
 
-You are responsible for ensuring the code is mergable and fix any issues that can occur if other code was merged before your code.
+You are responsible for ensuring the code is mergeable and fix any issues that can occur if other code was merged before your code.
 
-Allways ensure docs is up to date based on your changes. If docs is missing and you think it should exists you are responsible to write it.
+Always ensure docs is up to date based on your changes. If docs is missing and you think it should exists you are responsible to write it.
 
 For all PR you should do/include the following
  - A line about the change in the `CHANGES` file Add it in the section `Next release`, create it if needed.
- - If you change something already implemented, for example add/remove argument you should add a line in `docs/Upgrading.md` describing how to migrate existing code from the old to the new code. Add it in the section `Next release`, create it if needed.
+ - If you change something already implemented, for example adding/removing an argument you should add a line in `docs/Upgrading.md` describing how to migrate existing code from the old to the new code. Add it in the section `Next release`, create it if needed.
  - Add yourself to `docs/Authors` file (This is optional if you want)
 
 
@@ -53,10 +53,10 @@ print("foobar {barfoo} {qwert}".format(
 
 I (Johan/Grokzen) have been allowed (by andymccurdy) explicitly to use all test code that already exists inside `redis-py` lib. If possible you should reuse code that exists in there.
 
-All code should aim to have 100% test coverage. This is just a target and not a requirements.
+All code should aim to have 100% test coverage. This is just a target and not a requirement.
 
 All new features must implement tests to show that it works as intended.
 
-All implemented tests must pass on all supported python versions. List of supported versions can be found in the `README.md`.
+All implemented tests must pass on all supported python versions. List of supported versions can be found in `README.md`.
 
 All tests should be assumed to work against the test environment that is implemented when running in `travis-ci`. Currently that means 6 nodes in the cluster, 3 masters, 3 slaves, using port `7000-7005` and the node on port `7000` must be accessible on `127.0.0.1`

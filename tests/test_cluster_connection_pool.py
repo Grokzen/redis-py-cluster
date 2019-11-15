@@ -47,7 +47,7 @@ class TestConnectionPool(object):
 
     def test_in_use_not_exists(self):
         """
-        Test that if for some reason, the node that it tries to get the connectino for
+        Test that if for some reason, the node that it tries to get the connection for
         do not exists in the _in_use_connection variable.
         """
         pool = self.get_pool()

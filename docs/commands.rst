@@ -1,7 +1,7 @@
 Implemented commands
 ====================
 
-This will describe all changes that RedisCluster have done to make a command to work in a cluster environment.
+This will describe all changes made in RedisCluster enable a command for a clustered environment.
 
 If a command is not listed here then the default implementation from `Redis` in the `redis-py` library is used.
 
@@ -64,7 +64,7 @@ This following commands will be sent to the master nodes in the cluster.
 - script flush - the result is `True` if the command succeeds on all master nodes, else `False`
 - script exists - the result is an array of booleans. An entry is `True` only if the script exists on all the master nodes.
 
-The following commands will be sent to the sever that matches the specefied key.
+The following commands will be sent to the sever that matches the specified key.
 
  - hscan
  - hscan_iter
