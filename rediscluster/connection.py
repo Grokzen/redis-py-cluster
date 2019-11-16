@@ -7,6 +7,7 @@ import random
 import threading
 from contextlib import contextmanager
 from itertools import chain
+from queue import LifoQueue, Full, Empty
 
 # rediscluster imports
 from .nodemanager import NodeManager
@@ -110,7 +111,7 @@ class ClusterConnectionPool(ConnectionPool):
         :nodemanager_follow_cluster:
             The node manager will during initialization try the last set of nodes that
             it was operating on. This will allow the client to drift along side the cluster
-            if the cluster nodes move around alot.
+            if the cluster nodes move around a lot.
         """
         if connection_class is None:
             connection_class = ClusterConnection
@@ -180,7 +181,7 @@ class ClusterConnectionPool(ConnectionPool):
             with self._check_lock:
                 if self.pid == os.getpid():
                     # another thread already did the work while we waited
-                    # on the lockself.
+                    # on the lock.
                     return
                 self.disconnect()
                 self.reset()
@@ -230,7 +231,7 @@ class ClusterConnectionPool(ConnectionPool):
         self._created_connections_per_node[node['name']] += 1
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
 
-        # Must store node in the connection to make it eaiser to track
+        # Must store node in the connection to make it easier to track
         connection.node = node
 
         return connection
@@ -281,7 +282,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Open new connection to random redis server.
         """
-        # TODO: Should this open a new random connection or shuld it look if there is any
+        # TODO: Should this open a new random connection or should it look if there is any
         #       open available connections and return that instead?
         for node in self.nodes.random_startup_node_ittr():
             connection = self.get_connection_by_node(node)
@@ -341,6 +342,133 @@ class ClusterConnectionPool(ConnectionPool):
         """
         """
         return self.get_master_node_by_slot(slot)
+
+
+class ClusterBlockingConnectionPool(ClusterConnectionPool):
+    """
+    Thread-safe blocking connection pool for Redis Cluster::
+
+        >>> from rediscluster.client import RedisCluster
+        >>> client = RedisCluster(connection_pool=ClusterBlockingConnectionPool())
+
+    It performs the same function as the default
+    ``:py:class: ~rediscluster.connection.ClusterConnectionPool`` implementation, in that,
+    it maintains a pool of reusable connections to a redis cluster that can be shared by
+    multiple redis clients (safely across threads if required).
+
+    The difference is that, in the event that a client tries to get a
+    connection from the pool when all of connections are in use, rather than
+    raising a ``:py:class: ~rediscluster.exceptions.RedisClusterException`` (as the default
+    ``:py:class: ~rediscluster.connection.ClusterConnectionPool`` implementation does), it
+    makes the client wait ("blocks") for a specified number of seconds until
+    a connection becomes available.
+
+    Use ``max_connections`` to increase / decrease the pool size::
+
+        >>> pool = ClusterBlockingConnectionPool(max_connections=10)
+
+    Use ``timeout`` to tell it either how many seconds to wait for a connection
+    to become available, or to block forever:
+
+        # Block forever.
+        >>> pool = ClusterBlockingConnectionPool(timeout=None)
+
+        # Raise a ``ConnectionError`` after five seconds if a connection is
+        # not available.
+        >>> pool = ClusterBlockingConnectionPool(timeout=5)
+    """
+    def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
+                 max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
+                 skip_full_coverage_check=False, nodemanager_follow_cluster=False,
+                 timeout=20, queue_class=LifoQueue, **connection_kwargs):
+
+        self.queue_class = queue_class
+        self.timeout = timeout
+
+        super(ClusterBlockingConnectionPool, self).__init__(
+            startup_nodes=startup_nodes,
+            init_slot_cache=init_slot_cache,
+            connection_class=connection_class,
+            max_connections=max_connections,
+            max_connections_per_node=max_connections_per_node,
+            reinitialize_steps=reinitialize_steps,
+            skip_full_coverage_check=skip_full_coverage_check,
+            nodemanager_follow_cluster=nodemanager_follow_cluster,
+            **connection_kwargs
+        )
+
+    def reset(self):
+        self.pid = os.getpid()
+        self._check_lock = threading.Lock()
+
+        # Create and fill up a thread safe queue with ``None`` values.
+        # We will use ``None`` to denote when to create a new connection rather than to reuse.
+        self.pool = self.queue_class(self.max_connections)
+        while True:
+            try:
+                self.pool.put_nowait(None)
+            except Full:
+                break
+
+        # Keep a list of actual connection instances so that we can
+        # disconnect them later.
+        self._connections_by_node = {}  # Dict(Node, Set)
+
+    def make_connection(self, node):
+        """ Create a new connection """
+        connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
+        self._connections_by_node.setdefault(node["name"], set()).add(connection)
+        connection.node = node
+        return connection
+
+    def get_connection(self, command_name, *keys, **options):
+        if command_name != "pubsub":
+            raise RedisClusterException("Only 'pubsub' commands can be used by get_connection()")
+
+        channel = options.pop('channel', None)
+
+        if not channel:
+            # find random startup node and try to get connection again
+            return self.get_random_connection()
+
+        slot = self.nodes.keyslot(channel)
+        node = self.get_master_node_by_slot(slot)
+
+        self._checkpid()
+        connection = None
+        try:
+            connection = self.pool.get(block=True, timeout=self.timeout)
+        except Empty:
+            # Note that this is not caught by the redis cluster client and will be
+            # raised unless handled by application code.
+            raise ConnectionError("No connection available")
+
+        if connection is None:
+            connection = self.make_connection()
+
+        return connection
+
+    def release(self, connection):
+        """
+        Releases the connection back to the pool
+        """
+        self._checkpid()
+        if connection.pid != self.pid:
+            return
+
+        # Put the connection back into the pool.
+        try:
+            self.pool.put_nowait(connection)
+        except Full:
+            # perhaps the pool has been reset() after a fork? regardless,
+            # we don't want this connection
+            pass
+
+    def disconnect(self):
+        "Disconnects all connections in the pool."
+        for node in self._connections_by_node:
+            for connection in self._connections_by_node[node["name"]]:
+                connection.disconnect()
 
 
 class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
