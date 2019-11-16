@@ -8,6 +8,7 @@ import threading
 from contextlib import contextmanager
 from itertools import chain
 from queue import LifoQueue, Full, Empty
+from collections import defaultdict
 
 # rediscluster imports
 from .nodemanager import NodeManager
@@ -397,27 +398,34 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
             **connection_kwargs
         )
 
+    def blocking_pool_factory(self):
+        # Create and fill up a thread safe queue with ``None`` values.
+        # We will use ``None`` to denote when to create a new connection rather than to reuse.
+        pool = self.queue_class(self.max_connections_per_node)
+        while True:
+            try:
+                pool.put_nowait(None)
+            except Full:
+                break
+        return pool
+
     def reset(self):
         self.pid = os.getpid()
         self._check_lock = threading.Lock()
-
-        # Create and fill up a thread safe queue with ``None`` values.
-        # We will use ``None`` to denote when to create a new connection rather than to reuse.
-        self.pool = self.queue_class(self.max_connections)
-        while True:
-            try:
-                self.pool.put_nowait(None)
-            except Full:
-                break
+        self.pool_by_node = defaultdict(self.blocking_pool_factory)
 
         # Keep a list of actual connection instances so that we can
         # disconnect them later.
-        self._connections_by_node = {}  # Dict(Node, Set)
+        self._connections = []
 
     def make_connection(self, node):
         """ Create a new connection """
+        if len(self._connections) >= self.max_connections:
+            # todo ayl: sleep here?
+            raise RedisClusterException("Too many total connections to cluster")
+
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
-        self._connections_by_node.setdefault(node["name"], set()).add(connection)
+        self._connections.append(connection)
         connection.node = node
         return connection
 
@@ -430,17 +438,25 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
         if not channel:
             # find random startup node and try to get connection again
             return self.get_random_connection()
+        return self.get_connection_by_node(
+            self.get_master_node_by_slot(
+                self.nodes.keyslot(channel)
+            )
+        )
 
-        slot = self.nodes.keyslot(channel)
-        node = self.get_master_node_by_slot(slot)
-
+    def get_connection_by_node(self, node):
+        """
+        Get a connection by node
+        """
         self._checkpid()
         connection = None
         try:
-            connection = self.pool.get(block=True, timeout=self.timeout)
+            connection = self.pool_by_node[node["name"]].get(block=True, timeout=self.timeout)
         except Empty:
             # Note that this is not caught by the redis cluster client and will be
             # raised unless handled by application code.
+
+            # ``ConnectionError`` is raised when timeout is hit on the queue.
             raise ConnectionError("No connection available")
 
         if connection is None:
@@ -458,7 +474,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
 
         # Put the connection back into the pool.
         try:
-            self.pool.put_nowait(connection)
+            self.pool_by_node[connection.node["name"]].put_nowait(connection)
         except Full:
             # perhaps the pool has been reset() after a fork? regardless,
             # we don't want this connection
@@ -466,8 +482,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
 
     def disconnect(self):
         "Disconnects all connections in the pool."
-        for node in self._connections_by_node:
-            for connection in self._connections_by_node[node["name"]]:
+        for connection in self._connections:
                 connection.disconnect()
 
 
