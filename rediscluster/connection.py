@@ -369,7 +369,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
         >>> pool = ClusterBlockingConnectionPool(max_connections=10)
 
     Use ``timeout`` to tell it either how many seconds to wait for a connection
-    to become available, or to block forever:
+    to become available when accessing the queue, or to block forever:
 
         # Block forever.
         >>> pool = ClusterBlockingConnectionPool(timeout=None)
@@ -457,14 +457,31 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
         """
         self._checkpid()
         connection = None
+        connections_to_other_nodes = []
+        pool = self.get_pool(node=node)
         try:
-            connection = self.get_pool(node=node).get(block=True, timeout=self.timeout)
+            connection = pool.get(block=True, timeout=self.timeout)
+            while connection is not None and connection.node != node:
+                connections_to_other_nodes.append(connection)
+                connection = self.get_pool(node=node).get(block=True, timeout=self.timeout)
+
         except Empty:
             # Note that this is not caught by the redis cluster client and will be
             # raised unless handled by application code.
 
             # ``ConnectionError`` is raised when timeout is hit on the queue.
             raise ConnectionError("No connection available")
+
+        # Put all the connections belonging to other nodes back,
+        # disconnecting the ones we fail to return.
+        for idx, connection in enumerate(connections_to_other_nodes):
+            try:
+                pool.put(connection, timeout=self.timeout)
+            except Full:
+                for lost_connection in connections_to_other_nodes[idx:]:
+                    self._connections.remove(lost_connection)
+                    lost_connection.disconnect()
+                break
 
         if connection is None:
             connection = self.make_connection()

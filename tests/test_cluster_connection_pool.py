@@ -8,7 +8,7 @@ from threading import Thread
 
 # rediscluster imports
 from rediscluster.connection import (
-    ClusterConnectionPool, ClusterReadOnlyConnectionPool,
+    ClusterConnectionPool, ClusterBlockingConnectionPool, ClusterReadOnlyConnectionPool,
     ClusterConnection, UnixDomainSocketConnection)
 from rediscluster.exceptions import RedisClusterException
 from tests.conftest import skip_if_server_version_lt
@@ -96,7 +96,7 @@ class TestConnectionPool(object):
 
     def test_repr_contains_db_info_tcp(self):
         """
-        Note: init_slot_cache muts be set to false otherwise it will try to
+        Note: init_slot_cache must be set to false otherwise it will try to
               query the test server for data and then it can't be predicted reliably
         """
         connection_kwargs = {'host': 'localhost', 'port': 7000}
@@ -108,7 +108,7 @@ class TestConnectionPool(object):
 
     def test_repr_contains_db_info_unix(self):
         """
-        Note: init_slot_cache muts be set to false otherwise it will try to
+        Note: init_slot_cache must be set to false otherwise it will try to
               query the test server for data and then it can't be predicted reliably
         """
         connection_kwargs = {'path': '/abc', 'db': 1}
@@ -176,6 +176,160 @@ class TestConnectionPool(object):
         node['port'] = 7000
         node = pool.get_master_node_by_slot(12182)
         node['port'] = 7002
+
+
+class TestClusterBlockingConnectionPool(object):
+    def get_pool(self, connection_kwargs=None, max_connections=None, max_connections_per_node=None,
+                 connection_class=DummyConnection, init_slot_cache=True, timeout=20):
+        connection_kwargs = connection_kwargs or {}
+        pool = ClusterBlockingConnectionPool(
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            init_slot_cache=init_slot_cache,
+            connection_class=connection_class,
+            max_connections=max_connections,
+            max_connections_per_node=max_connections_per_node,
+            timeout=timeout,
+            **connection_kwargs)
+        return pool
+
+    def test_connection_creation(self):
+        connection_kwargs = {'foo': 'bar', 'biz': 'baz'}
+        pool = self.get_pool(connection_kwargs=connection_kwargs)
+        connection = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        assert isinstance(connection, DummyConnection)
+        assert connection.kwargs == connection_kwargs
+
+    def test_multiple_connections(self):
+        pool = self.get_pool()
+        c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        c2 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        assert c1 != c2
+
+    def test_connection_pool_blocks_until_timeout(self):
+        "When out of connections, block for timeout seconds, then raise"
+        pool = self.get_pool(max_connections=1, timeout=0.1)
+        pool.get_connection("pubsub")
+
+        start = time.time()
+        with pytest.raises(redis.ConnectionError):
+            pool.get_connection("pubsub")
+        # we should have waited at least 0.1 seconds
+        assert time.time() - start >= 0.1
+
+    def test_max_per_node_connection_pool_blocks_until_timeout(self):
+        "When out of connections, block for timeout seconds, then raise"
+        pool = self.get_pool(max_connections=1, max_connections_per_node=True, timeout=0.1)
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+
+        start = time.time()
+        with pytest.raises(redis.ConnectionError):
+            pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        # we should have waited at least 0.1 seconds
+        assert time.time() - start >= 0.1
+
+        # shouldn't error out as this is another node
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+
+        start = time.time()
+        with pytest.raises(redis.ConnectionError):
+            pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        # we should have waited at least 0.1 seconds
+        assert time.time() - start >= 0.1
+
+    def test_connection_pool_blocks_until_another_connection_released(self):
+        """
+        When out of connections, block until another connection is released
+        to the pool
+        """
+        pool = self.get_pool(max_connections=1, timeout=2)
+        c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+
+        def target():
+            time.sleep(0.1)
+            pool.release(c1)
+
+        Thread(target=target).start()
+        start = time.time()
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        assert time.time() - start >= 0.1
+
+    def test_max_per_node_connection_pool_blocks_until_another_connection_released(self):
+        """
+        When out of connections, block until another connection is released
+        to the pool
+        """
+        pool = self.get_pool(max_connections=1, max_connections_per_node=True, timeout=2)
+        c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+
+        def release_connection_after_sleep(*args, **kwargs):
+            def inner(connection):
+                time.sleep(0.1)
+                pool.release(connection)
+            return inner
+
+        Thread(target=release_connection_after_sleep(c1)).start()
+        start = time.time()
+
+        # different node so should not block
+        c2 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        assert time.time() - start < 0.1
+
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        assert time.time() - start >= 0.1
+
+        Thread(target=release_connection_after_sleep(c2)).start()
+        start = time.time()
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        assert time.time() - start >= 0.1
+
+    def test_reuse_previously_released_connection(self):
+        # Test that behaviour for re-use is the same whatever metric we block on.
+        def reuse_previously_released_connections_test(enable_max_connections_per_node):
+            pool = self.get_pool(max_connections_per_node=enable_max_connections_per_node)
+            c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+            pool.release(c1)
+
+            # release c2 back in and make sure c3 still picks the connection with the correct node
+            c2 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+            pool.release(c2)
+
+            c3 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+            c4 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+            c5 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+
+            # ensure reuse
+            assert c1 == c3
+            assert c2 == c4
+
+            # check that re-use policy is not naive
+            assert c5 != c1  # also expresses that c5 does not equal c3
+
+        reuse_previously_released_connections_test(enable_max_connections_per_node=True)
+        reuse_previously_released_connections_test(enable_max_connections_per_node=False)
+
+    def test_repr_contains_db_info_tcp(self):
+        """
+        Note: init_slot_cache must be set to false otherwise it will try to
+              query the test server for data and then it can't be predicted reliably
+        """
+        connection_kwargs = {'host': 'localhost', 'port': 7000}
+        pool = self.get_pool(connection_kwargs=connection_kwargs,
+                             connection_class=ClusterConnection,
+                             init_slot_cache=False)
+        expected = 'ClusterBlockingConnectionPool<ClusterConnection<host=localhost,port=7000>>'
+        assert repr(pool) == expected
+
+    def test_repr_contains_db_info_unix(self):
+        """
+        Note: init_slot_cache must be set to false otherwise it will try to
+              query the test server for data and then it can't be predicted reliably
+        """
+        connection_kwargs = {'path': '/abc', 'db': 1}
+        pool = self.get_pool(connection_kwargs=connection_kwargs,
+                             connection_class=UnixDomainSocketConnection,
+                             init_slot_cache=False)
+        expected = 'ClusterBlockingConnectionPool<ClusterUnixDomainSocketConnection<path=/abc>>'
+        assert repr(pool) == expected
 
 
 class TestReadOnlyConnectionPool(object):
