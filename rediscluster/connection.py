@@ -463,7 +463,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
             connection = pool.get(block=True, timeout=self.timeout)
             while connection is not None and connection.node != node:
                 connections_to_other_nodes.append(connection)
-                connection = self.get_pool(node=node).get(block=True, timeout=self.timeout)
+                connection = pool.get(block=True, timeout=self.timeout)
 
         except Empty:
             # Note that this is not caught by the redis cluster client and will be
