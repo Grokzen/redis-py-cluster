@@ -261,13 +261,11 @@ class TestClusterBlockingConnectionPool(object):
         pool = self.get_pool(max_connections=1, max_connections_per_node=True, timeout=2)
         c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
 
-        def release_connection_after_sleep(*args, **kwargs):
-            def inner(connection):
-                time.sleep(0.1)
-                pool.release(connection)
-            return inner
+        def release_connection_after_sleep(connection):
+            time.sleep(0.1)
+            pool.release(connection)
 
-        Thread(target=release_connection_after_sleep(c1)).start()
+        Thread(target=release_connection_after_sleep, args=(c1,)).start()
         start = time.time()
 
         # different node so should not block
@@ -277,7 +275,7 @@ class TestClusterBlockingConnectionPool(object):
         pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
         assert time.time() - start >= 0.1
 
-        Thread(target=release_connection_after_sleep(c2)).start()
+        Thread(target=release_connection_after_sleep, args=(c2,)).start()
         start = time.time()
         pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
         assert time.time() - start >= 0.1
