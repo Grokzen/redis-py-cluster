@@ -466,11 +466,19 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
                 connection = pool.get(block=True, timeout=self.timeout)
 
         except Empty:
-            # Note that this is not caught by the redis cluster client and will be
-            # raised unless handled by application code.
+            # queue is full of connections to other nodes
+            if not self.max_connections_per_node and len(connections_to_other_nodes) == self.max_connections:
+                # is the earliest released / longest un-used connection
+                connection_to_clear = connections_to_other_nodes.pop()
+                self._connections.remove(connection_to_clear)
+                connection_to_clear.disconnect()
+                connection = None  # get a new connection
+            else:
+                # Note that this is not caught by the redis cluster client and will be
+                # raised unless handled by application code.
 
-            # ``ConnectionError`` is raised when timeout is hit on the queue.
-            raise ConnectionError("No connection available")
+                # ``ConnectionError`` is raised when timeout is hit on the queue.
+                raise ConnectionError("No connection available")
 
         # Put all the connections belonging to other nodes back,
         # disconnecting the ones we fail to return.
