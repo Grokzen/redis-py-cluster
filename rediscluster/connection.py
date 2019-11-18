@@ -401,7 +401,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
     def blocking_pool_factory(self):
         # Create and fill up a thread safe queue with ``None`` values.
         # We will use ``None`` to denote when to create a new connection rather than to reuse.
-        pool = self.queue_class(self.max_connections_per_node)
+        pool = self.queue_class(self.max_connections)
         while True:
             try:
                 pool.put_nowait(None)
@@ -409,10 +409,21 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
                 break
         return pool
 
+    def get_pool(self, node):
+        return self._pool_by_node[node["name"]] \
+            if self.max_connections_per_node or node is None else self._group_pool
+
     def reset(self):
         self.pid = os.getpid()
         self._check_lock = threading.Lock()
-        self.pool_by_node = defaultdict(self.blocking_pool_factory)
+        self._pool_by_node = None
+        self._group_pool = None
+
+        # use conditional to minimize overhead in initializing queue
+        if self.max_connections_per_node:
+            self._pool_by_node = defaultdict(self.blocking_pool_factory)
+        else:
+            self._group_pool = self.blocking_pool_factory()
 
         # Keep a list of actual connection instances so that we can
         # disconnect them later.
@@ -420,10 +431,6 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
 
     def make_connection(self, node):
         """ Create a new connection """
-        if len(self._connections) >= self.max_connections:
-            # todo ayl: sleep here?
-            raise RedisClusterException("Too many total connections to cluster")
-
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
         self._connections.append(connection)
         connection.node = node
@@ -451,7 +458,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
         self._checkpid()
         connection = None
         try:
-            connection = self.pool_by_node[node["name"]].get(block=True, timeout=self.timeout)
+            connection = self.get_pool(node=node).get(block=True, timeout=self.timeout)
         except Empty:
             # Note that this is not caught by the redis cluster client and will be
             # raised unless handled by application code.
@@ -474,7 +481,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
 
         # Put the connection back into the pool.
         try:
-            self.pool_by_node[connection.node["name"]].put_nowait(connection)
+            self.get_pool(connection.node).put_nowait(connection)
         except Full:
             # perhaps the pool has been reset() after a fork? regardless,
             # we don't want this connection
