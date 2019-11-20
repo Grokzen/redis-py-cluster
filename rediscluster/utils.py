@@ -100,7 +100,7 @@ def clusterdown_wrapper(func):
             try:
                 return func(*args, **kwargs)
             except ClusterDownError:
-                self = *args[0]
+                self = args[0]
                 self.refereh_table_asap = True
                 # Try again with the new cluster setup. All other errors
                 # should be raised.
