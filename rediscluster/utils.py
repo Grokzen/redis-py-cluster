@@ -102,9 +102,9 @@ def clusterdown_wrapper(func):
             except ClusterDownError:
                 self = args[0]
                 self.refresh_table_asap = True
+                return func(*args, **kwargs)
                 # Try again with the new cluster setup. All other errors
                 # should be raised.
-                pass
 
         # If it fails 3 times then raise exception back to caller
         raise ClusterDownError("CLUSTERDOWN error. Unable to rebuild the cluster")
