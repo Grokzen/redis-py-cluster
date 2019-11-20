@@ -416,14 +416,16 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
     def reset(self):
         self.pid = os.getpid()
         self._check_lock = threading.Lock()
-        self._pool_by_node = None
-        self._group_pool = None
 
-        # use conditional to minimize overhead in initializing queue
-        if self.max_connections_per_node:
-            self._pool_by_node = defaultdict(self.blocking_pool_factory)
-        else:
-            self._group_pool = self.blocking_pool_factory()
+        """
+        We could use a conditional branch on ``max_connections_per_node`` to see which pool to initialize, 
+        but ClusterConnectionPool calls ConnectionPool init which has no concept of ``max_connections_per_node``,
+        and also performs ``reset()``. This will lead to an attribute error.
+        
+        This could suggest removing inheritance from ConnectionPool, but initializing both should not add much overhead.
+        """
+        self._pool_by_node = defaultdict(self.blocking_pool_factory)
+        self._group_pool = self.blocking_pool_factory()
 
         # Keep a list of actual connection instances so that we can
         # disconnect them later.
@@ -456,6 +458,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
         Get a connection by node
         """
         self._checkpid()
+        self.nodes.set_node_name(node)
         connection = None
         connections_to_other_nodes = []
         pool = self.get_pool(node=node)
@@ -482,9 +485,9 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
 
         # Put all the connections belonging to other nodes back,
         # disconnecting the ones we fail to return.
-        for idx, connection in enumerate(connections_to_other_nodes):
+        for idx, other_connection in enumerate(connections_to_other_nodes):
             try:
-                pool.put(connection, timeout=self.timeout)
+                pool.put_nowait(other_connection)
             except Full:
                 for lost_connection in connections_to_other_nodes[idx:]:
                     self._connections.remove(lost_connection)
@@ -492,7 +495,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
                 break
 
         if connection is None:
-            connection = self.make_connection()
+            connection = self.make_connection(node)
 
         return connection
 
