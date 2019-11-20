@@ -418,10 +418,10 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
         self._check_lock = threading.Lock()
 
         """
-        We could use a conditional branch on ``max_connections_per_node`` to see which pool to initialize, 
+        We could use a conditional branch on ``max_connections_per_node`` to see which pool to initialize,
         but ClusterConnectionPool calls ConnectionPool init which has no concept of ``max_connections_per_node``,
         and also performs ``reset()``. This will lead to an attribute error.
-        
+
         This could suggest removing inheritance from ConnectionPool, but initializing both should not add much overhead.
         """
         self._pool_by_node = defaultdict(self.blocking_pool_factory)
