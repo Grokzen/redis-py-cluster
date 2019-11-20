@@ -179,8 +179,12 @@ class TestConnectionPool(object):
 
 
 class TestClusterBlockingConnectionPool(object):
-    def get_pool(self, connection_kwargs=None, max_connections=None, max_connections_per_node=None,
+    def get_pool(self, connection_kwargs=None, max_connections=100, max_connections_per_node=None,
                  connection_class=DummyConnection, init_slot_cache=True, timeout=20):
+        '''
+        Setting max_connections default to 100 instead of None (which === 2**31) like in ClusterConnectionPool as
+        BlockingClusterConnectionPool takes time to setup a queue containing max_connections num of elements
+        '''
         connection_kwargs = connection_kwargs or {}
         pool = ClusterBlockingConnectionPool(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
