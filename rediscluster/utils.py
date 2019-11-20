@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from socket import gethostbyaddr
 from functools import wraps
-
+from redis.exceptions import ConnectionError
 # rediscluster imports
 from .exceptions import (
     RedisClusterException, ClusterDownError
@@ -100,9 +100,11 @@ def clusterdown_wrapper(func):
             try:
                 return func(*args, **kwargs)
             except ClusterDownError:
+                pass
+            except ConnectionError:
                 self = args[0]
                 self.refresh_table_asap = True
-                return func(*args, **kwargs)
+
                 # Try again with the new cluster setup. All other errors
                 # should be raised.
 
