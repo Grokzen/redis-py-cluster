@@ -2,6 +2,7 @@
 from socket import gethostbyaddr
 from functools import wraps
 from redis.exceptions import ConnectionError
+from time import sleep
 # rediscluster imports
 from .exceptions import (
     RedisClusterException, ClusterDownError
@@ -96,12 +97,13 @@ def clusterdown_wrapper(func):
     """
     @wraps(func)
     def inner(*args, **kwargs):
-        for _ in range(0, 3):
+        for time in range(0, 3):
             try:
                 return func(*args, **kwargs)
             except ClusterDownError:
                 pass
             except ConnectionError:
+                sleep(2 * (time + 1))
                 self = args[0]
                 self.refresh_table_asap = True
 
