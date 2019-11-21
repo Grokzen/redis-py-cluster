@@ -516,7 +516,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
             pass
 
     def disconnect(self):
-        "Disconnects all connections in the pool."
+        """Disconnects all connections in the pool."""
         for connection in self._connections:
             connection.disconnect()
 
