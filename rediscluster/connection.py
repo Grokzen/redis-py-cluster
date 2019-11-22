@@ -7,7 +7,6 @@ import random
 import threading
 from contextlib import contextmanager
 from itertools import chain
-from queue import LifoQueue, Full, Empty
 from collections import defaultdict
 
 # rediscluster imports
@@ -19,7 +18,7 @@ from .exceptions import (
 )
 
 # 3rd party imports
-from redis._compat import nativestr
+from redis._compat import nativestr, LifoQueue, Full, Empty
 from redis.client import dict_merge
 from redis.connection import ConnectionPool, Connection, DefaultParser, SSLConnection
 from redis.exceptions import ConnectionError
