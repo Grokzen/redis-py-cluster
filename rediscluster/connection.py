@@ -363,7 +363,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
     makes the client wait ("blocks") for a specified number of seconds until
     a connection becomes available.
 
-    Use ``max_connections`` to increase / decrease the pool size::
+    Use ``max_connections`` to set the pool size::
 
         >>> pool = ClusterBlockingConnectionPool(max_connections=10)
 
@@ -380,9 +380,8 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
                  max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
                  skip_full_coverage_check=False, nodemanager_follow_cluster=False,
-                 timeout=20, queue_class=LifoQueue, **connection_kwargs):
+                 timeout=20, **connection_kwargs):
 
-        self.queue_class = queue_class
         self.timeout = timeout
 
         super(ClusterBlockingConnectionPool, self).__init__(
@@ -397,10 +396,10 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
             **connection_kwargs
         )
 
-    def blocking_pool_factory(self):
+    def _blocking_pool_factory(self):
         # Create and fill up a thread safe queue with ``None`` values.
         # We will use ``None`` to denote when to create a new connection rather than to reuse.
-        pool = self.queue_class(self.max_connections)
+        pool = LifoQueue(self.max_connections)
         while True:
             try:
                 pool.put_nowait(None)
@@ -408,7 +407,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
                 break
         return pool
 
-    def get_pool(self, node):
+    def _get_pool(self, node):
         return self._pool_by_node[node["name"]] \
             if self.max_connections_per_node or node is None else self._group_pool
 
@@ -423,8 +422,8 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
 
         This could suggest removing inheritance from ConnectionPool, but initializing both should not add much overhead.
         """
-        self._pool_by_node = defaultdict(self.blocking_pool_factory)
-        self._group_pool = self.blocking_pool_factory()
+        self._pool_by_node = defaultdict(self._blocking_pool_factory)
+        self._group_pool = self._blocking_pool_factory()
 
         # Keep a list of actual connection instances so that we can
         # disconnect them later.
@@ -460,7 +459,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
         self.nodes.set_node_name(node)
         connection = None
         connections_to_other_nodes = []
-        pool = self.get_pool(node=node)
+        pool = self._get_pool(node=node)
         try:
             connection = pool.get(block=True, timeout=self.timeout)
             while connection is not None and connection.node != node:
@@ -508,7 +507,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
 
         # Put the connection back into the pool.
         try:
-            self.get_pool(connection.node).put_nowait(connection)
+            self._get_pool(connection.node).put_nowait(connection)
         except Full:
             # perhaps the pool has been reset() after a fork? regardless,
             # we don't want this connection
