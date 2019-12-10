@@ -421,6 +421,7 @@ class RedisCluster(Redis):
                 raise
             except (ConnectionError, TimeoutError):
                 try_random_node = True
+
                 if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.1)
             except ClusterDownError as e:
