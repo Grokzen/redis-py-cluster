@@ -103,7 +103,7 @@ def clusterdown_wrapper(func):
             except ClusterDownError:
                 pass
             except ConnectionError:
-                sleep(2 * (time + 1))
+                sleep(2 ** (time + 1))
                 self = args[0]
                 self.refresh_table_asap = True
 
