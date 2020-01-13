@@ -1,10 +1,12 @@
 import pytest
 import time
 
+from rediscluster import RedisCluster
+
 from redis.exceptions import LockError, LockNotOwnedError
 from redis.client import Redis
 from redis.lock import Lock
-from .conftest import _get_client
+from .conftest import _get_client, _init_client
 
 
 class TestLock(object):
@@ -60,10 +62,12 @@ class TestLock(object):
         assert lock.owned() is False
         assert lock2.owned() is False
 
-    def test_owned(self, r):
+    def test_owned(self, request):
+        r = _init_client(request, cls=RedisCluster, decode_responses=False)
         self._test_owned(r)
 
-    def test_owned_with_decoded_responses(self, r_decoded):
+    def test_owned_with_decoded_responses(self, request):
+        r_decoded = _init_client(request, cls=RedisCluster, decode_responses=True)
         self._test_owned(r_decoded)
 
     def test_competing_locks(self, r):
