@@ -2,8 +2,10 @@ from __future__ import unicode_literals
 import pytest
 import redis
 
+from rediscluster import RedisCluster
+
 from redis._compat import unichr, unicode
-from .conftest import _get_client
+from .conftest import _get_client, _init_client
 
 
 class TestEncoding(object):
@@ -18,7 +20,8 @@ class TestEncoding(object):
         assert isinstance(cached_val, unicode)
         assert unicode_string == cached_val
 
-    def test_list_encoding(self, r):
+    def test_list_encoding(self, request):
+        r = _init_client(request, cls=RedisCluster, decode_responses=True)
         unicode_string = unichr(3456) + 'abcd' + unichr(3421)
         result = [unicode_string, unicode_string, unicode_string]
         r.rpush('a', *result)
@@ -27,14 +30,12 @@ class TestEncoding(object):
 
 class TestEncodingErrors(object):
     def test_ignore(self, request):
-        r = _get_client(redis.Redis, request=request, decode_responses=True,
-                        encoding_errors='ignore')
+        r = _init_client(request, cls=RedisCluster, decode_responses=True, encoding_errors='ignore')
         r.set('a', b'foo\xff')
         assert r.get('a') == 'foo'
 
     def test_replace(self, request):
-        r = _get_client(redis.Redis, request=request, decode_responses=True,
-                        encoding_errors='replace')
+        r = _init_client(request, cls=RedisCluster, decode_responses=True, encoding_errors='replace')
         r.set('a', b'foo\xff')
         assert r.get('a') == 'foo\ufffd'
 
