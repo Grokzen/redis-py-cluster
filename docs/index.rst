@@ -88,23 +88,10 @@ Python versions should follow the same supported python versions as specificed b
 
 If this library supports more then one major version line of `redis-py`, then the supported python versions must include the set of supported python versions by all major version lines.
 
-- 2.7.x
-- 3.4.1+ (See note)
-- 3.5.x
-- 3.6.x
-- 3.7.x
-
-.. note:: Python 3.4.0
-
-    A segfault was found when running `redis-py` in python `3.4.0` that was introduced into the codebase in python itself in the version `3.4.0`.
-    
-    Because of this both `redis-py` and `redis-py-cluster` will not work when running with `3.4.0`.
-    
-    This lib has decided to block the lib from execution on `3.4.0` and you will get a exception when trying to import the code.
-    
-    The only solution is to use python `3.4.1` or some other higher minor version in the `3.4` series.
-
-    When python `3.8.0` is released and when it is added to as a supported pythoon version, python 3.4.x will be removed from supported versions and this hard block will be removed from the source code.
+- 2.7
+- 3.6
+- 3.7
+- 3.8
 
 
 

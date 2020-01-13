@@ -3,6 +3,12 @@ Upgrading redis-py-cluster
 
 This document describes what must be done when upgrading between different versions to ensure that code still works.
 
+2.0.0 --> 2.1.0
+---------------
+
+Python3 version must now be one of 3.6, 3.7, 3.8
+
+
 1.3.x --> 2.0.0
 ---------------
 
