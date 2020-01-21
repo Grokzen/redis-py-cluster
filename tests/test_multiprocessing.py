@@ -3,7 +3,7 @@ import multiprocessing
 import contextlib
 
 import redis
-from redis.connection import Connection, ConnectionPool
+from rediscluster.connection import ClusterConnection, ClusterConnectionPool
 from redis.exceptions import ConnectionError
 
 from .conftest import _get_client
@@ -35,7 +35,7 @@ class TestMultiprocessing(object):
         A connection owned by a parent and closed by a child doesn't
         destroy the file descriptors so a parent can still use it.
         """
-        conn = Connection()
+        conn = ClusterConnection(port=7000)
         conn.send_command('ping')
         assert conn.read_response() == b'PONG'
 
@@ -61,7 +61,7 @@ class TestMultiprocessing(object):
         A connection owned by a parent is unusable by a child if the parent
         (the owning process) closes the connection.
         """
-        conn = Connection()
+        conn = ClusterConnection(port=7000)
         conn.send_command('ping')
         assert conn.read_response() == b'PONG'
 
@@ -89,10 +89,10 @@ class TestMultiprocessing(object):
         A child will create its own connections when using a pool created
         by a parent.
         """
-        pool = ConnectionPool.from_url('redis://localhost',
+        pool = ClusterConnectionPool.from_url('redis://localhost:7000',
                                        max_connections=max_connections)
 
-        conn = pool.get_connection('ping')
+        conn = pool.get_random_connection()
         main_conn_pid = conn.pid
         with exit_callback(pool.release, conn):
             conn.send_command('ping')
@@ -100,7 +100,7 @@ class TestMultiprocessing(object):
 
         def target(pool):
             with exit_callback(pool.disconnect):
-                conn = pool.get_connection('ping')
+                conn = pool.get_random_connection()
                 assert conn.pid != main_conn_pid
                 with exit_callback(pool.release, conn):
                     assert conn.send_command('ping') is None
@@ -113,7 +113,7 @@ class TestMultiprocessing(object):
 
         # Check that connection is still alive after fork process has exited
         # and disconnected the connections in its pool
-        conn = pool.get_connection('ping')
+        conn = pool.get_random_connection()
         with exit_callback(pool.release, conn):
             assert conn.send_command('ping') is None
             assert conn.read_response() == b'PONG'
@@ -124,15 +124,15 @@ class TestMultiprocessing(object):
         A child process that uses the same pool as its parent isn't affected
         when the parent disconnects all connections within the pool.
         """
-        pool = ConnectionPool.from_url('redis://localhost',
+        pool = ClusterConnectionPool.from_url('redis://localhost:7000',
                                        max_connections=max_connections)
 
-        conn = pool.get_connection('ping')
+        conn = pool.get_random_connection()
         assert conn.send_command('ping') is None
         assert conn.read_response() == b'PONG'
 
         def target(pool, disconnect_event):
-            conn = pool.get_connection('ping')
+            conn = pool.get_random_connection()
             with exit_callback(pool.release, conn):
                 assert conn.send_command('ping') is None
                 assert conn.read_response() == b'PONG'
