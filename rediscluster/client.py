@@ -40,6 +40,33 @@ from redis._compat import iteritems, basestring, izip, nativestr, long
 from redis.exceptions import RedisError, ResponseError, TimeoutError, DataError, ConnectionError, BusyLoadingError
 
 
+class CaseInsensitiveDict(dict):
+    "Case insensitive dict implementation. Assumes string keys only."
+
+    def __init__(self, data):
+        for k, v in iteritems(data):
+            self[k.upper()] = v
+
+    def __contains__(self, k):
+        return super(CaseInsensitiveDict, self).__contains__(k.upper())
+
+    def __delitem__(self, k):
+        super(CaseInsensitiveDict, self).__delitem__(k.upper())
+
+    def __getitem__(self, k):
+        return super(CaseInsensitiveDict, self).__getitem__(k.upper())
+
+    def get(self, k, default=None):
+        return super(CaseInsensitiveDict, self).get(k.upper(), default)
+
+    def __setitem__(self, k, v):
+        super(CaseInsensitiveDict, self).__setitem__(k.upper(), v)
+
+    def update(self, data):
+        data = CaseInsensitiveDict(data)
+        super(CaseInsensitiveDict, self).update(data)
+
+
 class RedisCluster(Redis):
     """
     If a command is implemented over the one in Redis then it requires some changes compared to
@@ -218,7 +245,7 @@ class RedisCluster(Redis):
         self.refresh_table_asap = False
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.result_callbacks = self.__class__.RESULT_CALLBACKS.copy()
-        self.response_callbacks = self.__class__.RESPONSE_CALLBACKS.copy()
+        self.response_callbacks = CaseInsensitiveDict(self.__class__.RESPONSE_CALLBACKS)
         self.response_callbacks = dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
         self.read_from_replicas = read_from_replicas
 
@@ -670,6 +697,9 @@ class RedisCluster(Redis):
 
     ##########
     # All methods that must have custom implementation
+
+    def client_kill_filter(self, _id=None, _type=None, addr=None, skipme=None):
+        raise NotImplementedError('Method not yet implemented')
 
     def _parse_scan(self, response, **options):
         """
