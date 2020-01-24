@@ -75,8 +75,8 @@ def test_blocked_strict_redis_args():
     Some arguments should explicitly be blocked because they will not work in a cluster setup
     """
     params = {'startup_nodes': [{'host': '127.0.0.1', 'port': 7000}]}
-    c = RedisCluster(**params)
-    assert c.connection_pool.connection_kwargs["socket_timeout"] == ClusterConnectionPool.RedisClusterDefaultTimeout
+    cluster = RedisCluster(**params)
+    assert cluster.connection_pool.connection_kwargs["socket_timeout"] == ClusterConnectionPool.RedisClusterDefaultTimeout
 
     with pytest.raises(RedisClusterException) as ex:
         _get_client(RedisCluster, db=1)
@@ -105,10 +105,10 @@ def test_host_port_startup_node():
     """
     Test that it is possible to use host & port arguments as startup node args
     """
-    h = "192.168.0.1"
-    p = 7000
-    c = RedisCluster(host=h, port=p, init_slot_cache=False)
-    assert {"host": h, "port": p} in c.connection_pool.nodes.startup_nodes
+    host = "192.168.0.1"
+    port = 7000
+    cluster = RedisCluster(host=host, port=port, init_slot_cache=False)
+    assert {"host": host, "port": port} in cluster.connection_pool.nodes.startup_nodes
 
 
 def test_empty_startup_nodes():
@@ -132,15 +132,19 @@ def test_custom_connectionpool():
     """
     Test that a custom connection pool will be used by RedisCluster
     """
-    h = "192.168.0.1"
-    p = 7001
-    pool = DummyConnectionPool(host=h, port=p, connection_class=DummyConnection,
-                               startup_nodes=[{'host': h, 'port': p}],
-                               init_slot_cache=False)
-    c = RedisCluster(connection_pool=pool, init_slot_cache=False)
-    assert c.connection_pool is pool
-    assert c.connection_pool.connection_class == DummyConnection
-    assert {"host": h, "port": p} in c.connection_pool.nodes.startup_nodes
+    host = "192.168.0.1"
+    port = 7001
+    pool = DummyConnectionPool(
+        host=host,
+        port=port,
+        connection_class=DummyConnection,
+        startup_nodes=[{'host': host, 'port': port}],
+        init_slot_cache=False,
+    )
+    cluster = RedisCluster(connection_pool=pool, init_slot_cache=False)
+    assert cluster.connection_pool is pool
+    assert cluster.connection_pool.connection_class == DummyConnection
+    assert {"host": host, "port": port} in cluster.connection_pool.nodes.startup_nodes
 
 
 @patch('rediscluster.nodemanager.Redis', new=MagicMock())
@@ -148,10 +152,10 @@ def test_skip_full_coverage_check():
     """
     Test if the cluster_require_full_coverage NodeManager method was not called with the flag activated
     """
-    c = RedisCluster("192.168.0.1", 7001, init_slot_cache=False, skip_full_coverage_check=True)
-    c.connection_pool.nodes.cluster_require_full_coverage = MagicMock()
-    c.connection_pool.nodes.initialize()
-    assert not c.connection_pool.nodes.cluster_require_full_coverage.called
+    cluster = RedisCluster("192.168.0.1", 7001, init_slot_cache=False, skip_full_coverage_check=True)
+    cluster.connection_pool.nodes.cluster_require_full_coverage = MagicMock()
+    cluster.connection_pool.nodes.initialize()
+    assert not cluster.connection_pool.nodes.cluster_require_full_coverage.called
 
 
 def test_blocked_commands(r):
@@ -303,9 +307,7 @@ def test_ask_redirection():
         'port': 7001,
         'name': '127.0.0.1:7001'
     }
-    with patch.object(RedisCluster,
-                      'parse_response') as parse_response:
-
+    with patch.object(RedisCluster, 'parse_response') as parse_response:
         host_ip = find_node_ip_based_on_port(r, '7001')
 
         def ask_redirect_effect(connection, *args, **options):
@@ -332,9 +334,7 @@ def test_pipeline_ask_redirection():
     Important thing to verify is that it tries to talk to the second node.
     """
     r = get_mocked_redis_client(host="127.0.0.1", port=7000)
-    with patch.object(RedisCluster,
-                      'parse_response') as parse_response:
-
+    with patch.object(RedisCluster, 'parse_response') as parse_response:
         def response(connection, *args, **options):
             def response(connection, *args, **options):
                 def response(connection, *args, **options):
