@@ -213,9 +213,10 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Create a new connection
         """
-        if self.count_all_num_connections(node) >= self.max_connections:
+        num_connections = self.count_all_num_connections(node)
+        if num_connections >= self.max_connections:
             if self.max_connections_per_node:
-                raise RedisClusterException("Too many connection ({0}) for node: {1}".format(self.count_all_num_connections(node), node['name']))
+                raise RedisClusterException("Too many connection ({0}) for node: {1}".format(num_connections, node['name']))
 
             raise RedisClusterException("Too many connections")
 
@@ -268,7 +269,7 @@ class ClusterConnectionPool(ConnectionPool):
         if self.max_connections_per_node:
             return self._created_connections_per_node.get(node['name'], 0)
 
-        return sum([i for i in self._created_connections_per_node.values()])
+        return sum([i for i in list(self._created_connections_per_node.values())])
 
     def get_random_connection(self):
         """
