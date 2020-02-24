@@ -89,6 +89,7 @@ Python versions should follow the same supported python versions as specificed b
 If this library supports more then one major version line of `redis-py`, then the supported python versions must include the set of supported python versions by all major version lines.
 
 - 2.7
+- 3.5
 - 3.6
 - 3.7
 - 3.8
