@@ -10,7 +10,7 @@ import time
 import rediscluster
 from rediscluster.exceptions import RedisClusterException, ClusterCrossSlotError
 from rediscluster.utils import dict_merge
-from tests.conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt, skip_if_server_version_gte, skip_for_no_cluster_impl
+from tests.conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt, skip_if_server_version_gte, skip_for_no_cluster_impl, skip_unless_arch_bits
 
 # 3rd party imports
 import pytest
@@ -23,7 +23,7 @@ from redis import exceptions
 
 @pytest.fixture()
 def slowlog(request, r):
-    current_config = get_main_cluster_node_data(r.config_get())
+    current_config = r.config_get()
     old_slower_than_value = current_config['slowlog-log-slower-than']
     old_max_legnth_value = current_config['slowlog-max-len']
 
@@ -79,6 +79,9 @@ class TestResponseCallbacks(object):
         r['a'] = 'foo'
         assert r['a'] == 'static'
 
+    def test_case_insensitive_command_names(self, r):
+        assert r.response_callbacks['del'] == r.response_callbacks['DEL']
+
 
 class TestRedisCommands(object):
 
@@ -87,7 +90,181 @@ class TestRedisCommands(object):
         with pytest.raises(redis.ResponseError):
             r['a']
 
-    # SERVER INFORMATION
+        # SERVER INFORMATION
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_cat_no_category(self, r):
+        categories = r.acl_cat()
+        assert isinstance(categories, list)
+        assert 'read' in categories
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_cat_with_category(self, r):
+        commands = r.acl_cat('read')
+        assert isinstance(commands, list)
+        assert 'get' in commands
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_deluser(self, r, request):
+        username = 'redis-py-user'
+
+        def teardown():
+            r.acl_deluser(username)
+
+        request.addfinalizer(teardown)
+
+        assert r.acl_deluser(username) == 0
+        assert r.acl_setuser(username, enabled=False, reset=True)
+        assert r.acl_deluser(username) == 1
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_genpass(self, r):
+        password = r.acl_genpass()
+        assert isinstance(password, basestring)
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_getuser_setuser(self, r, request):
+        username = 'redis-py-user'
+
+        def teardown():
+            r.acl_deluser(username)
+        request.addfinalizer(teardown)
+
+        # test enabled=False
+        assert r.acl_setuser(username, enabled=False, reset=True)
+        assert r.acl_getuser(username) == {
+            'categories': ['-@all'],
+            'commands': [],
+            'enabled': False,
+            'flags': ['off'],
+            'keys': [],
+            'passwords': [],
+        }
+
+        # test nopass=True
+        assert r.acl_setuser(username, enabled=True, reset=True, nopass=True)
+        assert r.acl_getuser(username) == {
+            'categories': ['-@all'],
+            'commands': [],
+            'enabled': True,
+            'flags': ['on', 'nopass'],
+            'keys': [],
+            'passwords': [],
+        }
+
+        # test all args
+        assert r.acl_setuser(username, enabled=True, reset=True,
+                             passwords=['+pass1', '+pass2'],
+                             categories=['+set', '+@hash', '-geo'],
+                             commands=['+get', '+mget', '-hset'],
+                             keys=['cache:*', 'objects:*'])
+        acl = r.acl_getuser(username)
+        assert set(acl['categories']) == set(['-@all', '+@set', '+@hash'])
+        assert set(acl['commands']) == set(['+get', '+mget', '-hset'])
+        assert acl['enabled'] is True
+        assert acl['flags'] == ['on']
+        assert set(acl['keys']) == set([b'cache:*', b'objects:*'])
+        assert len(acl['passwords']) == 2
+
+        # test reset=False keeps existing ACL and applies new ACL on top
+        assert r.acl_setuser(username, enabled=True, reset=True,
+                             passwords=['+pass1'],
+                             categories=['+@set'],
+                             commands=['+get'],
+                             keys=['cache:*'])
+        assert r.acl_setuser(username, enabled=True,
+                             passwords=['+pass2'],
+                             categories=['+@hash'],
+                             commands=['+mget'],
+                             keys=['objects:*'])
+        acl = r.acl_getuser(username)
+        assert set(acl['categories']) == set(['-@all', '+@set', '+@hash'])
+        assert set(acl['commands']) == set(['+get', '+mget'])
+        assert acl['enabled'] is True
+        assert acl['flags'] == ['on']
+        assert set(acl['keys']) == set([b'cache:*', b'objects:*'])
+        assert len(acl['passwords']) == 2
+
+        # test removal of passwords
+        assert r.acl_setuser(username, enabled=True, reset=True,
+                             passwords=['+pass1', '+pass2'])
+        assert len(r.acl_getuser(username)['passwords']) == 2
+        assert r.acl_setuser(username, enabled=True,
+                             passwords=['-pass2'])
+        assert len(r.acl_getuser(username)['passwords']) == 1
+
+        # Resets and tests that hashed passwords are set properly.
+        hashed_password = ('5e884898da28047151d0e56f8dc629'
+                           '2773603d0d6aabbdd62a11ef721d1542d8')
+        assert r.acl_setuser(username, enabled=True, reset=True,
+                             hashed_passwords=['+' + hashed_password])
+        acl = r.acl_getuser(username)
+        assert acl['passwords'] == [hashed_password]
+
+        # test removal of hashed passwords
+        assert r.acl_setuser(username, enabled=True, reset=True,
+                             hashed_passwords=['+' + hashed_password],
+                             passwords=['+pass1'])
+        assert len(r.acl_getuser(username)['passwords']) == 2
+        assert r.acl_setuser(username, enabled=True,
+                             hashed_passwords=['-' + hashed_password])
+        assert len(r.acl_getuser(username)['passwords']) == 1
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_list(self, r, request):
+        username = 'redis-py-user'
+
+        def teardown():
+            r.acl_deluser(username)
+        request.addfinalizer(teardown)
+
+        assert r.acl_setuser(username, enabled=False, reset=True)
+        users = r.acl_list()
+        assert 'user %s off -@all' % username in users
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_setuser_categories_without_prefix_fails(self, r, request):
+        username = 'redis-py-user'
+
+        def teardown():
+            r.acl_deluser(username)
+        request.addfinalizer(teardown)
+
+        with pytest.raises(exceptions.DataError):
+            r.acl_setuser(username, categories=['list'])
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_setuser_commands_without_prefix_fails(self, r, request):
+        username = 'redis-py-user'
+
+        def teardown():
+            r.acl_deluser(username)
+        request.addfinalizer(teardown)
+
+        with pytest.raises(exceptions.DataError):
+            r.acl_setuser(username, commands=['get'])
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_setuser_add_passwords_and_nopass_fails(self, r, request):
+        username = 'redis-py-user'
+
+        def teardown():
+            r.acl_deluser(username)
+        request.addfinalizer(teardown)
+
+        with pytest.raises(exceptions.DataError):
+            r.acl_setuser(username, passwords='+mypass', nopass=True)
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_users(self, r):
+        users = r.acl_users()
+        assert isinstance(users, list)
+        assert len(users) > 0
+
+    @skip_if_server_version_lt('5.9.101')
+    def test_acl_whoami(self, r):
+        username = r.acl_whoami()
+        assert isinstance(username, basestring)
+
     def test_client_list(self, r):
         clients = r.client_list()
         client_data = get_main_cluster_node_data(clients)[0]
@@ -125,6 +302,83 @@ class TestRedisCommands(object):
 
     @skip_if_server_version_lt('2.6.9')
     @skip_for_no_cluster_impl()
+    def test_client_kill(self, r, r2):
+        r.client_setname('redis-py-c1')
+        r2.client_setname('redis-py-c2')
+        clients = [client for client in r.client_list()
+                   if client.get('name') in ['redis-py-c1', 'redis-py-c2']]
+        assert len(clients) == 2
+
+        clients_by_name = dict([(client.get('name'), client)
+                                for client in clients])
+
+        client_addr = clients_by_name['redis-py-c2'].get('addr')
+        assert r.client_kill(client_addr) is True
+
+        clients = [client for client in r.client_list()
+                   if client.get('name') in ['redis-py-c1', 'redis-py-c2']]
+        assert len(clients) == 1
+        assert clients[0].get('name') == 'redis-py-c1'
+
+    @skip_if_server_version_lt('2.8.12')
+    @skip_for_no_cluster_impl()
+    def test_client_kill_filter_invalid_params(self, r):
+        # empty
+        with pytest.raises(exceptions.DataError):
+            r.client_kill_filter()
+
+        # invalid skipme
+        with pytest.raises(exceptions.DataError):
+            r.client_kill_filter(skipme="yeah")
+
+        # invalid type
+        with pytest.raises(exceptions.DataError):
+            r.client_kill_filter(_type="caster")
+
+    @skip_if_server_version_lt('2.8.12')
+    @skip_for_no_cluster_impl()
+    def test_client_kill_filter_by_id(self, r, r2):
+        r.client_setname('redis-py-c1')
+        r2.client_setname('redis-py-c2')
+        clients = [client for client in r.client_list()
+                   if client.get('name') in ['redis-py-c1', 'redis-py-c2']]
+        assert len(clients) == 2
+
+        clients_by_name = dict([(client.get('name'), client)
+                                for client in clients])
+
+        client_2_id = clients_by_name['redis-py-c2'].get('id')
+        resp = r.client_kill_filter(_id=client_2_id)
+        assert resp == 1
+
+        clients = [client for client in r.client_list()
+                   if client.get('name') in ['redis-py-c1', 'redis-py-c2']]
+        assert len(clients) == 1
+        assert clients[0].get('name') == 'redis-py-c1'
+
+    @skip_if_server_version_lt('2.8.12')
+    @skip_for_no_cluster_impl()
+    def test_client_kill_filter_by_addr(self, r, r2):
+        r.client_setname('redis-py-c1')
+        r2.client_setname('redis-py-c2')
+        clients = [client for client in r.client_list()
+                   if client.get('name') in ['redis-py-c1', 'redis-py-c2']]
+        assert len(clients) == 2
+
+        clients_by_name = dict([(client.get('name'), client)
+                                for client in clients])
+
+        client_2_addr = clients_by_name['redis-py-c2'].get('addr')
+        resp = r.client_kill_filter(addr=client_2_addr)
+        assert resp == 1
+
+        clients = [client for client in r.client_list()
+                   if client.get('name') in ['redis-py-c1', 'redis-py-c2']]
+        assert len(clients) == 1
+        assert clients[0].get('name') == 'redis-py-c1'
+
+    @skip_if_server_version_lt('2.6.9')
+    @skip_for_no_cluster_impl()
     def test_client_list_after_client_setname(self, r):
         r.client_setname('redis_py_test')
         clients = r.client_list()
@@ -145,7 +399,6 @@ class TestRedisCommands(object):
 
     def test_config_resetstat(self, r):
         r.ping()
-
         prior_commands_processed = int(get_main_cluster_node_data(r.info())['total_commands_processed'])
         assert prior_commands_processed >= 1
         r.config_resetstat()
@@ -267,6 +520,7 @@ class TestRedisCommands(object):
         assert r.bitcount('a', -2, -1) == 2
         assert r.bitcount('a', 1, 1) == 1
 
+    # TODO: Move this method to a more generic solution/method that tests the blocked nodes flags feature
     def test_bitop_not_supported(self, r):
         """
         Validate that the command is blocked in cluster mode and throws an Exception
@@ -1005,7 +1259,6 @@ class TestRedisCommands(object):
         assert value in s
         assert r.smembers('a') == set(s) - {value}
 
-    @skip_if_server_version_lt('3.2.0')
     def test_spop_multi_value(self, r):
         s = [b'1', b'2', b'3']
         r.sadd('a', *s)
@@ -1812,10 +2065,11 @@ class TestRedisCommands(object):
     @skip_if_server_version_lt('3.2.0')
     def test_georadius(self, r):
         values = (2.1909389952632, 41.433791470673, 'place1') +\
-                 (2.1873744593677, 41.406342043777, 'place2')
+                 (2.1873744593677, 41.406342043777, b'\x80place2')
 
         r.geoadd('barcelona', *values)
-        assert r.georadius(b'barcelona', 2.191, 41.433, 1000) == [b'place1']
+        assert r.georadius('barcelona', 2.191, 41.433, 1000) == [b'place1']
+        assert r.georadius('barcelona', 2.187, 41.406, 1000) == [b'\x80place2']
 
     @skip_if_server_version_lt('3.2.0')
     def test_georadius_no_values(self, r):
@@ -1834,6 +2088,7 @@ class TestRedisCommands(object):
         assert r.georadius(b'barcelona', 2.191, 41.433, 1, unit='km') ==\
             [b'place1']
 
+    @skip_unless_arch_bits(64)
     @skip_if_server_version_lt('3.2.0')
     def test_georadius_with(self, r):
         values = (2.1909389952632, 41.433791470673, 'place1') +\
@@ -1913,17 +2168,17 @@ class TestRedisCommands(object):
     @skip_if_server_version_lt('3.2.0')
     def test_georadiusmember(self, r):
         values = (2.1909389952632, 41.433791470673, 'place1') +\
-                 (2.1873744593677, 41.406342043777, 'place2')
+                 (2.1873744593677, 41.406342043777, b'\x80place2')
 
         r.geoadd('barcelona', *values)
         assert r.georadiusbymember('barcelona', 'place1', 4000) ==\
-            [b'place2', b'place1']
+            [b'\x80place2', b'place1']
         assert r.georadiusbymember('barcelona', 'place1', 10) == [b'place1']
 
         assert r.georadiusbymember('barcelona', 'place1', 4000,
                                    withdist=True, withcoord=True,
                                    withhash=True) ==\
-            [[b'place2', 3067.4157, 3471609625421029,
+            [[b'\x80place2', 3067.4157, 3471609625421029,
                 (2.187376320362091, 41.40634178640635)],
              [b'place1', 0.0, 3471609698139488,
                  (2.1909382939338684, 41.433790281840835)]]
@@ -1984,7 +2239,7 @@ class TestRedisCommands(object):
         assert response == []
 
         # read the group as consumer1 to initially claim the messages
-        r.xreadgroup(group, consumer1, streams={stream: 0})
+        r.xreadgroup(group, consumer1, streams={stream: '>'})
 
         # claim the message as consumer2
         response = r.xclaim(stream, group, consumer2,
@@ -1996,6 +2251,32 @@ class TestRedisCommands(object):
         assert r.xclaim(stream, group, consumer1,
                         min_idle_time=0, message_ids=(message_id,),
                         justid=True) == [message_id]
+
+    @skip_if_server_version_lt('5.0.0')
+    @skip_for_no_cluster_impl()
+    def test_xclaim_trimmed(self, r):
+        # xclaim should not raise an exception if the item is not there
+        stream = 'stream'
+        group = 'group'
+
+        r.xgroup_create(stream, group, id="$", mkstream=True)
+
+        # add a couple of new items
+        sid1 = r.xadd(stream, {"item": 0})
+        sid2 = r.xadd(stream, {"item": 0})
+
+        # read them from consumer1
+        r.xreadgroup(group, 'consumer1', {stream: ">"})
+
+        # add a 3rd and trim the stream down to 2 items
+        r.xadd(stream, {"item": 3}, maxlen=2, approximate=False)
+
+        # xclaim them from consumer2
+        # the item that is still in the stream should be returned
+        item = r.xclaim(stream, group, 'consumer2', 0, [sid1, sid2])
+        assert len(item) == 2
+        assert item[0] == (None, None)
+        assert item[1][0] == sid2
 
     @skip_if_server_version_lt('5.0.0')
     @skip_for_no_cluster_impl()
@@ -2070,7 +2351,7 @@ class TestRedisCommands(object):
         assert r.xgroup_delconsumer(stream, group, consumer) == 0
 
         # read all messages from the group
-        r.xreadgroup(group, consumer, streams={stream: 0})
+        r.xreadgroup(group, consumer, streams={stream: '>'})
 
         # deleting the consumer should return 2 pending messages
         assert r.xgroup_delconsumer(stream, group, consumer) == 2
@@ -2114,15 +2395,17 @@ class TestRedisCommands(object):
         consumer1 = 'consumer1'
         consumer2 = 'consumer2'
         r.xadd(stream, {'foo': 'bar'})
+        r.xadd(stream, {'foo': 'bar'})
+        r.xadd(stream, {'foo': 'bar'})
 
         r.xgroup_create(stream, group, 0)
-        r.xreadgroup(group, consumer1, streams={stream: 0})
-        r.xreadgroup(group, consumer2, streams={stream: 0})
+        r.xreadgroup(group, consumer1, streams={stream: '>'}, count=1)
+        r.xreadgroup(group, consumer2, streams={stream: '>'})
         info = r.xinfo_consumers(stream, group)
         assert len(info) == 2
         expected = [
             {'name': consumer1.encode(), 'pending': 1},
-            {'name': consumer2.encode(), 'pending': 0},
+            {'name': consumer2.encode(), 'pending': 2},
         ]
 
         # we can't determine the idle time, so just make sure it's an int
@@ -2172,8 +2455,8 @@ class TestRedisCommands(object):
         assert r.xpending(stream, group) == expected
 
         # read 1 message from the group with each consumer
-        r.xreadgroup(group, consumer1, streams={stream: 0}, count=1)
-        r.xreadgroup(group, consumer2, streams={stream: m1}, count=1)
+        r.xreadgroup(group, consumer1, streams={stream: '>'}, count=1)
+        r.xreadgroup(group, consumer2, streams={stream: '>'}, count=1)
 
         expected = {
             'pending': 2,
@@ -2198,13 +2481,14 @@ class TestRedisCommands(object):
         r.xgroup_create(stream, group, 0)
 
         # xpending range on a group that has no consumers yet
-        assert r.xpending_range(stream, group) == []
+        assert r.xpending_range(stream, group, min='-', max='+', count=5) == []
 
         # read 1 message from the group with each consumer
-        r.xreadgroup(group, consumer1, streams={stream: 0}, count=1)
-        r.xreadgroup(group, consumer2, streams={stream: m1}, count=1)
+        r.xreadgroup(group, consumer1, streams={stream: '>'}, count=1)
+        r.xreadgroup(group, consumer2, streams={stream: '>'}, count=1)
 
-        response = r.xpending_range(stream, group)
+        response = r.xpending_range(stream, group,
+                                    min='-', max='+', count=5)
         assert len(response) == 2
         assert response[0]['message_id'] == m1
         assert response[0]['consumer'] == consumer1.encode()
@@ -2291,7 +2575,7 @@ class TestRedisCommands(object):
 
         expected = [
             [
-                stream,
+                stream.encode(),
                 [
                     get_stream_message(r, stream, m1),
                     get_stream_message(r, stream, m2),
@@ -2299,48 +2583,57 @@ class TestRedisCommands(object):
             ]
         ]
         # xread starting at 0 returns both messages
-        assert r.xreadgroup(group, consumer, streams={stream: 0}) == expected
+        assert r.xreadgroup(group, consumer, streams={stream: '>'}) == expected
 
         r.xgroup_destroy(stream, group)
         r.xgroup_create(stream, group, 0)
 
         expected = [
             [
-                stream,
+                stream.encode(),
                 [
                     get_stream_message(r, stream, m1),
                 ]
             ]
         ]
-        # xread starting at 0 and count=1 returns only the first message
-        assert r.xreadgroup(group, consumer, streams={stream: 0}, count=1) == \
-            expected
+        # xread with count=1 returns only the first message
+        assert r.xreadgroup(group, consumer,
+                            streams={stream: '>'}, count=1) == expected
 
         r.xgroup_destroy(stream, group)
-        r.xgroup_create(stream, group, 0)
 
+        # create the group using $ as the last id meaning subsequent reads
+        # will only find messages added after this
+        r.xgroup_create(stream, group, '$')
+
+        expected = []
+        # xread starting after the last message returns an empty message list
+        assert r.xreadgroup(group, consumer, streams={stream: '>'}) == expected
+
+        # xreadgroup with noack does not have any items in the PEL
+        r.xgroup_destroy(stream, group)
+        r.xgroup_create(stream, group, '0')
+        assert len(r.xreadgroup(group, consumer, streams={stream: '>'},
+                                noack=True)[0][1]) == 2
+        # now there should be nothing pending
+        assert len(r.xreadgroup(group, consumer,
+                                streams={stream: '0'})[0][1]) == 0
+
+        r.xgroup_destroy(stream, group)
+        r.xgroup_create(stream, group, '0')
+        # delete all the messages in the stream
         expected = [
             [
-                stream,
+                stream.encode(),
                 [
-                    get_stream_message(r, stream, m2),
+                    (m1, {}),
+                    (m2, {}),
                 ]
             ]
         ]
-        # xread starting at m1 returns only the second message
-        assert r.xreadgroup(group, consumer, streams={stream: m1}) == expected
-
-        r.xgroup_destroy(stream, group)
-        r.xgroup_create(stream, group, 0)
-
-        # xread starting at the last message returns an empty message list
-        expected = [
-            [
-                stream,
-                []
-            ]
-        ]
-        assert r.xreadgroup(group, consumer, streams={stream: m2}) == expected
+        r.xreadgroup(group, consumer, streams={stream: '>'})
+        r.xtrim(stream, 0)
+        assert r.xreadgroup(group, consumer, streams={stream: '0'}) == expected
 
     @skip_if_server_version_lt('5.0.0')
     @skip_for_no_cluster_impl()

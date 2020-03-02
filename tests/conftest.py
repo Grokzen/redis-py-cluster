@@ -20,6 +20,40 @@ basepath = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(1, basepath)
 
 _REDIS_VERSIONS = {}
+REDIS_INFO = {}
+
+default_redis_url = "redis://127.0.0.1:7001"
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        '--redis-url',
+        default=default_redis_url,
+        action="store",
+        help="Redis connection string, defaults to `%(default)s`",
+    )
+
+
+def _get_info(redis_url):
+    """
+    customized for a cluster environment
+    """
+    client = RedisCluster.from_url(redis_url)
+    info = client.info()
+    for node_name, node_data in info.items():
+        if '7001' in node_name:
+            info = node_data
+    client.connection_pool.disconnect()
+    return info
+
+
+def pytest_sessionstart(session):
+    redis_url = session.config.getoption("--redis-url")
+    info = _get_info(redis_url)
+    version = info["redis_version"]
+    arch_bits = info["arch_bits"]
+    REDIS_INFO["version"] = version
+    REDIS_INFO["arch_bits"] = arch_bits
 
 
 def get_version(**kwargs):
@@ -223,3 +257,10 @@ def mock_cluster_resp_slaves(request, **kwargs):
                 "slave 19efe5a631f3296fdf21a5441680f893e8cc96ec 0 "
                 "1447836789290 3 connected']")
     return _gen_cluster_mock_resp(r, response)
+
+
+def skip_unless_arch_bits(arch_bits):
+    return pytest.mark.skipif(
+        REDIS_INFO["arch_bits"] != arch_bits,
+        reason="server is not {}-bit".format(arch_bits),
+    )
