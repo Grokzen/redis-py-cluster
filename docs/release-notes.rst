@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-2.1.0 (xxx yy, 2019)
+2.1.0 (xxx yy, 2020)
 
     * Updated redis-py compatbile version to support any version in the major version 3.0.x, 3.1.x, 3.2.x, 3.3.x. (#326)
     * Fixed bug preventing reinitialization after getting MOVED errors
