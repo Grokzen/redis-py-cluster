@@ -90,7 +90,7 @@ class TestRedisCommands(object):
         with pytest.raises(redis.ResponseError):
             r['a']
 
-        # SERVER INFORMATION
+    # SERVER INFORMATION
     @skip_if_server_version_lt('5.9.101')
     def test_acl_cat_no_category(self, r):
         categories = r.acl_cat()
