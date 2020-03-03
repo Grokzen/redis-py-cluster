@@ -13,7 +13,6 @@ from rediscluster.utils import (
     blocked_command,
     merge_result,
     first_key,
-    clusterdown_wrapper,
     parse_cluster_slots,
 )
 
@@ -139,13 +138,3 @@ def test_first_key():
 def test_first_key_value_error():
     with pytest.raises(ValueError):
         first_key("foobar", None)
-
-
-def test_clusterdown_wrapper():
-    @clusterdown_wrapper
-    def bad_func():
-        raise ClusterDownError("CLUSTERDOWN")
-
-    with pytest.raises(ClusterDownError) as cex:
-        bad_func()
-    assert unicode(cex.value).startswith("CLUSTERDOWN error. Unable to rebuild the cluster")

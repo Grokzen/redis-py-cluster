@@ -83,32 +83,6 @@ def first_key(command, res):
     return list(res.values())[0]
 
 
-def clusterdown_wrapper(func):
-    """
-    Wrapper for CLUSTERDOWN error handling.
-
-    If the cluster reports it is down it is assumed that:
-     - connection_pool was disconnected
-     - connection_pool was reseted
-     - refereh_table_asap set to True
-
-    It will try 3 times to rerun the command and raises ClusterDownException if it continues to fail.
-    """
-    @wraps(func)
-    def inner(*args, **kwargs):
-        for _ in range(0, 3):
-            try:
-                return func(*args, **kwargs)
-            except ClusterDownError:
-                # Try again with the new cluster setup. All other errors
-                # should be raised.
-                pass
-
-        # If it fails 3 times then raise exception back to caller
-        raise ClusterDownError("CLUSTERDOWN error. Unable to rebuild the cluster")
-    return inner
-
-
 def nslookup(node_ip):
     """
     """

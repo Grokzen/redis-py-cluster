@@ -3,6 +3,8 @@ Release Notes
 
 2.1.0 (xxx yy, 2020)
 
+    * Add new config option for Client and Pipeline classes to controll how many attempts will be made before bailing out from a ClusterDownError.
+      Use "cluster_down_retry_attempts=<int>" when creating the client class to controll this behaviour.
     * Updated redis-py compatbile version to support any version in the major version 3.0.x, 3.1.x, 3.2.x, 3.3.x. (#326)
     * Fixed bug preventing reinitialization after getting MOVED errors
 

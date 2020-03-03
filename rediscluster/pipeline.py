@@ -6,9 +6,9 @@ import sys
 # rediscluster imports
 from .client import RedisCluster
 from .exceptions import (
-    RedisClusterException, AskError, MovedError, TryAgainError,
+    RedisClusterException, AskError, MovedError, TryAgainError, ClusterDownError,
 )
-from .utils import clusterdown_wrapper, dict_merge
+from .utils import dict_merge
 
 # 3rd party imports
 from redis import Redis
@@ -24,7 +24,7 @@ class ClusterPipeline(RedisCluster):
     """
 
     def __init__(self, connection_pool, result_callbacks=None,
-                 response_callbacks=None, startup_nodes=None, read_from_replicas=False):
+                 response_callbacks=None, startup_nodes=None, read_from_replicas=False, cluster_down_retry_attempts=3):
         """
         """
         self.command_stack = []
@@ -36,6 +36,7 @@ class ClusterPipeline(RedisCluster):
         self.nodes_flags = self.__class__.NODES_FLAGS.copy()
         self.response_callbacks = dict_merge(response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy(),
                                              self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
+        self.cluster_down_retry_attempts = cluster_down_retry_attempts
 
     def __repr__(self):
         """
@@ -144,8 +145,36 @@ class ClusterPipeline(RedisCluster):
         #     self.connection_pool.release(self.connection)
         #     self.connection = None
 
-    @clusterdown_wrapper
     def send_cluster_commands(self, stack, raise_on_error=True, allow_redirections=True):
+        """
+        Wrapper for CLUSTERDOWN error handling.
+
+        If the cluster reports it is down it is assumed that:
+         - connection_pool was disconnected
+         - connection_pool was reseted
+         - refereh_table_asap set to True
+
+        It will try the number of times specified by the config option "self.cluster_down_retry_attempts"
+        which defaults to 3 unless manually configured.
+        
+        If it reaches the number of times, the command will raises ClusterDownException.
+        """
+        for _ in range(0, self.cluster_down_retry_attempts):
+            try:
+                return self._send_cluster_commands(
+                    stack,
+                    raise_on_error=raise_on_error,
+                    allow_redirections=allow_redirections,
+                )
+            except ClusterDownError:
+                # Try again with the new cluster setup. All other errors
+                # should be raised.
+                pass
+
+        # If it fails the configured number of times then raise exception back to caller of this method
+        raise ClusterDownError("CLUSTERDOWN error. Unable to rebuild the cluster")
+
+    def _send_cluster_commands(self, stack, raise_on_error=True, allow_redirections=True):
         """
         Send a bunch of cluster commands to the redis cluster.
 

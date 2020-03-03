@@ -26,7 +26,6 @@ from .pubsub import ClusterPubSub
 from .utils import (
     blocked_command,
     bool_ok,
-    clusterdown_wrapper,
     dict_merge,
     first_key,
     merge_result,
@@ -290,7 +289,7 @@ class RedisCluster(Redis):
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=None, max_connections_per_node=False, init_slot_cache=True,
                  readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
-                 connection_class=None, read_from_replicas=False, **kwargs):
+                 connection_class=None, read_from_replicas=False, cluster_down_retry_attempts=3, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -359,6 +358,7 @@ class RedisCluster(Redis):
         self.response_callbacks = CaseInsensitiveDict(self.__class__.RESPONSE_CALLBACKS)
         self.response_callbacks = CaseInsensitiveDict(dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS))
         self.read_from_replicas = read_from_replicas
+        self.cluster_down_retry_attempts = cluster_down_retry_attempts
 
     @classmethod
     def from_url(cls, url, db=None, skip_full_coverage_check=False, readonly_mode=False, read_from_replicas=False, **kwargs):
@@ -425,6 +425,7 @@ class RedisCluster(Redis):
             startup_nodes=self.connection_pool.nodes.startup_nodes,
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
+            cluster_down_retry_attempts=self.cluster_down_retry_attempts,
         )
 
     def transaction(self, *args, **kwargs):
@@ -496,8 +497,32 @@ class RedisCluster(Redis):
         else:
             return None
 
-    @clusterdown_wrapper
     def execute_command(self, *args, **kwargs):
+        """
+        Wrapper for CLUSTERDOWN error handling.
+
+        If the cluster reports it is down it is assumed that:
+         - connection_pool was disconnected
+         - connection_pool was reseted
+         - refereh_table_asap set to True
+
+        It will try the number of times specified by the config option "self.cluster_down_retry_attempts"
+        which defaults to 3 unless manually configured.
+        
+        If it reaches the number of times, the command will raises ClusterDownException.
+        """
+        for _ in range(0, self.cluster_down_retry_attempts):
+            try:
+                return self._execute_command(*args, **kwargs)
+            except ClusterDownError:
+                # Try again with the new cluster setup. All other errors
+                # should be raised.
+                pass
+
+        # If it fails the configured number of times then raise exception back to caller of this method
+        raise ClusterDownError("CLUSTERDOWN error. Unable to rebuild the cluster")
+
+    def _execute_command(self, *args, **kwargs):
         """
         Send a command to a node in the cluster
         """
