@@ -31,6 +31,12 @@ class DummyConnection(object):
         self.port = port
         self.socket_timeout = socket_timeout
 
+    def connect(self):
+        pass
+
+    def can_read(self):
+        return False
+
 
 def get_pool(connection_kwargs=None, max_connections=None, max_connections_per_node=None, connection_class=DummyConnection, init_slot_cache=True):
     connection_kwargs = connection_kwargs or {}
@@ -768,18 +774,31 @@ class TestSSLConnectionURLParsing(object):
 
     @pytest.mark.skipif(not ssl_available, reason="SSL not installed")
     def test_cert_reqs_options(self):
-        """
-        rediss://[[username]:[password]]@localhost:6379/0
-        """
         import ssl
-        pool = get_pool().from_url('rediss://localhost:7000?ssl_cert_reqs=none')
-        assert pool.get_random_connection().cert_reqs == ssl.CERT_NONE
 
-        pool = get_pool().from_url('rediss://localhost:7000?ssl_cert_reqs=optional')
-        assert pool.get_random_connection().cert_reqs == ssl.CERT_OPTIONAL
+        class DummyConnectionPool(redis.ConnectionPool):
+            def get_connection(self, *args, **kwargs):
+                return self.make_connection()
 
-        pool = get_pool().from_url('rediss://localhost:7000?ssl_cert_reqs=required')
-        assert pool.get_random_connection().cert_reqs == ssl.CERT_REQUIRED
+        pool = DummyConnectionPool.from_url(
+            'rediss://?ssl_cert_reqs=none')
+        assert pool.get_connection('_').cert_reqs == ssl.CERT_NONE
+
+        pool = DummyConnectionPool.from_url(
+            'rediss://?ssl_cert_reqs=optional')
+        assert pool.get_connection('_').cert_reqs == ssl.CERT_OPTIONAL
+
+        pool = DummyConnectionPool.from_url(
+            'rediss://?ssl_cert_reqs=required')
+        assert pool.get_connection('_').cert_reqs == ssl.CERT_REQUIRED
+
+        pool = DummyConnectionPool.from_url(
+            'rediss://?ssl_check_hostname=False')
+        assert pool.get_connection('_').check_hostname is False
+
+        pool = DummyConnectionPool.from_url(
+            'rediss://?ssl_check_hostname=True')
+        assert pool.get_connection('_').check_hostname is True
 
 
 class TestConnection(object):
