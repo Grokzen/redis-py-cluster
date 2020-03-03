@@ -88,6 +88,16 @@ class RedisCluster(Redis):
 
     NODES_FLAGS = dict_merge(
         string_keys_to_dict([
+            'ACL CAT',
+            'ACL DELUSER',
+            'ACL GENPASS',
+            'ACL GETUSER',
+            'ACL LIST',
+            'ACL LOAD',
+            'ACL SAVE',
+            'ACL SETUSER',
+            'ACL USERS',
+            'ACL WHOAMI',
             'BITOP',
             'CLIENT SETNAME',
             'MOVE',
