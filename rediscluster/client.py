@@ -819,7 +819,7 @@ class RedisCluster(Redis):
         cursor, r = response
         return long(cursor), r
 
-    def scan_iter(self, match=None, count=None):
+    def scan_iter(self, match=None, count=None, _type=None):
         """
         Make an iterator using the SCAN command so that the client doesn't
         need to remember the cursor position.
@@ -848,6 +848,8 @@ class RedisCluster(Redis):
                     pieces.extend([b'MATCH', match])
                 if count is not None:
                     pieces.extend([b'COUNT', count])
+                if _type is not None:
+                    pieces.extend([b'TYPE', _type])
 
                 conn.send_command(*pieces)
 
