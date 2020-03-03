@@ -53,14 +53,23 @@ class ClusterPipeline(RedisCluster):
         self.reset()
 
     def __del__(self):
-        """
-        """
-        self.reset()
+        try:
+            self.reset()
+        except Exception:
+            pass
 
     def __len__(self):
         """
         """
         return len(self.command_stack)
+
+    def __nonzero__(self):
+        "Pipeline instances should  always evaluate to True on Python 2.7"
+        return True
+
+    def __bool__(self):
+        "Pipeline instances should  always evaluate to True on Python 3+"
+        return True
 
     def execute_command(self, *args, **kwargs):
         """

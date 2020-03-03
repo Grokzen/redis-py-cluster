@@ -20,6 +20,10 @@ from redis.exceptions import WatchError, ResponseError, ConnectionError
 class TestPipeline(object):
     """
     """
+    def test_pipeline_is_true(self, r):
+        "Ensure pipeline instances are not false-y"
+        with r.pipeline() as pipe:
+            assert pipe
 
     def test_pipeline(self, r):
         with r.pipeline() as pipe:
@@ -42,17 +46,14 @@ class TestPipeline(object):
         with r.pipeline() as pipe:
             # Initially empty.
             assert len(pipe) == 0
-            assert not pipe
 
             # Fill 'er up!
             pipe.set('a', 'a1').set('b', 'b1').set('c', 'c1')
             assert len(pipe) == 3
-            assert pipe
 
             # Execute calls reset(), so empty once again.
             pipe.execute()
             assert len(pipe) == 0
-            assert not pipe
 
     def test_pipeline_no_transaction(self, r):
         with r.pipeline(transaction=False) as pipe:
@@ -219,6 +220,20 @@ class TestPipeline(object):
             assert not pipe.watching
 
     @pytest.mark.xfail(reason="unsupported command: watch")
+    def test_watch_failure_in_empty_transaction(self, r):
+        r['a'] = 1
+        r['b'] = 2
+
+        with r.pipeline() as pipe:
+            pipe.watch('a', 'b')
+            r['b'] = 3
+            pipe.multi()
+            with pytest.raises(redis.WatchError):
+                pipe.execute()
+
+            assert not pipe.watching
+
+    @pytest.mark.xfail(reason="unsupported command: watch")
     def test_unwatch(self, r):
         r['a'] = 1
         r['b'] = 2
@@ -255,6 +270,15 @@ class TestPipeline(object):
         result = r.transaction(my_transaction, 'a', 'b')
         assert result == [True]
         assert r['c'] == b'4'
+
+    @pytest.mark.xfail(reason="unsupported command: watch")
+    def test_transaction_callable_returns_value_from_callable(self, r):
+        def callback(pipe):
+            # No need to do anything here since we only want the return value
+            return 'a'
+
+        res = r.transaction(callback, 'my-key', value_from_callable=True)
+        assert res == 'a'
 
     def test_exec_error_in_no_transaction_pipeline(self, r):
         r['a'] = 1

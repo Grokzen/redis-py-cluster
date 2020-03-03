@@ -20,7 +20,7 @@ from .exceptions import (
 # 3rd party imports
 from redis._compat import nativestr, LifoQueue, Full, Empty
 from redis.client import dict_merge
-from redis.connection import ConnectionPool, Connection, DefaultParser, SSLConnection
+from redis.connection import ConnectionPool, Connection, DefaultParser, SSLConnection, UnixDomainSocketConnection
 from redis.exceptions import ConnectionError
 
 
@@ -40,7 +40,6 @@ class ClusterParser(DefaultParser):
 
 class ClusterConnection(Connection):
     "Manages TCP communication to and from a Redis server"
-    description_format = "ClusterConnection<host=%(host)s,port=%(port)s>"
 
     def __init__(self, *args, **kwargs):
         self.readonly = kwargs.pop('readonly', False)
@@ -68,7 +67,6 @@ class SSLClusterConnection(SSLConnection):
         pool = ClusterConnectionPool(connection_class=SSLClusterConnection, ...)
         client = RedisCluster(connection_pool=pool)
     """
-    description_format = "SSLClusterConnection<host=%(host)s,port=%(port)s,db=%(db)s>"
 
     def __init__(self, **kwargs):
         self.readonly = kwargs.pop('readonly', False)
@@ -87,13 +85,7 @@ class SSLClusterConnection(SSLConnection):
 
             if nativestr(self.read_response()) != 'OK':
                 raise ConnectionError('READONLY command failed')
-
-
-class UnixDomainSocketConnection(Connection):
-    """
-    """
-    description_format = "ClusterUnixDomainSocketConnection<path=%(path)s>"
-
+ 
 
 class ClusterConnectionPool(ConnectionPool):
     """
@@ -160,7 +152,7 @@ class ClusterConnectionPool(ConnectionPool):
 
         return "{0}<{1}>".format(
             type(self).__name__,
-            ", ".join([self.connection_class.description_format % dict(node, **self.connection_kwargs) for node in nodes])
+            ", ".join([repr(self.connection_class(**self.connection_kwargs)) for node in nodes])
         )
 
     def reset(self):
