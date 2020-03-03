@@ -1135,6 +1135,14 @@ class TestRedisCommands(object):
         _, keys = get_main_cluster_node_data(r.scan(match='GQ5KU'))
         assert set(keys) == {b'GQ5KU'}
 
+    @skip_if_server_version_lt('5.9.101')
+    def test_scan_type(self, r):
+        r.sadd('a-set', 1)
+        r.hset('a-hash', 'foo', 2)
+        r.lpush('a-list', 'aux', 3)
+        _, keys = r.scan(match='a*', _type='SET')
+        assert set(keys) == {b'a-set'}
+
     @skip_if_server_version_lt('2.8.0')
     def test_scan_iter(self, r):
         r.set('a', 1)
