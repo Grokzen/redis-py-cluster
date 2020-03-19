@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 # python std lib
 import datetime
+import logging
 import random
 import string
 import time
@@ -50,6 +51,8 @@ from redis.exceptions import (
     TimeoutError,
 )
 
+
+logger = logging.getLogger(__name__)
 
 class CaseInsensitiveDict(dict):
     "Case insensitive dict implementation. Assumes string keys only."
@@ -508,7 +511,7 @@ class RedisCluster(Redis):
 
         It will try the number of times specified by the config option "self.cluster_down_retry_attempts"
         which defaults to 3 unless manually configured.
-        
+
         If it reaches the number of times, the command will raises ClusterDownException.
         """
         for _ in range(0, self.cluster_down_retry_attempts):
@@ -594,6 +597,7 @@ class RedisCluster(Redis):
 
                 raise e
             except MovedError as e:
+                logger.exception('MOVED returned, trying to run: %s %s', command, kwargs)
                 # Reinitialize on ever x number of MovedError.
                 # This counter will increase faster when the same client object
                 # is shared between multiple threads. To reduce the frequency you
