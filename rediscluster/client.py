@@ -594,11 +594,13 @@ class RedisCluster(Redis):
                 return self.parse_response(r, command, **kwargs)
             except (RedisClusterException, BusyLoadingError):
                 raise
-            except (ConnectionError, TimeoutError):
-                try_random_node = True
-
+            except ConnectionError:
+                r.disconnect()
+            except TimeoutError:
                 if ttl < self.RedisClusterRequestTTL / 2:
-                    time.sleep(0.1)
+                    time.sleep(0.05)
+                else:
+                    try_random_node = True
             except ClusterDownError as e:
                 self.connection_pool.disconnect()
                 self.connection_pool.reset()
