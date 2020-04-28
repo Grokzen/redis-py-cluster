@@ -111,6 +111,7 @@ class NodeManager(object):
             'host',
             'port',
             'db',
+            'username',
             'password',
             'socket_timeout',
             'socket_connect_timeout',
