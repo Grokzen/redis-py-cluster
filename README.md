@@ -30,7 +30,7 @@ Latest stable release from pypi
 $ pip install redis-py-cluster
 ```
 
-This major version of `redis-py-cluster` supports `redis-py >=3.0.0, <3.5.0`.
+This major version of `redis-py-cluster` supports `redis-py >=3.0.0, <4.0.0`.
 
 
 
