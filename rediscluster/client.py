@@ -573,6 +573,8 @@ class RedisCluster(Redis):
                 if self.refresh_table_asap:
                     # MOVED
                     node = self.connection_pool.get_master_node_by_slot(slot)
+                    # Reset the flag when it has been consumed to avoid it being
+                    self.refresh_table_asap = False
                 else:
                     node = self.connection_pool.get_node_by_slot(slot, self.read_from_replicas and (command in self.READ_COMMANDS))
                     is_read_replica = node['server_type'] == 'slave'
