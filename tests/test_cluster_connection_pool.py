@@ -7,6 +7,7 @@ import time
 from threading import Thread
 
 # rediscluster imports
+from rediscluster.client import RedisCluster
 from rediscluster.connection import (
     ClusterConnectionPool, ClusterBlockingConnectionPool, ClusterReadOnlyConnectionPool,
     ClusterConnection, UnixDomainSocketConnection)
@@ -203,6 +204,23 @@ class TestConnectionPool(object):
         node['port'] = 7000
         node = pool.get_master_node_by_slot(12182)
         node['port'] = 7002
+
+    def test_from_url_connection_classes(self):
+        from rediscluster.client import RedisCluster
+        from rediscluster.connection import ClusterConnectionPool, ClusterConnection, SSLClusterConnection
+        
+        r = RedisCluster.from_url('redis://localhost:7000')
+        assert isinstance(r.connection_pool, ClusterConnectionPool)
+        # connection_class is not an object but a ref to the class
+        assert r.connection_pool.connection_class == ClusterConnection
+
+        r = RedisCluster.from_url('rediss://localhost:7000')
+        assert isinstance(r.connection_pool, ClusterConnectionPool)
+        assert r.connection_pool.connection_class == SSLClusterConnection
+
+        # Unix socket connections do not work in cluster environment
+        with pytest.raises(RedisClusterException) as ex:
+            r = RedisCluster.from_url('unix://foobar@/tmp/random.sock')
 
 
 class TestClusterBlockingConnectionPool(object):

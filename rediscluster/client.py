@@ -9,6 +9,7 @@ import time
 
 # rediscluster imports
 from .connection import (
+    ClusterConnection,
     ClusterConnectionPool,
     ClusterReadOnlyConnectionPool,
     ClusterWithReadReplicasConnectionPool,
@@ -40,6 +41,7 @@ from .utils import (
 # 3rd party imports
 from redis import Redis
 from redis.client import list_or_args, parse_info
+from redis.connection import Connection, SSLConnection
 from redis._compat import iteritems, basestring, izip, nativestr, long
 from redis.exceptions import (
     BusyLoadingError,
@@ -381,6 +383,9 @@ class RedisCluster(Redis):
         passed along to the ConnectionPool class's initializer. In the case
         of conflicting arguments, querystring arguments always win.
         """
+        if url.lower().startswith('unix://'):
+            raise RedisClusterException('Unix sockets do not work in a cluster environment')
+
         if readonly_mode:
             connection_pool_cls = ClusterReadOnlyConnectionPool
         elif read_from_replicas:
@@ -389,6 +394,13 @@ class RedisCluster(Redis):
             connection_pool_cls = ClusterConnectionPool
 
         connection_pool = connection_pool_cls.from_url(url, db=db, skip_full_coverage_check=skip_full_coverage_check, **kwargs)
+        
+        if connection_pool.connection_class == SSLConnection:
+            connection_pool.connection_class = SSLClusterConnection
+
+        if connection_pool.connection_class == Connection:
+            connection_pool.connection_class = ClusterConnection
+
         return cls(connection_pool=connection_pool, skip_full_coverage_check=skip_full_coverage_check)
 
     def __repr__(self):
