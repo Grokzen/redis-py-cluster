@@ -12,7 +12,7 @@ from rediscluster.connection import (
     ClusterConnectionPool, ClusterBlockingConnectionPool, ClusterReadOnlyConnectionPool,
     ClusterConnection, UnixDomainSocketConnection)
 from rediscluster.exceptions import RedisClusterException
-from tests.conftest import skip_if_server_version_lt
+from .conftest import (skip_if_server_version_lt, skip_for_no_cluster_impl)
 
 # 3rd party imports
 import pytest
@@ -724,6 +724,12 @@ class TestConnectionPoolURLParsing(object):
 
 
 class TestConnectionPoolUnixSocketURLParsing(object):
+    """
+    Unix sockets do not work with redis-cluster as it do not really provide a startup nodes
+    that can be used by the client for cluster discovery.
+    """
+
+    @skip_for_no_cluster_impl()
     def test_defaults(self):
         pool = redis.ConnectionPool.from_url('unix:///socket')
         assert pool.connection_class == redis.UnixDomainSocketConnection
@@ -734,6 +740,7 @@ class TestConnectionPoolUnixSocketURLParsing(object):
             'password': None,
         }
 
+    @skip_for_no_cluster_impl()
     def test_password(self):
         pool = redis.ConnectionPool.from_url('unix://:mypassword@/socket')
         assert pool.connection_class == redis.UnixDomainSocketConnection
@@ -744,6 +751,7 @@ class TestConnectionPoolUnixSocketURLParsing(object):
             'password': 'mypassword',
         }
 
+    @skip_for_no_cluster_impl()
     def test_db_as_argument(self):
         pool = redis.ConnectionPool.from_url('unix:///socket', db=1)
         assert pool.connection_class == redis.UnixDomainSocketConnection
@@ -754,6 +762,7 @@ class TestConnectionPoolUnixSocketURLParsing(object):
             'password': None,
         }
 
+    @skip_for_no_cluster_impl()
     def test_db_in_querystring(self):
         pool = redis.ConnectionPool.from_url('unix:///socket?db=2', db=1)
         assert pool.connection_class == redis.UnixDomainSocketConnection
@@ -764,6 +773,7 @@ class TestConnectionPoolUnixSocketURLParsing(object):
             'password': None,
         }
 
+    @skip_for_no_cluster_impl()
     def test_extra_querystring_options(self):
         pool = redis.ConnectionPool.from_url('unix:///socket?a=1&b=2')
         assert pool.connection_class == redis.UnixDomainSocketConnection
