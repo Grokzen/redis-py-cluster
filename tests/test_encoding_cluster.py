@@ -2,25 +2,31 @@ from __future__ import unicode_literals
 import pytest
 import redis
 
+from rediscluster import RedisCluster
+
 from redis._compat import unichr, unicode
-from redis.connection import Connection
-from .conftest import _get_client
+from .conftest import _get_client, _init_client
 
 
-class TestEncoding(object):
+class TestEncodingCluster(object):
+    """
+    We must import the entire class due to the seperate fixture that uses RedisCluster as client
+    class instead of the normal Redis instance.
+
+    FIXME: If possible, monkeypatching TestEncoding class would be preffered but kinda impossible in reality
+    """
     @pytest.fixture()
     def r(self, request):
-        return _get_client(redis.Redis, request=request, decode_responses=True)
+        return _get_client(RedisCluster, request=request, decode_responses=True)
 
     @pytest.fixture()
     def r_no_decode(self, request):
         return _get_client(
-            redis.Redis,
+            RedisCluster,
             request=request,
             decode_responses=False,
         )
 
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_simple_encoding(self, r_no_decode):
         unicode_string = unichr(3456) + 'abcd' + unichr(3421)
         r_no_decode['unicode-string'] = unicode_string.encode('utf-8')
@@ -28,7 +34,6 @@ class TestEncoding(object):
         assert isinstance(cached_val, bytes)
         assert unicode_string == cached_val.decode('utf-8')
 
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_simple_encoding_and_decoding(self, r):
         unicode_string = unichr(3456) + 'abcd' + unichr(3421)
         r['unicode-string'] = unicode_string
@@ -36,7 +41,6 @@ class TestEncoding(object):
         assert isinstance(cached_val, unicode)
         assert unicode_string == cached_val
 
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_memoryview_encoding(self, r_no_decode):
         unicode_string = unichr(3456) + 'abcd' + unichr(3421)
         unicode_string_view = memoryview(unicode_string.encode('utf-8'))
@@ -46,7 +50,6 @@ class TestEncoding(object):
         assert isinstance(cached_val, bytes)
         assert unicode_string == cached_val.decode('utf-8')
 
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_memoryview_encoding_and_decoding(self, r):
         unicode_string = unichr(3456) + 'abcd' + unichr(3421)
         unicode_string_view = memoryview(unicode_string.encode('utf-8'))
@@ -55,7 +58,6 @@ class TestEncoding(object):
         assert isinstance(cached_val, unicode)
         assert unicode_string == cached_val
 
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_list_encoding(self, r):
         unicode_string = unichr(3456) + 'abcd' + unichr(3421)
         result = [unicode_string, unicode_string, unicode_string]
@@ -64,58 +66,14 @@ class TestEncoding(object):
 
 
 class TestEncodingErrors(object):
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_ignore(self, request):
-        r = _get_client(redis.Redis, request=request, decode_responses=True,
+        r = _get_client(RedisCluster, request=request, decode_responses=True,
                         encoding_errors='ignore')
         r.set('a', b'foo\xff')
         assert r.get('a') == 'foo'
 
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_replace(self, request):
-        r = _get_client(redis.Redis, request=request, decode_responses=True,
+        r = _get_client(RedisCluster, request=request, decode_responses=True,
                         encoding_errors='replace')
         r.set('a', b'foo\xff')
         assert r.get('a') == 'foo\ufffd'
-
-
-class TestMemoryviewsAreNotPacked(object):
-    def test_memoryviews_are_not_packed(self):
-        c = Connection()
-        arg = memoryview(b'some_arg')
-        arg_list = ['SOME_COMMAND', arg]
-        cmd = c.pack_command(*arg_list)
-        assert cmd[1] is arg
-        cmds = c.pack_commands([arg_list, arg_list])
-        assert cmds[1] is arg
-        assert cmds[3] is arg
-
-
-class TestCommandsAreNotEncoded(object):
-    @pytest.fixture()
-    def r(self, request):
-        return _get_client(redis.Redis, request=request, encoding='utf-16')
-
-    def test_basic_command(self, r):
-        r.set('hello', 'world')
-
-
-class TestInvalidUserInput(object):
-    def test_boolean_fails(self, r):
-        with pytest.raises(redis.DataError):
-            r.set('a', True)
-
-    def test_none_fails(self, r):
-        with pytest.raises(redis.DataError):
-            r.set('a', None)
-
-    def test_user_type_fails(self, r):
-        class Foo(object):
-            def __str__(self):
-                return 'Foo'
-
-            def __unicode__(self):
-                return 'Foo'
-
-        with pytest.raises(redis.DataError):
-            r.set('a', Foo())
