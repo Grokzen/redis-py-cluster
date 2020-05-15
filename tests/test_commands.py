@@ -1163,7 +1163,7 @@ class TestRedisCommands(object):
         members = list(r.sscan_iter('a', match=b'1'))
         assert set(members) == {b'1'}
 
-    @skip_if_server_version_lt('2.8.0')
+    @skip_if_server_version_lt('4.0.0')
     def test_hscan(self, r):
         r.hset('a', mapping={'a': 1, 'b': 2, 'c': 3})
         cursor, dic = r.hscan('a')
@@ -1172,7 +1172,7 @@ class TestRedisCommands(object):
         _, dic = r.hscan('a', match='a')
         assert dic == {b'a': b'1'}
 
-    @skip_if_server_version_lt('2.8.0')
+    @skip_if_server_version_lt('4.0.0')
     def test_hscan_iter(self, r):
         r.hset('a', mapping={'a': 1, 'b': 2, 'c': 3})
         dic = dict(r.hscan_iter('a'))
@@ -1664,6 +1664,7 @@ class TestRedisCommands(object):
         assert r.pfcount('d') == 7
 
     # HASH COMMANDS
+    @skip_if_server_version_lt('4.0.0')
     def test_hget_and_hset(self, r):
         r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
         assert r.hget('a', '1') == b'1'
@@ -1685,6 +1686,7 @@ class TestRedisCommands(object):
         assert r.hset('a', 0, 10) == 1
         assert r.hset('a', '', 10) == 1
 
+    @skip_if_server_version_lt('4.0.0')
     def test_hset_with_multi_key_values(self, r):
         r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
         assert r.hget('a', '1') == b'1'
@@ -1700,6 +1702,7 @@ class TestRedisCommands(object):
         with pytest.raises(exceptions.DataError):
             r.hset("x")
 
+    @skip_if_server_version_lt('4.0.0')
     def test_hdel(self, r):
         r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
         assert r.hdel('a', '2') == 1
@@ -1707,11 +1710,13 @@ class TestRedisCommands(object):
         assert r.hdel('a', '1', '3') == 2
         assert r.hlen('a') == 0
 
+    @skip_if_server_version_lt('4.0.0')
     def test_hexists(self, r):
         r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
         assert r.hexists('a', '1')
         assert not r.hexists('a', '4')
 
+    @skip_if_server_version_lt('4.0.0')
     def test_hgetall(self, r):
         h = {b'a1': b'1', b'a2': b'2', b'a3': b'3'}
         r.hset('a', mapping=h)
@@ -1728,6 +1733,7 @@ class TestRedisCommands(object):
         assert r.hincrbyfloat('a', '1') == 2.0
         assert r.hincrbyfloat('a', '1', 1.2) == 3.2
 
+    @skip_if_server_version_lt('4.0.0')
     def test_hkeys(self, r):
         h = {b'a1': b'1', b'a2': b'2', b'a3': b'3'}
         r.hset('a', mapping=h)
@@ -1735,10 +1741,12 @@ class TestRedisCommands(object):
         remote_keys = r.hkeys('a')
         assert (sorted(local_keys) == sorted(remote_keys))
 
+    @skip_if_server_version_lt('4.0.0')
     def test_hlen(self, r):
         r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
         assert r.hlen('a') == 3
 
+    @skip_if_server_version_lt('4.0.0')
     def test_hmget(self, r):
         assert r.hset('a', mapping={'a': 1, 'b': 2, 'c': 3})
         assert r.hmget('a', 'a', 'b', 'c') == [b'1', b'2', b'3']
@@ -1759,6 +1767,7 @@ class TestRedisCommands(object):
         assert not r.hsetnx('a', '1', 2)
         assert r.hget('a', '1') == b'1'
 
+    @skip_if_server_version_lt('4.0.0')
     def test_hvals(self, r):
         h = {b'a1': b'1', b'a2': b'2', b'a3': b'3'}
         r.hset('a', mapping=h)
@@ -2677,6 +2686,7 @@ class TestRedisCommands(object):
         # 1 message is trimmed
         assert r.xtrim(stream, 3, approximate=False) == 1
 
+    @skip_if_server_version_lt('3.2.0')
     def test_bitfield_operations(self, r):
         # comments show affected bits
         bf = r.bitfield('a')
