@@ -1,24 +1,19 @@
-# -*- coding: utf-8 -*-
-
-# python std lib
 from __future__ import unicode_literals
+import binascii
 import datetime
+import pytest
 import re
+import redis
 import time
 
-# rediscluster imports
-import rediscluster
-from rediscluster.exceptions import RedisClusterException, ClusterCrossSlotError
-from rediscluster.utils import dict_merge
-from tests.conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt, skip_if_server_version_gte, skip_for_no_cluster_impl, skip_unless_arch_bits
-
-# 3rd party imports
-import pytest
-import redis
-from redis._compat import unichr, ascii_letters, iteritems, iterkeys, itervalues, unicode
+from redis._compat import (unichr, ascii_letters, iteritems, iterkeys,
+                           itervalues, long, basestring)
 from redis.client import parse_info
-from redis.exceptions import ResponseError, DataError, RedisError, DataError
 from redis import exceptions
+
+from .conftest import (skip_if_server_version_lt, skip_if_server_version_gte,
+                       skip_unless_arch_bits, REDIS_6_VERSION,
+                       skip_for_no_cluster_impl)
 
 
 @pytest.fixture()
@@ -37,6 +32,11 @@ def slowlog(request, r):
 
 
 def redis_server_time(client):
+    """
+    Method adapted from uptream to return the server timestamp from the main
+    cluster node that we assigned as port 7000 node.
+    This is not ideal but will be done for now.
+    """
     all_clients_time = client.time()
     for server_id, server_time_data in all_clients_time.items():
         if '7000' in server_id:
@@ -53,28 +53,14 @@ def get_stream_message(client, stream, message_id):
     return response[0]
 
 
-def get_main_cluster_node_data(command_result):
-    """
-    Tries to find whatever node is running on port :7000 in the cluster resonse
-    """
-    for node_id, node_data in command_result.items():
-        if '7000' in node_id:
-            return node_data
-    return None
-
-
 # RESPONSE CALLBACKS
 class TestResponseCallbacks(object):
     "Tests for the response callback system"
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_response_callbacks(self, r):
-        all_response_callbacks = dict_merge(
-            rediscluster.RedisCluster.RESPONSE_CALLBACKS,
-            rediscluster.RedisCluster.CLUSTER_COMMANDS_RESPONSE_CALLBACKS,
-        )
-
-        assert r.response_callbacks == all_response_callbacks
-        assert id(r.response_callbacks) != id(all_response_callbacks)
+        assert r.response_callbacks == redis.Redis.RESPONSE_CALLBACKS
+        assert id(r.response_callbacks) != id(redis.Redis.RESPONSE_CALLBACKS)
         r.set_response_callback('GET', lambda x: 'static')
         r['a'] = 'foo'
         assert r['a'] == 'static'
@@ -84,26 +70,28 @@ class TestResponseCallbacks(object):
 
 
 class TestRedisCommands(object):
-
     def test_command_on_invalid_key_type(self, r):
         r.lpush('a', '1')
         with pytest.raises(redis.ResponseError):
             r['a']
 
     # SERVER INFORMATION
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_cat_no_category(self, r):
         categories = r.acl_cat()
         assert isinstance(categories, list)
         assert 'read' in categories
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_cat_with_category(self, r):
         commands = r.acl_cat('read')
         assert isinstance(commands, list)
         assert 'get' in commands
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_deluser(self, r, request):
         username = 'redis-py-user'
 
@@ -116,12 +104,14 @@ class TestRedisCommands(object):
         assert r.acl_setuser(username, enabled=False, reset=True)
         assert r.acl_deluser(username) == 1
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_genpass(self, r):
         password = r.acl_genpass()
         assert isinstance(password, basestring)
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_getuser_setuser(self, r, request):
         username = 'redis-py-user'
 
@@ -209,7 +199,8 @@ class TestRedisCommands(object):
                              hashed_passwords=['-' + hashed_password])
         assert len(r.acl_getuser(username)['passwords']) == 1
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_list(self, r, request):
         username = 'redis-py-user'
 
@@ -221,7 +212,8 @@ class TestRedisCommands(object):
         users = r.acl_list()
         assert 'user %s off -@all' % username in users
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_setuser_categories_without_prefix_fails(self, r, request):
         username = 'redis-py-user'
 
@@ -232,7 +224,8 @@ class TestRedisCommands(object):
         with pytest.raises(exceptions.DataError):
             r.acl_setuser(username, categories=['list'])
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_setuser_commands_without_prefix_fails(self, r, request):
         username = 'redis-py-user'
 
@@ -243,7 +236,8 @@ class TestRedisCommands(object):
         with pytest.raises(exceptions.DataError):
             r.acl_setuser(username, commands=['get'])
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_setuser_add_passwords_and_nopass_fails(self, r, request):
         username = 'redis-py-user'
 
@@ -254,45 +248,51 @@ class TestRedisCommands(object):
         with pytest.raises(exceptions.DataError):
             r.acl_setuser(username, passwords='+mypass', nopass=True)
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_users(self, r):
         users = r.acl_users()
         assert isinstance(users, list)
         assert len(users) > 0
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @skip_for_no_cluster_impl()
     def test_acl_whoami(self, r):
         username = r.acl_whoami()
         assert isinstance(username, basestring)
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_client_list(self, r):
         clients = r.client_list()
-        client_data = get_main_cluster_node_data(clients)[0]
-        assert isinstance(client_data, dict)
-        assert 'addr' in client_data
+        assert isinstance(clients[0], dict)
+        assert 'addr' in clients[0]
 
     @skip_if_server_version_lt('5.0.0')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_client_list_type(self, r):
         with pytest.raises(exceptions.RedisError):
             r.client_list(_type='not a client type')
         for client_type in ['normal', 'master', 'replica', 'pubsub']:
-            clients = get_main_cluster_node_data(r.client_list(_type=client_type))
+            clients = r.client_list(_type=client_type)
             assert isinstance(clients, list)
 
     @skip_if_server_version_lt('5.0.0')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_client_id(self, r):
-        assert get_main_cluster_node_data(r.client_id()) > 0
+        assert r.client_id() > 0
 
     @skip_if_server_version_lt('5.0.0')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_client_unblock(self, r):
-        myid = get_main_cluster_node_data(r.client_id())
+        myid = r.client_id()
         assert not r.client_unblock(myid)
         assert not r.client_unblock(myid, error=True)
         assert not r.client_unblock(myid, error=False)
 
     @skip_if_server_version_lt('2.6.9')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_client_getname(self, r):
-        assert get_main_cluster_node_data(r.client_getname()) is None
+        assert r.client_getname() is None
 
     @skip_if_server_version_lt('2.6.9')
     @skip_for_no_cluster_impl()
@@ -392,52 +392,52 @@ class TestRedisCommands(object):
         with pytest.raises(exceptions.RedisError):
             r.client_pause(timeout='not an integer')
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_config_get(self, r):
-        data = get_main_cluster_node_data(r.config_get())
+        data = r.config_get()
         assert 'maxmemory' in data
         assert data['maxmemory'].isdigit()
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_config_resetstat(self, r):
         r.ping()
-        prior_commands_processed = int(get_main_cluster_node_data(r.info())['total_commands_processed'])
+        prior_commands_processed = int(r.info()['total_commands_processed'])
         assert prior_commands_processed >= 1
         r.config_resetstat()
-        reset_commands_processed = int(get_main_cluster_node_data(r.info())['total_commands_processed'])
+        reset_commands_processed = int(r.info()['total_commands_processed'])
         assert reset_commands_processed < prior_commands_processed
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_config_set(self, r):
-        data = get_main_cluster_node_data(r.config_get())
+        data = r.config_get()
         rdbname = data['dbfilename']
         try:
             assert r.config_set('dbfilename', 'redis_py_test.rdb')
-            assert get_main_cluster_node_data(r.config_get())['dbfilename'] == 'redis_py_test.rdb'
+            assert r.config_get()['dbfilename'] == 'redis_py_test.rdb'
         finally:
             assert r.config_set('dbfilename', rdbname)
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_dbsize(self, r):
         r['a'] = 'foo'
         r['b'] = 'bar'
-        # Count all commands sent to the DB. Since we have one slave
-        # for every master we will look for 4 and not 2
-        dbsize_sum = sum([db_size_count for node_id, db_size_count in r.dbsize().items()])
-        assert dbsize_sum == 4
+        assert r.dbsize() == 2
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_echo(self, r):
-        assert get_main_cluster_node_data(r.echo('foo bar')) == b'foo bar'
+        assert r.echo('foo bar') == b'foo bar'
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_info(self, r):
         r['a'] = 'foo'
         r['b'] = 'bar'
-        info = get_main_cluster_node_data(r.info())
+        info = r.info()
         assert isinstance(info, dict)
-        # We only have a "db0" in cluster mode and only one of the commands will bind to node :7000
-        assert info['db0']['keys'] == 1
-        # Sum all keys in all slots
-        keys_sum = sum([node_data.get('db0', {}).get('keys', 0) for node_id, node_data in r.info().items()])
-        assert keys_sum == 4
+        assert info['db9']['keys'] == 2
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_lastsave(self, r):
-        assert isinstance(get_main_cluster_node_data(r.lastsave()), datetime.datetime)
+        assert isinstance(r.lastsave(), datetime.datetime)
 
     def test_object(self, r):
         r['a'] = 'foo'
@@ -454,7 +454,7 @@ class TestRedisCommands(object):
         assert r.slowlog_reset()
         unicode_string = unichr(3456) + 'abcd' + unichr(3421)
         r.get(unicode_string)
-        slowlog = get_main_cluster_node_data(r.slowlog_get())
+        slowlog = r.slowlog_get()
         assert isinstance(slowlog, list)
         commands = [log['command'] for log in slowlog]
 
@@ -488,8 +488,9 @@ class TestRedisCommands(object):
         assert isinstance(r.slowlog_len(), int)
 
     @skip_if_server_version_lt('2.6.0')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_time(self, r):
-        t = get_main_cluster_node_data(r.time())
+        t = r.time()
         assert len(t) == 2
         assert isinstance(t[0], int)
         assert isinstance(t[1], int)
@@ -519,15 +520,6 @@ class TestRedisCommands(object):
         assert r.bitcount('a', 2, -1) == 3
         assert r.bitcount('a', -2, -1) == 2
         assert r.bitcount('a', 1, 1) == 1
-
-    # TODO: Move this method to a more generic solution/method that tests the blocked nodes flags feature
-    def test_bitop_not_supported(self, r):
-        """
-        Validate that the command is blocked in cluster mode and throws an Exception
-        """
-        r['a'] = ''
-        with pytest.raises(RedisClusterException):
-            r.bitop('not', 'r', 'a')
 
     @skip_if_server_version_lt('2.6.0')
     @skip_for_no_cluster_impl()
@@ -664,12 +656,13 @@ class TestRedisCommands(object):
         r.restore('a', 0, dumped, replace=True)
         assert r['a'] == b'bar'
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_exists(self, r):
         assert r.exists('a') == 0
-        r['G0B96'] = 'foo'
-        r['TEFX5'] = 'bar'
-        assert r.exists('G0B96') == 1
-        assert r.exists('G0B96', 'TEFX5') == 2
+        r['a'] = 'foo'
+        r['b'] = 'bar'
+        assert r.exists('a') == 1
+        assert r.exists('a', 'b') == 2
 
     def test_exists_contains(self, r):
         assert 'a' not in r
@@ -682,7 +675,6 @@ class TestRedisCommands(object):
         assert r.expire('a', 10)
         assert 0 < r.ttl('a') <= 10
         assert r.persist('a')
-        # the ttl command changes behavior in redis-2.8+ http://redis.io/commands/ttl
         assert r.ttl('a') == -1
 
     def test_expireat_datetime(self, r):
@@ -926,6 +918,15 @@ class TestRedisCommands(object):
         assert r.set('a', '1', xx=True, px=10000)
         assert 0 < r.ttl('a') <= 10
 
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    def test_set_keepttl(self, r):
+        r['a'] = 'val'
+        assert r.set('a', '1', xx=True, px=10000)
+        assert 0 < r.ttl('a') <= 10
+        r.set('a', '2', keepttl=True)
+        assert r.get('a') == b'2'
+        assert 0 < r.ttl('a') <= 10
+
     def test_setex(self, r):
         assert r.setex('a', 60, '1')
         assert r['a'] == b'1'
@@ -982,33 +983,27 @@ class TestRedisCommands(object):
         assert r.type('a') == b'zset'
 
     # LIST COMMANDS
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_blpop(self, r):
-        """
-        Generated keys for slot
-            16299: ['0J8KD', '822JO', '8TJPT', 'HD644', 'SKUCM', 'N4N5Z', 'NRSWJ']
-        """
-        r.rpush('0J8KD', '1', '2')
-        r.rpush('822JO', '3', '4')
-        assert r.blpop(['822JO', '0J8KD'], timeout=1) == (b'822JO', b'3')
-        assert r.blpop(['822JO', '0J8KD'], timeout=1) == (b'822JO', b'4')
-        assert r.blpop(['822JO', '0J8KD'], timeout=1) == (b'0J8KD', b'1')
-        assert r.blpop(['822JO', '0J8KD'], timeout=1) == (b'0J8KD', b'2')
-        assert r.blpop(['822JO', '0J8KD'], timeout=1) is None
+        r.rpush('a', '1', '2')
+        r.rpush('b', '3', '4')
+        assert r.blpop(['b', 'a'], timeout=1) == (b'b', b'3')
+        assert r.blpop(['b', 'a'], timeout=1) == (b'b', b'4')
+        assert r.blpop(['b', 'a'], timeout=1) == (b'a', b'1')
+        assert r.blpop(['b', 'a'], timeout=1) == (b'a', b'2')
+        assert r.blpop(['b', 'a'], timeout=1) is None
         r.rpush('c', '1')
         assert r.blpop('c', timeout=1) == (b'c', b'1')
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_brpop(self, r):
-        """
-        Generated keys for slot
-            16299: ['0J8KD', '822JO', '8TJPT', 'HD644', 'SKUCM', 'N4N5Z', 'NRSWJ']
-        """
-        r.rpush('0J8KD', '1', '2')
-        r.rpush('822JO', '3', '4')
-        assert r.brpop(['822JO', '0J8KD'], timeout=1) == (b'822JO', b'4')
-        assert r.brpop(['822JO', '0J8KD'], timeout=1) == (b'822JO', b'3')
-        assert r.brpop(['822JO', '0J8KD'], timeout=1) == (b'0J8KD', b'2')
-        assert r.brpop(['822JO', '0J8KD'], timeout=1) == (b'0J8KD', b'1')
-        assert r.brpop(['822JO', '0J8KD'], timeout=1) is None
+        r.rpush('a', '1', '2')
+        r.rpush('b', '3', '4')
+        assert r.brpop(['b', 'a'], timeout=1) == (b'b', b'4')
+        assert r.brpop(['b', 'a'], timeout=1) == (b'b', b'3')
+        assert r.brpop(['b', 'a'], timeout=1) == (b'a', b'2')
+        assert r.brpop(['b', 'a'], timeout=1) == (b'a', b'1')
+        assert r.brpop(['b', 'a'], timeout=1) is None
         r.rpush('c', '1')
         assert r.brpop('c', timeout=1) == (b'c', b'1')
 
@@ -1121,21 +1116,19 @@ class TestRedisCommands(object):
 
     # SCAN COMMANDS
     @skip_if_server_version_lt('2.8.0')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_scan(self, r):
-        """
-        Generated keys for slot
-            0 : ['GQ5KU', 'IFWJL', 'X582D']
-        """
-        r.set('GQ5KU', 1)
-        r.set('IFWJL', 2)
-        r.set('X582D', 3)
-        cursor, keys = get_main_cluster_node_data(r.scan())
+        r.set('a', 1)
+        r.set('b', 2)
+        r.set('c', 3)
+        cursor, keys = r.scan()
         assert cursor == 0
-        assert set(keys) == {b'GQ5KU', b'IFWJL', b'X582D'}
-        _, keys = get_main_cluster_node_data(r.scan(match='GQ5KU'))
-        assert set(keys) == {b'GQ5KU'}
+        assert set(keys) == {b'a', b'b', b'c'}
+        _, keys = r.scan(match='a')
+        assert set(keys) == {b'a'}
 
-    @skip_if_server_version_lt('5.9.101')
+    @skip_if_server_version_lt(REDIS_6_VERSION)
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_scan_type(self, r):
         r.sadd('a-set', 1)
         r.hset('a-hash', 'foo', 2)
@@ -1172,7 +1165,7 @@ class TestRedisCommands(object):
 
     @skip_if_server_version_lt('2.8.0')
     def test_hscan(self, r):
-        r.hmset('a', {'a': 1, 'b': 2, 'c': 3})
+        r.hset('a', mapping={'a': 1, 'b': 2, 'c': 3})
         cursor, dic = r.hscan('a')
         assert cursor == 0
         assert dic == {b'a': b'1', b'b': b'2', b'c': b'3'}
@@ -1181,7 +1174,7 @@ class TestRedisCommands(object):
 
     @skip_if_server_version_lt('2.8.0')
     def test_hscan_iter(self, r):
-        r.hmset('a', {'a': 1, 'b': 2, 'c': 3})
+        r.hset('a', mapping={'a': 1, 'b': 2, 'c': 3})
         dic = dict(r.hscan_iter('a'))
         assert dic == {b'a': b'1', b'b': b'2', b'c': b'3'}
         dic = dict(r.hscan_iter('a', match='a'))
@@ -1350,12 +1343,8 @@ class TestRedisCommands(object):
         assert r.zadd('a', {'a1': 1}) == 1
         assert r.zadd('a', {'a1': 4.5}, incr=True) == 5.5
 
-    @skip_for_no_cluster_impl()
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zadd_incr_with_xx(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
         # this asks zadd to incr 'a1' only if it exists, but it clearly
         # doesn't. Redis returns a null value in this case and so should
         # redis-py
@@ -1386,113 +1375,87 @@ class TestRedisCommands(object):
         assert r.zlexcount('a', '-', '+') == 7
         assert r.zlexcount('a', '[b', '[f') == 5
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zinterstore_sum(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 1, 'a3': 1})
-        r.zadd('8I2EQ', {'a1': 2, 'a2': 2, 'a3': 2})
-        r.zadd('R8H1V', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zinterstore('NJP6N', ['60ZE7', '8I2EQ', 'R8H1V']) == 2
-        assert r.zrange('NJP6N', 0, -1, withscores=True) == \
+        r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
+        r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
+        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
+        assert r.zinterstore('d', ['a', 'b', 'c']) == 2
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a3', 8), (b'a1', 9)]
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zinterstore_max(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 1, 'a3': 1})
-        r.zadd('8I2EQ', {'a1': 2, 'a2': 2, 'a3': 2})
-        r.zadd('R8H1V', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zinterstore('NJP6N', ['60ZE7', '8I2EQ', 'R8H1V'], aggregate='MAX') == 2
-        assert r.zrange('NJP6N', 0, -1, withscores=True) == \
+        r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
+        r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
+        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
+        assert r.zinterstore('d', ['a', 'b', 'c'], aggregate='MAX') == 2
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a3', 5), (b'a1', 6)]
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zinterstore_min(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 2, 'a3': 3})
-        r.zadd('8I2EQ', {'a1': 2, 'a2': 3, 'a3': 5})
-        r.zadd('R8H1V', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zinterstore('NJP6N', ['60ZE7', '8I2EQ', 'R8H1V'], aggregate='MIN') == 2
-        assert r.zrange('NJP6N', 0, -1, withscores=True) == \
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
+        r.zadd('b', {'a1': 2, 'a2': 3, 'a3': 5})
+        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
+        assert r.zinterstore('d', ['a', 'b', 'c'], aggregate='MIN') == 2
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a1', 1), (b'a3', 3)]
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zinterstore_with_weight(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 1, 'a3': 1})
-        r.zadd('8I2EQ', {'a1': 2, 'a2': 2, 'a3': 2})
-        r.zadd('R8H1V', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zinterstore('NJP6N', {'60ZE7': 1, '8I2EQ': 2, 'R8H1V': 3}) == 2
-        assert r.zrange('NJP6N', 0, -1, withscores=True) == \
+        r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
+        r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
+        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
+        assert r.zinterstore('d', {'a': 1, 'b': 2, 'c': 3}) == 2
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a3', 20), (b'a1', 23)]
 
     @skip_if_server_version_lt('4.9.0')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zpopmax(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 2, 'a3': 3})
-        assert r.zpopmax('60ZE7') == [(b'a3', 3)]
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
+        assert r.zpopmax('a') == [(b'a3', 3)]
 
         # with count
-        assert r.zpopmax('60ZE7', count=2) == \
+        assert r.zpopmax('a', count=2) == \
             [(b'a2', 2), (b'a1', 1)]
 
     @skip_if_server_version_lt('4.9.0')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zpopmin(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 2, 'a3': 3})
-        assert r.zpopmin('60ZE7') == [(b'a1', 1)]
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
+        assert r.zpopmin('a') == [(b'a1', 1)]
 
         # with count
-        assert r.zpopmin('60ZE7', count=2) == \
+        assert r.zpopmin('a', count=2) == \
             [(b'a2', 2), (b'a3', 3)]
 
     @skip_if_server_version_lt('4.9.0')
     @skip_for_no_cluster_impl()
     def test_bzpopmax(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 2})
-        r.zadd('8I2EQ', {'b1': 10, 'b2': 20})
-        assert r.bzpopmax(['8I2EQ', '60ZE7'], timeout=1) == (b'b', b'b2', 20)
-        assert r.bzpopmax(['8I2EQ', '60ZE7'], timeout=1) == (b'b', b'b1', 10)
-        assert r.bzpopmax(['8I2EQ', '60ZE7'], timeout=1) == (b'a', b'a2', 2)
-        assert r.bzpopmax(['8I2EQ', '60ZE7'], timeout=1) == (b'a', b'a1', 1)
-        assert r.bzpopmax(['8I2EQ', '60ZE7'], timeout=1) is None
-        r.zadd('R8H1V', {'c1': 100})
-        assert r.bzpopmax('R8H1V', timeout=1) == (b'c', b'c1', 100)
+        r.zadd('a', {'a1': 1, 'a2': 2})
+        r.zadd('b', {'b1': 10, 'b2': 20})
+        assert r.bzpopmax(['b', 'a'], timeout=1) == (b'b', b'b2', 20)
+        assert r.bzpopmax(['b', 'a'], timeout=1) == (b'b', b'b1', 10)
+        assert r.bzpopmax(['b', 'a'], timeout=1) == (b'a', b'a2', 2)
+        assert r.bzpopmax(['b', 'a'], timeout=1) == (b'a', b'a1', 1)
+        assert r.bzpopmax(['b', 'a'], timeout=1) is None
+        r.zadd('c', {'c1': 100})
+        assert r.bzpopmax('c', timeout=1) == (b'c', b'c1', 100)
 
     @skip_if_server_version_lt('4.9.0')
     @skip_for_no_cluster_impl()
     def test_bzpopmin(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 2})
-        r.zadd('8I2EQ', {'b1': 10, 'b2': 20})
-        assert r.bzpopmin(['8I2EQ', '60ZE7'], timeout=1) == (b'b', b'b1', 10)
-        assert r.bzpopmin(['8I2EQ', '60ZE7'], timeout=1) == (b'b', b'b2', 20)
-        assert r.bzpopmin(['8I2EQ', '60ZE7'], timeout=1) == (b'a', b'a1', 1)
-        assert r.bzpopmin(['8I2EQ', '60ZE7'], timeout=1) == (b'a', b'a2', 2)
-        assert r.bzpopmin(['8I2EQ', '60ZE7'], timeout=1) is None
-        r.zadd('R8H1V', {'c1': 100})
-        assert r.bzpopmin('R8H1V', timeout=1) == (b'c', b'c1', 100)
+        r.zadd('a', {'a1': 1, 'a2': 2})
+        r.zadd('b', {'b1': 10, 'b2': 20})
+        assert r.bzpopmin(['b', 'a'], timeout=1) == (b'b', b'b1', 10)
+        assert r.bzpopmin(['b', 'a'], timeout=1) == (b'b', b'b2', 20)
+        assert r.bzpopmin(['b', 'a'], timeout=1) == (b'a', b'a1', 1)
+        assert r.bzpopmin(['b', 'a'], timeout=1) == (b'a', b'a2', 2)
+        assert r.bzpopmin(['b', 'a'], timeout=1) is None
+        r.zadd('c', {'c1': 100})
+        assert r.bzpopmin('c', timeout=1) == (b'c', b'c1', 100)
 
     def test_zrange(self, r):
         r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
@@ -1632,52 +1595,40 @@ class TestRedisCommands(object):
         assert r.zscore('a', 'a2') == 2.0
         assert r.zscore('a', 'a4') is None
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zunionstore_sum(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 1, 'a3': 1})
-        r.zadd('8I2EQ', {'a1': 2, 'a2': 2, 'a3': 2})
-        r.zadd('R8H1V', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zunionstore('NJP6N', ['60ZE7', '8I2EQ', 'R8H1V']) == 4
-        assert r.zrange('NJP6N', 0, -1, withscores=True) == \
+        r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
+        r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
+        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
+        assert r.zunionstore('d', ['a', 'b', 'c']) == 4
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a2', 3), (b'a4', 4), (b'a3', 8), (b'a1', 9)]
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zunionstore_max(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 1, 'a3': 1})
-        r.zadd('8I2EQ', {'a1': 2, 'a2': 2, 'a3': 2})
-        r.zadd('R8H1V', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zunionstore('NJP6N', ['60ZE7', '8I2EQ', 'R8H1V'], aggregate='MAX') == 4
-        assert r.zrange('NJP6N', 0, -1, withscores=True) == \
+        r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
+        r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
+        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
+        assert r.zunionstore('d', ['a', 'b', 'c'], aggregate='MAX') == 4
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a2', 2), (b'a4', 4), (b'a3', 5), (b'a1', 6)]
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zunionstore_min(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 2, 'a3': 3})
-        r.zadd('8I2EQ', {'a1': 2, 'a2': 2, 'a3': 4})
-        r.zadd('R8H1V', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zunionstore('NJP6N', ['60ZE7', '8I2EQ', 'R8H1V'], aggregate='MIN') == 4
-        assert r.zrange('NJP6N', 0, -1, withscores=True) == \
+        r.zadd('a', {'a1': 1, 'a2': 2, 'a3': 3})
+        r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 4})
+        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
+        assert r.zunionstore('d', ['a', 'b', 'c'], aggregate='MIN') == 4
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a1', 1), (b'a2', 2), (b'a3', 3), (b'a4', 4)]
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_zunionstore_with_weight(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.zadd('60ZE7', {'a1': 1, 'a2': 1, 'a3': 1})
-        r.zadd('8I2EQ', {'a1': 2, 'a2': 2, 'a3': 2})
-        r.zadd('R8H1V', {'a1': 6, 'a3': 5, 'a4': 4})
-        assert r.zunionstore('NJP6N', {'60ZE7': 1, '8I2EQ': 2, 'R8H1V': 3}) == 4
-        assert r.zrange('NJP6N', 0, -1, withscores=True) == \
+        r.zadd('a', {'a1': 1, 'a2': 1, 'a3': 1})
+        r.zadd('b', {'a1': 2, 'a2': 2, 'a3': 2})
+        r.zadd('c', {'a1': 6, 'a3': 5, 'a4': 4})
+        assert r.zunionstore('d', {'a': 1, 'b': 2, 'c': 3}) == 4
+        assert r.zrange('d', 0, -1, withscores=True) == \
             [(b'a2', 5), (b'a4', 12), (b'a3', 20), (b'a1', 23)]
 
     # HYPERLOGLOG TESTS
@@ -1714,7 +1665,7 @@ class TestRedisCommands(object):
 
     # HASH COMMANDS
     def test_hget_and_hset(self, r):
-        r.hmset('a', {'1': 1, '2': 2, '3': 3})
+        r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
         assert r.hget('a', '1') == b'1'
         assert r.hget('a', '2') == b'2'
         assert r.hget('a', '3') == b'3'
@@ -1730,21 +1681,40 @@ class TestRedisCommands(object):
         # key inside of hash that doesn't exist returns null value
         assert r.hget('a', 'b') is None
 
+        # keys with bool(key) == False
+        assert r.hset('a', 0, 10) == 1
+        assert r.hset('a', '', 10) == 1
+
+    def test_hset_with_multi_key_values(self, r):
+        r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
+        assert r.hget('a', '1') == b'1'
+        assert r.hget('a', '2') == b'2'
+        assert r.hget('a', '3') == b'3'
+
+        r.hset('b', "foo", "bar", mapping={'1': 1, '2': 2})
+        assert r.hget('b', '1') == b'1'
+        assert r.hget('b', '2') == b'2'
+        assert r.hget('b', 'foo') == b'bar'
+
+    def test_hset_without_data(self, r):
+        with pytest.raises(exceptions.DataError):
+            r.hset("x")
+
     def test_hdel(self, r):
-        r.hmset('a', {'1': 1, '2': 2, '3': 3})
+        r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
         assert r.hdel('a', '2') == 1
         assert r.hget('a', '2') is None
         assert r.hdel('a', '1', '3') == 2
         assert r.hlen('a') == 0
 
     def test_hexists(self, r):
-        r.hmset('a', {'1': 1, '2': 2, '3': 3})
+        r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
         assert r.hexists('a', '1')
         assert not r.hexists('a', '4')
 
     def test_hgetall(self, r):
         h = {b'a1': b'1', b'a2': b'2', b'a3': b'3'}
-        r.hmset('a', h)
+        r.hset('a', mapping=h)
         assert r.hgetall('a') == h
 
     def test_hincrby(self, r):
@@ -1760,22 +1730,26 @@ class TestRedisCommands(object):
 
     def test_hkeys(self, r):
         h = {b'a1': b'1', b'a2': b'2', b'a3': b'3'}
-        r.hmset('a', h)
+        r.hset('a', mapping=h)
         local_keys = list(iterkeys(h))
         remote_keys = r.hkeys('a')
         assert (sorted(local_keys) == sorted(remote_keys))
 
     def test_hlen(self, r):
-        r.hmset('a', {'1': 1, '2': 2, '3': 3})
+        r.hset('a', mapping={'1': 1, '2': 2, '3': 3})
         assert r.hlen('a') == 3
 
     def test_hmget(self, r):
-        assert r.hmset('a', {'a': 1, 'b': 2, 'c': 3})
+        assert r.hset('a', mapping={'a': 1, 'b': 2, 'c': 3})
         assert r.hmget('a', 'a', 'b', 'c') == [b'1', b'2', b'3']
 
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_hmset(self, r):
+        warning_message = (r'^Redis\.hmset\(\) is deprecated\. '
+                           r'Use Redis\.hset\(\) instead\.$')
         h = {b'a': b'1', b'b': b'2', b'c': b'3'}
-        assert r.hmset('a', h)
+        with pytest.warns(DeprecationWarning, match=warning_message):
+            assert r.hmset('a', h)
         assert r.hgetall('a') == h
 
     def test_hsetnx(self, r):
@@ -1787,14 +1761,14 @@ class TestRedisCommands(object):
 
     def test_hvals(self, r):
         h = {b'a1': b'1', b'a2': b'2', b'a3': b'3'}
-        r.hmset('a', h)
+        r.hset('a', mapping=h)
         local_vals = list(itervalues(h))
         remote_vals = r.hvals('a')
         assert sorted(local_vals) == sorted(remote_vals)
 
     @skip_if_server_version_lt('3.2.0')
     def test_hstrlen(self, r):
-        r.hmset('a', {'1': '22', '2': '333'})
+        r.hset('a', mapping={'1': '22', '2': '333'})
         assert r.hstrlen('a', '1') == 2
         assert r.hstrlen('a', '2') == 3
 
@@ -1890,21 +1864,14 @@ class TestRedisCommands(object):
         assert r.sort('a', alpha=True) == \
             [b'a', b'b', b'c', b'd', b'e']
 
+    @pytest.mark.skip(reason="Sort works if done against keys in same slot")
     def test_sort_store(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
-        r.rpush('60ZE7', '2', '3', '1')
-        assert r.sort('60ZE7', store='8I2EQ') == 3
-        assert r.lrange('8I2EQ', 0, -1) == [b'1', b'2', b'3']
+        r.rpush('a', '2', '3', '1')
+        assert r.sort('a', store='sorted_values') == 3
+        assert r.lrange('sorted_values', 0, -1) == [b'1', b'2', b'3']
 
     @skip_for_no_cluster_impl()
     def test_sort_all_options(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ', 'R8H1V', 'NJP6N', '0VI0A', '0CEIC', 'MV75A', 'TMKD9']
-        """
         r['user:1:username'] = 'zeus'
         r['user:2:username'] = 'titan'
         r['user:3:username'] = 'hermes'
@@ -2001,6 +1968,31 @@ class TestRedisCommands(object):
         assert isinstance(mock_cluster_resp_slaves.cluster(
             'slaves', 'nodeid'), dict)
 
+    @skip_if_server_version_lt('3.0.0')
+    @skip_for_no_cluster_impl()
+    def test_readwrite(self, r):
+        """
+        FIXME: Needs cluster impelmentation
+        """
+        assert r.readwrite()
+
+    @skip_if_server_version_lt('3.0.0')
+    @skip_for_no_cluster_impl()
+    def test_readonly_invalid_cluster_state(self, r):
+        """
+        FIXME: Needs cluster impelmentation
+        """
+        with pytest.raises(exceptions.RedisError):
+            r.readonly()
+
+    @skip_if_server_version_lt('3.0.0')
+    @skip_for_no_cluster_impl()
+    def test_readonly(self, mock_cluster_resp_ok):
+        """
+        FIXME: Needs cluster impelmentation
+        """
+        assert mock_cluster_resp_ok.readonly() is True
+
     # GEO COMMANDS
     @skip_if_server_version_lt('3.2.0')
     def test_geoadd(self, r):
@@ -2048,9 +2040,10 @@ class TestRedisCommands(object):
                  (2.1873744593677, 41.406342043777, 'place2')
 
         r.geoadd('barcelona', *values)
-        assert r.geohash('barcelona', 'place1', 'place2') ==\
-            ['sp3e9yg3kd0', 'sp3e9cbc3t0']
+        assert r.geohash('barcelona', 'place1', 'place2', 'place3') ==\
+            ['sp3e9yg3kd0', 'sp3e9cbc3t0', None]
 
+    @skip_unless_arch_bits(64)
     @skip_if_server_version_lt('3.2.0')
     def test_geopos(self, r):
         values = (2.1909389952632, 41.433791470673, 'place1') +\
@@ -2094,7 +2087,7 @@ class TestRedisCommands(object):
                  (2.1873744593677, 41.406342043777, 'place2')
 
         r.geoadd('barcelona', *values)
-        assert r.georadius(b'barcelona', 2.191, 41.433, 1, unit='km') ==\
+        assert r.georadius('barcelona', 2.191, 41.433, 1, unit='km') ==\
             [b'place1']
 
     @skip_unless_arch_bits(64)
@@ -2132,7 +2125,7 @@ class TestRedisCommands(object):
                  (2.1873744593677, 41.406342043777, 'place2')
 
         r.geoadd('barcelona', *values)
-        assert r.georadius(b'barcelona', 2.191, 41.433, 3000, count=1) ==\
+        assert r.georadius('barcelona', 2.191, 41.433, 3000, count=1) ==\
             [b'place1']
 
     @skip_if_server_version_lt('3.2.0')
@@ -2147,33 +2140,29 @@ class TestRedisCommands(object):
             [b'place2', b'place1']
 
     @skip_if_server_version_lt('3.2.0')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_georadius_store(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ']
-        """
         values = (2.1909389952632, 41.433791470673, 'place1') +\
                  (2.1873744593677, 41.406342043777, 'place2')
 
-        r.geoadd('60ZE7', *values)
-        r.georadius('60ZE7', 2.191, 41.433, 1000, store='8I2EQ')
-        assert r.zrange('8I2EQ', 0, -1) == [b'place1']
+        r.geoadd('barcelona', *values)
+        r.georadius('barcelona', 2.191, 41.433, 1000, store='places_barcelona')
+        assert r.zrange('places_barcelona', 0, -1) == [b'place1']
 
+    @skip_unless_arch_bits(64)
     @skip_if_server_version_lt('3.2.0')
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_georadius_store_dist(self, r):
-        """
-        Generated keys for slot
-            0 : ['60ZE7', '8I2EQ']
-        """
         values = (2.1909389952632, 41.433791470673, 'place1') +\
                  (2.1873744593677, 41.406342043777, 'place2')
 
-        r.geoadd('60ZE7', *values)
-        r.georadius('60ZE7', 2.191, 41.433, 1000,
-                    store_dist='8I2EQ')
+        r.geoadd('barcelona', *values)
+        r.georadius('barcelona', 2.191, 41.433, 1000,
+                    store_dist='places_barcelona')
         # instead of save the geo score, the distance is saved.
-        assert r.zscore('8I2EQ', 'place1') == 88.05060698409301
+        assert r.zscore('places_barcelona', 'place1') == 88.05060698409301
 
+    @skip_unless_arch_bits(64)
     @skip_if_server_version_lt('3.2.0')
     def test_georadiusmember(self, r):
         values = (2.1909389952632, 41.433791470673, 'place1') +\
@@ -2209,7 +2198,7 @@ class TestRedisCommands(object):
         assert r.xack(stream, group, m1) == 0
 
         r.xgroup_create(stream, group, 0)
-        r.xreadgroup(group, consumer, streams={stream: 0})
+        r.xreadgroup(group, consumer, streams={stream: '>'})
         # xack returns the number of ack'd elements
         assert r.xack(stream, group, m1) == 1
         assert r.xack(stream, group, m2, m3) == 2
@@ -2537,7 +2526,7 @@ class TestRedisCommands(object):
 
         expected = [
             [
-                stream,
+                stream.encode(),
                 [
                     get_stream_message(r, stream, m1),
                     get_stream_message(r, stream, m2),
@@ -2549,7 +2538,7 @@ class TestRedisCommands(object):
 
         expected = [
             [
-                stream,
+                stream.encode(),
                 [
                     get_stream_message(r, stream, m1),
                 ]
@@ -2560,7 +2549,7 @@ class TestRedisCommands(object):
 
         expected = [
             [
-                stream,
+                stream.encode(),
                 [
                     get_stream_message(r, stream, m2),
                 ]
@@ -2688,7 +2677,6 @@ class TestRedisCommands(object):
         # 1 message is trimmed
         assert r.xtrim(stream, 3, approximate=False) == 1
 
-    @skip_if_server_version_lt('3.2.0')
     def test_bitfield_operations(self, r):
         # comments show affected bits
         bf = r.bitfield('a')
@@ -2752,139 +2740,28 @@ class TestRedisCommands(object):
         assert resp == [0, None, 255]
 
     @skip_if_server_version_lt('4.0.0')
+    @skip_for_no_cluster_impl()
+    def test_memory_stats(self, r):
+        """
+        FIXME: Needs cluster implementation
+        """
+        # put a key into the current db to make sure that "db.<current-db>"
+        # has data
+        r.set('foo', 'bar')
+        stats = r.memory_stats()
+        assert isinstance(stats, dict)
+        for key, value in iteritems(stats):
+            if key.startswith('db.'):
+                assert isinstance(value, dict)
+
+    @skip_if_server_version_lt('4.0.0')
     def test_memory_usage(self, r):
         r.set('foo', 'bar')
         assert isinstance(r.memory_usage('foo'), int)
 
 
-class TestRedisCommandsSort(object):
-    # SORT
-    def test_sort_basic(self, r):
-        r.rpush('a', '3', '2', '1', '4')
-        assert r.sort('a') == [b'1', b'2', b'3', b'4']
-
-    def test_sort_limited(self, r):
-        r.rpush('a', '3', '2', '1', '4')
-        assert r.sort('a', start=1, num=2) == [b'2', b'3']
-
-    @pytest.mark.skip(reason="Sort works if done against keys in same slot")
-    def test_sort_by(self, r):
-        r['score:1'] = 8
-        r['score:2'] = 3
-        r['score:3'] = 5
-        r.rpush('a', '3', '2', '1')
-        assert r.sort('a', by='score:*') == [b'2', b'3', b'1']
-
-    @pytest.mark.skip(reason="Sort works if done against keys in same slot")
-    def test_sort_get(self, r):
-        r['user:1'] = 'u1'
-        r['user:2'] = 'u2'
-        r['user:3'] = 'u3'
-        r.rpush('a', '2', '3', '1')
-        assert r.sort('a', get='user:*') == [b'u1', b'u2', b'u3']
-
-    @pytest.mark.skip(reason="Sort works if done against keys in same slot")
-    def test_sort_get_multi(self, r):
-        r['user:1'] = 'u1'
-        r['user:2'] = 'u2'
-        r['user:3'] = 'u3'
-        r.rpush('a', '2', '3', '1')
-        assert r.sort('a', get=('user:*', '#')) == \
-            [b'u1', b'1', b'u2', b'2', b'u3', b'3']
-
-    @pytest.mark.skip(reason="Sort works if done against keys in same slot")
-    def test_sort_get_groups_two(self, r):
-        r['user:1'] = 'u1'
-        r['user:2'] = 'u2'
-        r['user:3'] = 'u3'
-        r.rpush('a', '2', '3', '1')
-        assert r.sort('a', get=('user:*', '#'), groups=True) == \
-            [(b'u1', b'1'), (b'u2', b'2'), (b'u3', b'3')]
-
-    def test_sort_groups_string_get(self, r):
-        r['user:1'] = 'u1'
-        r['user:2'] = 'u2'
-        r['user:3'] = 'u3'
-        r.rpush('a', '2', '3', '1')
-        with pytest.raises(DataError):
-            r.sort('a', get='user:*', groups=True)
-
-    def test_sort_groups_just_one_get(self, r):
-        r['user:1'] = 'u1'
-        r['user:2'] = 'u2'
-        r['user:3'] = 'u3'
-        r.rpush('a', '2', '3', '1')
-        with pytest.raises(DataError):
-            r.sort('a', get=['user:*'], groups=True)
-
-    def test_sort_groups_no_get(self, r):
-        r['user:1'] = 'u1'
-        r['user:2'] = 'u2'
-        r['user:3'] = 'u3'
-        r.rpush('a', '2', '3', '1')
-        with pytest.raises(DataError):
-            r.sort('a', groups=True)
-
-    @pytest.mark.skip(reason="Sort works if done against keys in same slot")
-    def test_sort_groups_three_gets(self, r):
-        r['user:1'] = 'u1'
-        r['user:2'] = 'u2'
-        r['user:3'] = 'u3'
-        r['door:1'] = 'd1'
-        r['door:2'] = 'd2'
-        r['door:3'] = 'd3'
-        r.rpush('a', '2', '3', '1')
-        assert r.sort('a', get=('user:*', 'door:*', '#'), groups=True) == [
-            (b'u1', b'd1', b'1'),
-            (b'u2', b'd2', b'2'),
-            (b'u3', b'd3', b'3')
-        ]
-
-    def test_sort_desc(self, r):
-        r.rpush('a', '2', '3', '1')
-        assert r.sort('a', desc=True) == [b'3', b'2', b'1']
-
-    def test_sort_alpha(self, r):
-        r.rpush('a', 'e', 'c', 'b', 'd', 'a')
-        assert r.sort('a', alpha=True) == \
-            [b'a', b'b', b'c', b'd', b'e']
-
-    @pytest.mark.skip(reason="Sort works if done against keys in same slot")
-    def test_sort_store(self, r):
-        r.rpush('a', '2', '3', '1')
-        assert r.sort('a', store='sorted_values') == 3
-        assert r.lrange('sorted_values', 0, -1) == [b'1', b'2', b'3']
-
-    @pytest.mark.skip(reason="Sort works if done against keys in same slot")
-    def test_sort_all_options(self, r):
-        r['user:1:username'] = 'zeus'
-        r['user:2:username'] = 'titan'
-        r['user:3:username'] = 'hermes'
-        r['user:4:username'] = 'hercules'
-        r['user:5:username'] = 'apollo'
-        r['user:6:username'] = 'athena'
-        r['user:7:username'] = 'hades'
-        r['user:8:username'] = 'dionysus'
-
-        r['user:1:favorite_drink'] = 'yuengling'
-        r['user:2:favorite_drink'] = 'rum'
-        r['user:3:favorite_drink'] = 'vodka'
-        r['user:4:favorite_drink'] = 'milk'
-        r['user:5:favorite_drink'] = 'pinot noir'
-        r['user:6:favorite_drink'] = 'water'
-        r['user:7:favorite_drink'] = 'gin'
-        r['user:8:favorite_drink'] = 'apple juice'
-
-        r.rpush('gods', '5', '8', '3', '1', '2', '7', '6', '4')
-        num = r.sort('gods', start=2, num=4, by='user:*:username',
-                     get='user:*:favorite_drink', desc=True, alpha=True,
-                     store='sorted')
-        assert num == 4
-        assert r.lrange('sorted', 0, 10) == \
-            [b'vodka', b'milk', b'gin', b'apple juice']
-
-
 class TestBinarySave(object):
+
     def test_binary_get_set(self, r):
         assert r.set(' foo bar ', '123')
         assert r.get(' foo bar ') == b'123'
@@ -2913,13 +2790,13 @@ class TestBinarySave(object):
             r.rpush(key, *value)
 
         # check that KEYS returns all the keys as they are
-        assert sorted(r.keys('*')) == sorted(list(iterkeys(mapping)))
+        assert sorted(r.keys('*')) == sorted(iterkeys(mapping))
 
         # check that it is possible to get list content by key name
         for key, value in iteritems(mapping):
             assert r.lrange(key, 0, -1) == value
 
-    def test_22_info(self):
+    def test_22_info(self, r):
         """
         Older Redis versions contained 'allocation_stats' in INFO that
         was the cause of a number of bugs when parsing.
@@ -2955,8 +2832,8 @@ class TestBinarySave(object):
 
     def test_large_responses(self, r):
         "The PythonParser has some special cases for return values > 1MB"
-        # load up 100K of data into a key
-        data = ''.join([ascii_letters] * (100000 // len(ascii_letters)))
+        # load up 5MB of data into a key
+        data = ''.join([ascii_letters] * (5000000 // len(ascii_letters)))
         r['a'] = data
         assert r['a'] == data.encode()
 
