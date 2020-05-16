@@ -43,8 +43,6 @@ script:
   - make start
   - coverage erase
   - coverage run --source rediscluster -p -m py.test
-  - py.test
-  - make stop
 after_success:
   - coverage combine
   - coveralls
