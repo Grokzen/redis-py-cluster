@@ -300,8 +300,8 @@ def test_cluster_slots_error_expected_responseerror():
 
         n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
 
-        with pytest.raises(RedisClusterException) as e:
-            n.initialize()
+        # with pytest.raises(RedisClusterException) as e:
+        n.initialize()
 
         assert 'Redis Cluster cannot be connected' in unicode(e)
 
