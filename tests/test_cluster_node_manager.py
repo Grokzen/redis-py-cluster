@@ -282,12 +282,16 @@ def test_cluster_slots_error():
     with patch.object(Redis, 'execute_command') as execute_command_mock:
         execute_command_mock.side_effect = Exception("foobar")
 
-        n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
-
-        with pytest.raises(RedisClusterException) as e:
+        with pytest.raises(RedisClusterException):
+            n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
             n.initialize()
 
-        assert "ERROR sending 'cluster slots' command" in unicode(e)
+        try:
+            n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+            n.initialize()
+        except RedisClusterException as e:
+            assert "ERROR sending 'cluster slots' command" in e.args[0]
+
 
 
 def test_cluster_slots_error_expected_responseerror():
@@ -298,12 +302,15 @@ def test_cluster_slots_error_expected_responseerror():
     with patch.object(Redis, 'execute_command') as execute_command_mock:
         execute_command_mock.side_effect = ResponseError("MASTERDOWN")
 
-        n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+        with pytest.raises(RedisClusterException):
+            n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+            n.initialize()
 
-        # with pytest.raises(RedisClusterException) as e:
-        n.initialize()
-
-        assert 'Redis Cluster cannot be connected' in unicode(e)
+        try:
+            n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+            n.initialize()
+        except RedisClusterException as e:
+            assert "Redis Cluster cannot be connected" in e.args[0]
 
 
 def test_set_node():
