@@ -1,14 +1,35 @@
 Release Notes
 =============
 
-2.1.0 (xxx yy, 2020)
+2.1.0 (May **, 2020)
+--------------------
 
     * Add new config option for Client and Pipeline classes to controll how many attempts will be made before bailing out from a ClusterDownError.
       Use "cluster_down_retry_attempts=<int>" when creating the client class to controll this behaviour.
-    * Updated redis-py compatbile version to support any version in the major version 3.0.x, 3.1.x, 3.2.x, 3.3.x. (#326)
+    * Updated redis-py compatbile version to support any version in the major version 3.0.x, 3.1.x, 3.2.x, 3.3.x., 3.4.x, 3.5.x (#326)
+      It is always recommended to use the latest version of redis-py to avoid issues and compatiblity problems.
     * Fixed bug preventing reinitialization after getting MOVED errors
+    * Add testing of redis-esrver 6.0 versions to travis and unit tests
+    * Add python 2.7 compatiblity note about deprecation and upcomming changes in python 2.7 support for this lib
+    * Updated tests and cluster tests versions of the same methods to latest tests from upstream redis-py package
+    * Reorganized tests and how cluster specific tests is written and run over the upstream version of the same test to make it easier
+      and much faster to update and keep them in sync over time going into the future (#368)
+    * Python 3.5.x or higher is now required if running on a python 3 version
+    * Removed the monkeypatching of RedisCluster, ClusterPubSub & ClusterPipeline class names into the "redis" python package namespace during runtime.
+      They are now exposed in the "rediscluster" namespace to mimic the same feature from redis-py
+    * cluster_down_retry_attempts can now be configured to any value when creating RedisCluster instance
+    * Creating RedisCluster from unix socket url:s has been disabled
+    * Patch the from_url method to use the corret cluster version of the same Connection class
+    * ConnectionError and TimeoutError is now handled seperately in the main execute loop to better handle each case (#363)
+    * Update scan_iter custom cluster implementation
+    * Improve description_format handling for connection classes to simplify how they work
+    * Implement new connection pool ClusterBlockingConnectionPool (#347)
+    * Nodemanager initiailize should now handle usernames properly (#365)
+    * PubSub tests has been all been disabled
+
 
 2.0.0 (Aug 12, 2019)
+--------------------
 
 Specific changes to redis-py-cluster is mentioned below here. 
 
