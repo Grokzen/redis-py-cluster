@@ -5,6 +5,12 @@ from redis.exceptions import (
 )
 
 
+class RedisClusterConfigError(Exception):
+    """
+    """
+    pass
+
+
 class RedisClusterException(Exception):
     """
     """

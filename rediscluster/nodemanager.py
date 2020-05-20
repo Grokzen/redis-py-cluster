@@ -5,7 +5,7 @@ import random
 
 # rediscluster imports
 from .crc import crc16
-from .exceptions import RedisClusterException
+from .exceptions import RedisClusterException, RedisClusterConfigError
 
 # 3rd party imports
 from redis import Redis
@@ -19,7 +19,8 @@ class NodeManager(object):
     """
     RedisClusterHashSlots = 16384
 
-    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False, **connection_kwargs):
+    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
+                 host_port_remap=None, **connection_kwargs):
         """
         :skip_full_coverage_check:
             Skips the check of cluster-require-full-coverage config, useful for clusters
@@ -43,9 +44,33 @@ class NodeManager(object):
             connection_kwargs.get('encoding_errors', 'strict'),
             connection_kwargs.get('decode_responses', False)
         )
+        self._validate_host_port_remap(host_port_remap)
+        self.host_port_remap = host_port_remap
 
         if not self.startup_nodes:
             raise RedisClusterException("No startup nodes provided")
+
+    def _validate_host_port_remap(self, host_port_remap):
+        """
+        Helper method that validates all entries in the host_port_remap config.
+        """
+        if host_port_remap is None:
+            # Nothing to validate if config not set
+            return
+
+        if not isinstance(host_port_remap, list):
+            raise RedisClusterConfigError("host_port_remap must be a list")
+
+        for item in host_port_remap:
+            if not isinstance(item, dict):
+                raise RedisClusterConfigError("items inside host_port_remap list must be of dict type")
+
+            # If we have from_host, we must have a to_host option to allow for translation to work
+            if ('from_host' in item and 'to_host' not in item) or ('from_host' not in item and 'to_host' in item):
+                raise RedisClusterConfigError("Both from_host and to_host must be present in remap item if either is defined")
+
+            if ('from_port' in item and 'to_port' not in item) or  ('from_port' not in item and 'to_port' in item):
+                raise RedisClusterConfigError("Both from_port and to_port must be present in remap item")
 
     def keyslot(self, key):
         """
@@ -183,11 +208,14 @@ class NodeManager(object):
 
             # No need to decode response because Redis should handle that for us...
             for slot in cluster_slots:
+                # import pdb; pdb.set_trace()
                 master_node = slot[2]
 
                 if master_node[0] == '':
                     master_node[0] = node['host']
                 master_node[1] = int(master_node[1])
+
+                master_node = self.remap_internal_node_object(master_node)
 
                 node, node_name = self.make_node_obj(master_node[0], master_node[1], 'master')
                 nodes_cache[node_name] = node
@@ -198,6 +226,7 @@ class NodeManager(object):
                         slave_nodes = [slot[j] for j in range(3, len(slot))]
 
                         for slave_node in slave_nodes:
+                            slave_node = self.remap_internal_node_object(slave_node)
                             target_slave_node, slave_node_name = self.make_node_obj(slave_node[0], slave_node[1], 'slave')
                             nodes_cache[slave_node_name] = target_slave_node
                             tmp_slots[i].append(target_slave_node)
@@ -239,6 +268,25 @@ class NodeManager(object):
         self.slots = tmp_slots
         self.nodes = nodes_cache
         self.reinitialize_counter = 0
+
+    def remap_internal_node_object(self, node_obj):
+        if not self.host_port_remap:
+            # No remapping rule set, return object unmodified
+            return node_obj
+
+        for remap_rule in self.host_port_remap:
+            if 'from_host' in remap_rule and 'to_host' in remap_rule:
+                if remap_rule['from_host'] in node_obj[0]:
+                    # print('remapping host', node_obj[0], remap_rule['to_host'])
+                    node_obj[0] = remap_rule['to_host']
+
+            ## The port value is always an integer
+            if 'from_port' in remap_rule and 'to_port' in remap_rule:
+                if remap_rule['from_port'] == node_obj[1]:
+                    # print('remapping port', node_obj[1], remap_rule['to_port'])
+                    node_obj[1] = remap_rule['to_port']
+
+        return node_obj
 
     def increment_reinitialize_counter(self, ct=1):
         for i in range(min(ct, self.reinitialize_steps)):

@@ -6,7 +6,7 @@ from __future__ import with_statement
 # rediscluster imports
 from tests.conftest import skip_if_server_version_lt
 from rediscluster import RedisCluster
-from rediscluster.exceptions import RedisClusterException
+from rediscluster.exceptions import RedisClusterException, RedisClusterConfigError
 from rediscluster.nodemanager import NodeManager
 
 # 3rd party imports
@@ -399,3 +399,85 @@ def test_init_with_down_node():
         with pytest.raises(RedisClusterException) as e:
             n.initialize()
         assert 'Redis Cluster cannot be connected' in unicode(e.value)
+
+
+def test_host_port_remap():
+    """
+    """
+    # Test that providing nothing to NodeManager will not cause error
+    n = NodeManager(
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+        host_port_remap=None,
+    )
+    # Test that providing wrong root level object type will raise config exception. List is expected
+    with pytest.raises(RedisClusterConfigError) as excp:
+        n = NodeManager(
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            host_port_remap={},
+        )
+    # An empty host_port_remap  list should not raise an error
+    n = NodeManager(
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+        host_port_remap=[],
+    )
+    # A wrong object type inside host_port_remap list shold raise error
+    with pytest.raises(RedisClusterConfigError) as excp:
+        n = NodeManager(
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            host_port_remap=[None],
+        )
+    # The correct object typ inside list but empty should not give an error
+    n = NodeManager(
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+        host_port_remap=[{}, {}],
+    )
+    # If we only have either or from_host or to_host set we should get an error
+    with pytest.raises(RedisClusterConfigError) as excp:
+        n = NodeManager(
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            host_port_remap=[{'from_host': ''}],
+        )
+    with pytest.raises(RedisClusterConfigError) as excp:
+        n = NodeManager(
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            host_port_remap=[{'to_host': ''}],
+        )
+    # If we only have either or from_port or to_port set we should get an error
+    with pytest.raises(RedisClusterConfigError) as excp:
+        n = NodeManager(
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            host_port_remap=[{'from_port': ''}],
+        )
+    with pytest.raises(RedisClusterConfigError) as excp:
+        n = NodeManager(
+            startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+            host_port_remap=[{'to_port': ''}],
+        )
+
+    # Creating a valid config with multiple entries
+    n = NodeManager(
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
+        host_port_remap=[
+            {'from_host': '127.0.0.1', 'to_host': 'localhost', 'from_port': 7000, 'to_port': 70001},
+            {'from_host': '172.1.0.1', 'to_host': 'localhost', 'from_port': 7000, 'to_port': 70001},
+        ],
+    )
+
+    # If no host_port_remap is set then a node obj should not be modified in any way when remapping it
+    n = NodeManager(
+        host_port_remap=None,
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}]
+    )
+    initial_node_obj = ['127.0.0.1', 7000, 'xyz']
+    unmodified_remapped_obj = n.remap_internal_node_object(initial_node_obj)
+    assert unmodified_remapped_obj == initial_node_obj
+
+    # Test that modifying both host and port works
+    n = NodeManager(
+        host_port_remap=[{'from_host': '127.0.0.1', 'to_host': 'localhost', 'from_port': 7000, 'to_port': 7001}],
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}]
+    )
+    initial_node_obj = ['127.0.0.1', 7000, 'xyz']
+    remapped_obj = n.remap_internal_node_object(initial_node_obj)
+    assert remapped_obj[0] == 'localhost'
+    assert remapped_obj[1] == 7001

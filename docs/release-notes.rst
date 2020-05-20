@@ -26,6 +26,7 @@ Release Notes
     * Implement new connection pool ClusterBlockingConnectionPool (#347)
     * Nodemanager initiailize should now handle usernames properly (#365)
     * PubSub tests has been all been disabled
+    * New feature, host_port_remap. Send in a remapping configuration to RedisCluster instance where the nodes configuration recieved from the redis cluster can be altered to allow for connection in certain circumstances. See new section in clients.rst in docs/ for usage example.
 
 
 2.0.0 (Aug 12, 2019)

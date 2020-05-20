@@ -127,6 +127,7 @@ The Usage Guide
    :maxdepth: 2
    :glob:
 
+   client
    commands
    limitations-and-differences
    pipelines
