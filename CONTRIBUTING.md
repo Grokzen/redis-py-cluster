@@ -49,6 +49,30 @@ print("foobar {barfoo} {qwert}".format(
 
 
 
+# Documentation
+
+This project currently uses RST files and sphinx to build the documentation and to allow for it to be hosted on ReadTheDocs.
+
+To test your documentation changes you must first install sphinx and sphinx-reload to render and view the docs files on your local machine before commiting them to this repo.
+
+Install the dependencies inside a python virtualenv
+
+```
+pip install sphinx sphinx-reload
+```
+
+To start the local webbserver and render the docs folder, run from the root of this project
+
+```
+sphinx-reload docs/
+```
+
+It will open up the rendered website in your browser automatically.
+
+At some point in the future the docs format will change from RST to MkDocs.
+
+
+
 # Tests
 
 I (Johan/Grokzen) have been allowed (by andymccurdy) explicitly to use all test code that already exists inside `redis-py` lib. If possible you should reuse code that exists in there.
