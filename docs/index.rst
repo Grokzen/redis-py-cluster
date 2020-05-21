@@ -1,8 +1,3 @@
-.. redis-py-cluster documentation master file, created by
-   sphinx-quickstart on Tue Mar 29 23:29:46 2016.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to redis-py-cluster's documentation!
 ============================================
 
@@ -73,9 +68,11 @@ Additional code examples of more advance functionality can be found in the `exam
 Library Dependencies
 --------------------
 
+Even if the goal is to support all major versions of redis-py in the 3.x.x track, this is not a guarantee that all versions will work.
+
 It is always recommended to use the latest version of the dependencies of this project.
 
-- Redis-py: 'redis>=3.0.0,<3.1.0' is required in this major version of this cluster lib.
+- Redis-py: 'redis>=3.0.0,<4.0.0' is required in this major version of this cluster lib.
 - Optional Python: hiredis >= `0.2.0`. Older versions might work but is not tested.
 - A working Redis cluster based on version `>=3.0.0` is required.
 
@@ -93,6 +90,18 @@ If this library supports more then one major version line of `redis-py`, then th
 - 3.6
 - 3.7
 - 3.8
+
+
+Python 2 Compatibility Note
+###########################
+
+This library follows the announced change from our upstream package redis-py. Due to this,
+we will follow the same python 2.7 deprecation timeline as stated in there.
+
+redis-py-cluster 2.1.x will be the last major version release that supports Python 2.7.
+The 2.1.x line will continue to get bug fixes and security patches that
+support Python 2 until August 1, 2020. redis-py-cluster 3.0.x will be the next major
+version and will require Python 3.5+.
 
 
 
