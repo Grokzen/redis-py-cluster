@@ -464,8 +464,8 @@ class RedisCluster(Redis):
             return slots.pop()
 
         if command in ['XREADGROUP', 'XREAD']:
-            tokens = {args[i].value: i for i in range(len(args)) if type(args[i]) == Token}
-            keys_ids = list(args[tokens['STREAMS'] + 1: ])
+            stream_idx = args.index(b'STREAMS')
+            keys_ids = list(args[stream_idx + 1: ])
             idx_split = len(keys_ids) // 2
             keys = keys_ids[: idx_split]
             slots = {self.connection_pool.nodes.keyslot(key) for key in keys}
