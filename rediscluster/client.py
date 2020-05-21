@@ -566,9 +566,9 @@ class RedisCluster(Redis):
 
             if asking:
                 node = self.connection_pool.nodes.nodes[redirect_addr]
-                r = self.connection_pool.get_connection_by_node(node)
+                connection = self.connection_pool.get_connection_by_node(node)
             elif try_random_node:
-                r = self.connection_pool.get_random_connection()
+                connection = self.connection_pool.get_random_connection()
                 try_random_node = False
             else:
                 if self.refresh_table_asap:
@@ -579,26 +579,26 @@ class RedisCluster(Redis):
                 else:
                     node = self.connection_pool.get_node_by_slot(slot, self.read_from_replicas and (command in self.READ_COMMANDS))
                     is_read_replica = node['server_type'] == 'slave'
-                r = self.connection_pool.get_connection_by_node(node)
+                connection = self.connection_pool.get_connection_by_node(node)
 
             try:
                 if asking:
-                    r.send_command('ASKING')
-                    self.parse_response(r, "ASKING", **kwargs)
+                    connection.send_command('ASKING')
+                    self.parse_response(connection, "ASKING", **kwargs)
                     asking = False
                 if is_read_replica:
                     # Ask read replica to accept reads (see https://redis.io/commands/readonly)
                     # TODO: do we need to handle errors from this response?
-                    r.send_command('READONLY')
-                    self.parse_response(r, 'READONLY', **kwargs)
+                    connection.send_command('READONLY')
+                    self.parse_response(connection, 'READONLY', **kwargs)
                     is_read_replica = False
 
-                r.send_command(*args)
-                return self.parse_response(r, command, **kwargs)
+                connection.send_command(*args)
+                return self.parse_response(connection, command, **kwargs)
             except (RedisClusterException, BusyLoadingError):
                 raise
             except ConnectionError:
-                r.disconnect()
+                connection.disconnect()
             except TimeoutError:
                 if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.05)
@@ -626,7 +626,7 @@ class RedisCluster(Redis):
             except AskError as e:
                 redirect_addr, asking = "{0}:{1}".format(e.host, e.port), True
             finally:
-                self.connection_pool.release(r)
+                self.connection_pool.release(connection)
 
         raise ClusterError('TTL exhausted.')
 
