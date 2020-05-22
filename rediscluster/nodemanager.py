@@ -208,7 +208,6 @@ class NodeManager(object):
 
             # No need to decode response because Redis should handle that for us...
             for slot in cluster_slots:
-                # import pdb; pdb.set_trace()
                 master_node = slot[2]
 
                 if master_node[0] == '':
