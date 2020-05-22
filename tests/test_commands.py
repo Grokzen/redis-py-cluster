@@ -2191,7 +2191,6 @@ class TestRedisCommands(object):
                  (2.1909382939338684, 41.433790281840835)]]
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xack(self, r):
         stream = 'stream'
         group = 'group'
@@ -2213,7 +2212,6 @@ class TestRedisCommands(object):
         assert r.xack(stream, group, m2, m3) == 2
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xadd(self, r):
         stream = 'stream'
         message_id = r.xadd(stream, {'foo': 'bar'})
@@ -2228,7 +2226,6 @@ class TestRedisCommands(object):
         assert r.xlen(stream) == 2
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xclaim(self, r):
         stream = 'stream'
         group = 'group'
@@ -2260,7 +2257,6 @@ class TestRedisCommands(object):
                         justid=True) == [message_id]
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xclaim_trimmed(self, r):
         # xclaim should not raise an exception if the item is not there
         stream = 'stream'
@@ -2286,7 +2282,6 @@ class TestRedisCommands(object):
         assert item[1][0] == sid2
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xdel(self, r):
         stream = 'stream'
 
@@ -2302,7 +2297,6 @@ class TestRedisCommands(object):
         assert r.xdel(stream, m2, m3) == 2
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xgroup_create(self, r):
         # tests xgroup_create and xinfo_groups
         stream = 'stream'
@@ -2322,7 +2316,6 @@ class TestRedisCommands(object):
         assert r.xinfo_groups(stream) == expected
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xgroup_create_mkstream(self, r):
         # tests xgroup_create and xinfo_groups
         stream = 'stream'
@@ -2345,7 +2338,6 @@ class TestRedisCommands(object):
         assert r.xinfo_groups(stream) == expected
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xgroup_delconsumer(self, r):
         stream = 'stream'
         group = 'group'
@@ -2364,7 +2356,6 @@ class TestRedisCommands(object):
         assert r.xgroup_delconsumer(stream, group, consumer) == 2
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xgroup_destroy(self, r):
         stream = 'stream'
         group = 'group'
@@ -2377,7 +2368,6 @@ class TestRedisCommands(object):
         assert r.xgroup_destroy(stream, group)
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xgroup_setid(self, r):
         stream = 'stream'
         group = 'group'
@@ -2395,7 +2385,6 @@ class TestRedisCommands(object):
         assert r.xinfo_groups(stream) == expected
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xinfo_consumers(self, r):
         stream = 'stream'
         group = 'group'
@@ -2421,7 +2410,6 @@ class TestRedisCommands(object):
         assert info == expected
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xinfo_stream(self, r):
         stream = 'stream'
         m1 = r.xadd(stream, {'foo': 'bar'})
@@ -2433,7 +2421,6 @@ class TestRedisCommands(object):
         assert info['last-entry'] == get_stream_message(r, stream, m2)
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xlen(self, r):
         stream = 'stream'
         assert r.xlen(stream) == 0
@@ -2442,7 +2429,6 @@ class TestRedisCommands(object):
         assert r.xlen(stream) == 2
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xpending(self, r):
         stream = 'stream'
         group = 'group'
@@ -2477,7 +2463,6 @@ class TestRedisCommands(object):
         assert r.xpending(stream, group) == expected
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xpending_range(self, r):
         stream = 'stream'
         group = 'group'
@@ -2503,7 +2488,6 @@ class TestRedisCommands(object):
         assert response[1]['consumer'] == consumer2.encode()
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xrange(self, r):
         stream = 'stream'
         m1 = r.xadd(stream, {'foo': 'bar'})
@@ -2527,7 +2511,6 @@ class TestRedisCommands(object):
         assert get_ids(results) == [m1]
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xread(self, r):
         stream = 'stream'
         m1 = r.xadd(stream, {'foo': 'bar'})
@@ -2571,7 +2554,6 @@ class TestRedisCommands(object):
         assert r.xread(streams={stream: m2}) == []
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xreadgroup(self, r):
         stream = 'stream'
         group = 'group'
@@ -2643,7 +2625,6 @@ class TestRedisCommands(object):
         assert r.xreadgroup(group, consumer, streams={stream: '0'}) == expected
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xrevrange(self, r):
         stream = 'stream'
         m1 = r.xadd(stream, {'foo': 'bar'})
@@ -2667,7 +2648,6 @@ class TestRedisCommands(object):
         assert get_ids(results) == [m4]
 
     @skip_if_server_version_lt('5.0.0')
-    @skip_for_no_cluster_impl()
     def test_xtrim(self, r):
         stream = 'stream'
 
