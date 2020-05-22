@@ -295,7 +295,7 @@ class TestRedisCommands(object):
         assert r.client_getname() is None
 
     @skip_if_server_version_lt('2.6.9')
-    @skip_for_no_cluster_impl()
+    @pytest.mark.skip(reason="Cluster specific override")
     def test_client_setname(self, r):
         assert r.client_setname('redis_py_test')
         assert r.client_getname() == 'redis_py_test'

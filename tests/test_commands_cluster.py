@@ -92,6 +92,11 @@ class TestRedisCommandsCluster(object):
     def test_client_getname(self, r):
         assert get_main_cluster_node_data(r.client_getname()) is None
 
+    @skip_if_server_version_lt('2.6.9')
+    def test_client_setname(self, r):
+        assert r.client_setname('redis_py_test')
+        assert get_main_cluster_node_data(r.client_getname()) == 'redis_py_test'
+
     def test_config_get(self, r):
         data = get_main_cluster_node_data(r.config_get())
         assert 'maxmemory' in data
