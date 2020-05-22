@@ -8,6 +8,11 @@ This document describes what must be done when upgrading between different versi
 
 Python3 version must now be one of 3.5, 3.6, 3.7, 3.8
 
+The following exception example has now a new more specific exception class that will be attempted to be caught and the client to resolve the cluster layout. If enough attempts has been made then SlotNotCoveredError will be raised with the same message as before. If you have catch for RedisClusterException you either remove it and let the client try to resolve the cluster layout itself, or start to catch SlotNotCoveredError. This error usually happens during failover if you run skip_full_coverage_check=True when running on AWS ElasticCache for example.
+
+	## Example exception
+	rediscluster.exceptions.RedisClusterException: Slot "6986" not covered by the cluster. "skip_full_coverage_check=True"
+
 
 1.3.x --> 2.0.0
 ---------------

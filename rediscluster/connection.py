@@ -14,7 +14,7 @@ from .nodemanager import NodeManager
 from .exceptions import (
     RedisClusterException, AskError, MovedError,
     TryAgainError, ClusterDownError, ClusterCrossSlotError,
-    MasterDownError,
+    MasterDownError, SlotNotCoveredError,
 )
 
 # 3rd party imports
@@ -329,7 +329,7 @@ class ClusterConnectionPool(ConnectionPool):
         try:
             return self.nodes.slots[slot][0]
         except KeyError as ke:
-            raise RedisClusterException('Slot "{slot}" not covered by the cluster. "skip_full_coverage_check={skip_full_coverage_check}"'.format(
+            raise SlotNotCoveredError('Slot "{slot}" not covered by the cluster. "skip_full_coverage_check={skip_full_coverage_check}"'.format(
                 slot=slot, skip_full_coverage_check=self.nodes._skip_full_coverage_check,
             ))
 

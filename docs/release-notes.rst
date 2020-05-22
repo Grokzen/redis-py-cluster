@@ -27,6 +27,7 @@ Release Notes
     * Nodemanager initiailize should now handle usernames properly (#365)
     * PubSub tests has been all been disabled
     * New feature, host_port_remap. Send in a remapping configuration to RedisCluster instance where the nodes configuration recieved from the redis cluster can be altered to allow for connection in certain circumstances. See new section in clients.rst in docs/ for usage example.
+    * When a slot is not covered by the cluster, it will not raise SlotNotCoveredError instead of the old generic RedisClusterException. The client will not attempt to rebuild the cluster layout a few times before giving up and raising that exception to the user. (#350)
 
 
 2.0.0 (Aug 12, 2019)

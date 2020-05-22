@@ -21,6 +21,7 @@ from .exceptions import (
     ClusterError,
     MovedError,
     RedisClusterException,
+    SlotNotCoveredError,
     TryAgainError,
 )
 from .pubsub import ClusterPubSub
@@ -595,6 +596,16 @@ class RedisCluster(Redis):
 
                 connection.send_command(*args)
                 return self.parse_response(connection, command, **kwargs)
+            except SlotNotCoveredError as e:
+                # In some cases during failover to a replica is happening
+                # a slot sometimes is not covered by the cluster layout and
+                # we need to attempt to refresh the cluster layout and try again
+                self.refresh_table_asap = True
+                time.sleep(0.05)
+
+                # This is the last attempt before we run out of TTL, raise the exception
+                if ttl == 1:
+                    raise e
             except (RedisClusterException, BusyLoadingError):
                 raise
             except ConnectionError:

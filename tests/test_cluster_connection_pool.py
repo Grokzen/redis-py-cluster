@@ -11,7 +11,7 @@ from rediscluster.client import RedisCluster
 from rediscluster.connection import (
     ClusterConnectionPool, ClusterBlockingConnectionPool, ClusterReadOnlyConnectionPool,
     ClusterConnection, UnixDomainSocketConnection)
-from rediscluster.exceptions import RedisClusterException
+from rediscluster.exceptions import RedisClusterException, SlotNotCoveredError
 from .conftest import (skip_if_server_version_lt, skip_for_no_cluster_impl)
 
 # 3rd party imports
@@ -204,6 +204,11 @@ class TestConnectionPool(object):
         node['port'] = 7000
         node = pool.get_master_node_by_slot(12182)
         node['port'] = 7002
+
+        pool = self.get_pool(connection_kwargs={})
+        pool.nodes.slots = {}
+        with pytest.raises(SlotNotCoveredError):
+            pool.get_master_node_by_slot(12182)
 
     def test_from_url_connection_classes(self):
         from rediscluster.client import RedisCluster
