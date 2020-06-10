@@ -70,6 +70,9 @@ class SSLClusterConnection(SSLConnection):
 
     def __init__(self, **kwargs):
         self.readonly = kwargs.pop('readonly', False)
+        # need to pop this off as the redis/connection.py SSLConnection init doesn't work with ssl passed in
+        if 'ssl' in kwargs:
+            kwargs.pop('ssl')
         kwargs['parser_class'] = ClusterParser
         super(SSLClusterConnection, self).__init__(**kwargs)
 
