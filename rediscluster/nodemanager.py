@@ -4,6 +4,7 @@
 import json
 import logging
 import random
+import socket
 
 # rediscluster imports
 from .crc import crc16
@@ -11,7 +12,6 @@ from .exceptions import RedisClusterException, RedisClusterConfigError
 
 # 3rd party imports
 from redis import Redis
-from redis._compat import unicode, long, basestring
 from redis.connection import Encoder
 from redis import ConnectionError, TimeoutError, ResponseError
 
@@ -71,12 +71,30 @@ class NodeManager(object):
             if not isinstance(item, dict):
                 raise RedisClusterConfigError("items inside host_port_remap list must be of dict type")
 
+            if len(set(item.keys()) - {'from_host', 'from_port', 'to_host', 'to_port'}) != 0:
+                raise RedisClusterConfigError("Invalid keys provided in host_port_remap rule")
+
             # If we have from_host, we must have a to_host option to allow for translation to work
             if ('from_host' in item and 'to_host' not in item) or ('from_host' not in item and 'to_host' in item):
-                raise RedisClusterConfigError("Both from_host and to_host must be present in remap item if either is defined")
+                raise RedisClusterConfigError("Both from_host and to_host must be present in host_port_remap rule if either is defined")
 
-            if ('from_port' in item and 'to_port' not in item) or  ('from_port' not in item and 'to_port' in item):
-                raise RedisClusterConfigError("Both from_port and to_port must be present in remap item")
+            if ('from_port' in item and 'to_port' not in item) or ('from_port' not in item and 'to_port' in item):
+                raise RedisClusterConfigError("Both from_port and to_port must be present in host_port_remap rule if either is defined")
+
+            try:
+                socket.inet_aton(item.get('from_host', '0.0.0.0').strip())
+                socket.inet_aton(item.get('to_host', '0.0.0.0').strip())
+            except socket.error:
+                raise RedisClusterConfigError("Both from_host and to_host in host_port_remap rule must be a valid ip address")
+            if len(item.get('from_host', '0.0.0.0').split('.')) < 4 or len(item.get('to_host', '0.0.0.0').split('.')) < 4 :
+                raise RedisClusterConfigError(
+                    "Both from_host and to_host in host_port_remap rule must must have all octets specified")
+
+            try:
+                int(item.get('from_port', 0))
+                int(item.get('to_port', 0))
+            except ValueError:
+                raise RedisClusterConfigError("Both from_port and to_port in host_port_remap rule must be integers")
 
     def keyslot(self, key):
         """
@@ -305,8 +323,29 @@ class NodeManager(object):
             if 'from_port' in remap_rule and 'to_port' in remap_rule:
                 if remap_rule['from_port'] == node_obj[1]:
                     node_obj[1] = remap_rule['to_port']
+                # At this point remapping has occurred, so no further rules should be processed
+                break
 
         return node_obj
+
+    def _remap_rule_applies(self, remap_rule, node_obj):
+        # Double check to make sure that the relevant host and/or port fields are present
+        if not (('from_host' in remap_rule and 'to_host' in remap_rule) or ('from_port' in remap_rule and 'to_port' in remap_rule)):
+            return False
+        if 'from_host' in remap_rule and not self._ips_equal(remap_rule['from_host'], node_obj[0]):
+            return False
+        if 'from_port' in remap_rule and remap_rule['from_port'] != node_obj[1]:
+            return False
+        # If the previous conditions are not met then this is a valid match.
+        return True
+
+    def _ips_equal(self, ip1, ip2):
+        split_ip1 = ip1.strip().split(".")
+        split_ip2 = ip2.strip().split(".")
+        for i, octet in enumerate(split_ip1):
+            if int(octet) != int(split_ip2[i]):
+                return False
+        return True
 
     def increment_reinitialize_counter(self, ct=1, count=1):
         for i in range(min(ct, self.reinitialize_steps)):

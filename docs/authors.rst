@@ -27,3 +27,4 @@ Authors who contributed code or testing:
  - astrohsy - https://github.com/astrohsy
  - Artur Stawiarski - https://github.com/astawiarski
  - Matthew Anderson - https://github.com/mc3ander
+ - Appurv Jain - https://github.com/appurvj
