@@ -24,7 +24,7 @@ See repo `README` for detailed instructions how to setup and run.
 Vagrant
 -------
 
-A fully functional vagrant box can be found at https://github.com/72squared/vagrant-redis-cluste
+A fully functional vagrant box can be found at https://github.com/72squared/vagrant-redis-cluster
 
 See repo `README` for detailed instructions how to setup and run.
 
