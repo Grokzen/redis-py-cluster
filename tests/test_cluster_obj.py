@@ -163,9 +163,19 @@ def test_blocked_commands(r):
     These commands should be blocked and raise RedisClusterException
     """
     blocked_commands = [
-        'SENTINEL GET-MASTER-ADDR-BY-NAME', 'SENTINEL MASTER', 'SENTINEL MASTERS',
-        'SENTINEL MONITOR', 'SENTINEL REMOVE', 'SENTINEL SENTINELS', 'SENTINEL SET',
-        'SENTINEL SLAVES', 'SHUTDOWN', 'SLAVEOF', 'SCRIPT KILL', 'MOVE', 'BITOP',
+        'BITOP',
+        'MOVE',
+        'SCRIPT KILL',
+        'SENTINEL GET-MASTER-ADDR-BY-NAME',
+        'SENTINEL MASTER',
+        'SENTINEL MASTERS',
+        'SENTINEL MONITOR',
+        'SENTINEL REMOVE',
+        'SENTINEL SENTINELS',
+        'SENTINEL SET',
+        'SENTINEL SLAVES',
+        'SHUTDOWN',
+        'SLAVEOF',
     ]
 
     for command in blocked_commands:

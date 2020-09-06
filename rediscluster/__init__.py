@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
+import logging
 import sys
 
 # rediscluster imports
@@ -51,3 +52,6 @@ __all__ = [
     RedisClusterException,
     TryAgainError,
 ]
+
+# Set default logging handler to avoid "No handler found" warnings.
+logging.getLogger(__name__).addHandler(logging.NullHandler())

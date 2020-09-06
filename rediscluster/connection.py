@@ -2,6 +2,7 @@
 
 # python std lib
 from __future__ import unicode_literals
+import logging
 import os
 import random
 import threading
@@ -23,6 +24,8 @@ from redis.client import dict_merge
 from redis.connection import ConnectionPool, Connection, DefaultParser, SSLConnection, UnixDomainSocketConnection
 from redis.exceptions import ConnectionError
 
+log = logging.getLogger(__name__)
+
 
 class ClusterParser(DefaultParser):
     """
@@ -42,6 +45,9 @@ class ClusterConnection(Connection):
     "Manages TCP communication to and from a Redis server"
 
     def __init__(self, *args, **kwargs):
+        log.info("Createing new ClusterConnection instance")
+        log.debug(str(args) + " : " + str(kwargs))
+
         self.readonly = kwargs.pop('readonly', False)
         kwargs['parser_class'] = ClusterParser
         super(ClusterConnection, self).__init__(*args, **kwargs)
@@ -54,6 +60,9 @@ class ClusterConnection(Connection):
         super(ClusterConnection, self).on_connect()
 
         if self.readonly:
+            log.debug("Sending READONLY command to server to configure connection as readonly")
+            log.debug(str(self))
+
             self.send_command('READONLY')
 
             if nativestr(self.read_response()) != 'OK':
@@ -68,7 +77,10 @@ class SSLClusterConnection(SSLConnection):
         client = RedisCluster(connection_pool=pool)
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
+        log.info("Createing new SSLClusterConnection instance")
+        log.debug(str(args) + " : " + str(kwargs))
+
         self.readonly = kwargs.pop('readonly', False)
         # need to pop this off as the redis/connection.py SSLConnection init doesn't work with ssl passed in
         if 'ssl' in kwargs:
@@ -84,6 +96,8 @@ class SSLClusterConnection(SSLConnection):
         super(SSLClusterConnection, self).on_connect()
 
         if self.readonly:
+            log.debug("Sending READONLY command to server to configure connection as readonly")
+
             self.send_command('READONLY')
 
             if nativestr(self.read_response()) != 'OK':
@@ -109,8 +123,11 @@ class ClusterConnectionPool(ConnectionPool):
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around a lot.
         """
+        log.info("Creating new ClusterConnectionPool instance")
+
         if connection_class is None:
             connection_class = ClusterConnection
+
         super(ClusterConnectionPool, self).__init__(connection_class=connection_class, max_connections=max_connections)
 
         # Special case to make from_url method compliant with cluster setting.
@@ -153,7 +170,10 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Return a string with all unique ip:port combinations that this pool is connected to.
         """
-        nodes = [{'host': i['host'], 'port': i['port']} for i in self.nodes.startup_nodes]
+        nodes = [
+            {'host': i['host'], 'port': i['port']}
+            for i in self.nodes.startup_nodes
+        ]
 
         return "{0}<{1}>".format(
             type(self).__name__,
@@ -164,6 +184,8 @@ class ClusterConnectionPool(ConnectionPool):
         """
         Resets the connection pool back to a clean state.
         """
+        log.debug("Resetting ConnectionPool")
+
         self.pid = os.getpid()
         self._created_connections = 0
         self._created_connections_per_node = {}  # Dict(Node, Int)
