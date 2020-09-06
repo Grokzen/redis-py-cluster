@@ -196,7 +196,7 @@ class NodeManager(object):
             host=host,
             port=port,
             decode_responses=decode_responses,
-            **connection_kwargs,
+            **connection_kwargs
         )
 
     def initialize(self):
