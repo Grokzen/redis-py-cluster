@@ -1,5 +1,5 @@
 Setup client logging
-####################
+====================
 
 To setup logging for debugging inside the client during development you can add this as an example to your own code to enable `DEBUG` logging when using the library.
 

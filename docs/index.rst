@@ -142,6 +142,7 @@ The Usage Guide
    pipelines
    pubsub
    readonly-mode
+   logging
 
 
 .. _setup_and_performance:
