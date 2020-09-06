@@ -107,14 +107,21 @@ This code does NOT wrap `MULTI/EXEC` around the commands when packed
 .. code-block:: python
 
     >>> from rediscluster import RedisCluster as s
+
     >>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
+
     >>> # Simulate that a slot is migrating to another node
-    >>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}
+    >>> r.connection_pool.nodes.slots[14226] = [{
+    >>>     'host': '127.0.0.1',
+    >>>     'server_type': 'master',
+    >>>     'port': 7001,
+    >>>     'name': '127.0.0.1:7001',
+    >>> }]
+
     >>> p = r.pipeline()
-    >>> p.command_stack = []
-    >>> p.command_stack.append((["SET", "ert", "tre"], {}))
-    >>> p.command_stack.append((["SET", "wer", "rew"], {}))
-    >>> p.execute()
+    >>> p.set('ert', 'tre')
+    >>> p.set('wer', 'rew')
+    >>> print(p.execute())
 
     ClusterConnection<host=127.0.0.1,port=7001>
     [True, ResponseError('MOVED 14226 127.0.0.1:7002',)]
@@ -126,14 +133,22 @@ This code DO wrap MULTI/EXEC around the commands when packed
 .. code-block:: python
 
     >>> from rediscluster import RedisCluster as s
+
     >>> r = s(startup_nodes=[{"host": "127.0.0.1", "port": "7002"}])
+
     >>> # Simulate that a slot is migrating to another node
-    >>> r.connection_pool.nodes.slots[14226] = {'host': '127.0.0.1', 'server_type': 'master', 'port': 7001, 'name': '127.0.0.1:7001'}
+    >>> r.connection_pool.nodes.slots[14226] = [{
+    >>>     'host': '127.0.0.1',
+    >>>     'server_type': 'master',
+    >>>     'port': 7001,
+    >>>     'name': '127.0.0.1:7001',
+    >>> }]
+
     >>> p = r.pipeline()
-    >>> p.command_stack = []
-    >>> p.command_stack.append((["SET", "ert", "tre"], {}))
-    >>> p.command_stack.append((["SET", "wer", "rew"], {}))
-    >>> p.execute()
+    >>> p.set('ert', 'tre')
+    >>> p.set('wer', 'rew')
+    >>> print(p.execute())
+
     ClusterConnection<host=127.0.0.1,port=7001>
     [True, False]
 
