@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # python std lib
+import json
+import logging
 import random
 
 # rediscluster imports
@@ -12,6 +14,8 @@ from redis import Redis
 from redis._compat import unicode, long, basestring
 from redis.connection import Encoder
 from redis import ConnectionError, TimeoutError, ResponseError
+
+log = logging.getLogger(__name__)
 
 
 class NodeManager(object):
@@ -30,6 +34,8 @@ class NodeManager(object):
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around alot.
         """
+        log.debug("Creating new NodeManager instance")
+
         self.connection_kwargs = connection_kwargs
         self.nodes = {}
         self.slots = {}
@@ -162,13 +168,27 @@ class NodeManager(object):
             'port',
             'decode_responses',
         )
-        connection_kwargs = {k: v for k, v in self.connection_kwargs.items() if k in set(allowed_keys) - set(disabled_keys)}
-        return Redis(host=host, port=port, decode_responses=decode_responses, **connection_kwargs)
+        connection_kwargs = {
+            k: v
+            for k, v in self.connection_kwargs.items()
+            if k in set(allowed_keys) - set(disabled_keys)
+        }
+
+        return Redis(
+            host=host,
+            port=port,
+            decode_responses=decode_responses,
+            **connection_kwargs,
+        )
 
     def initialize(self):
         """
         Init the slots cache by asking all startup nodes what the current cluster configuration is
         """
+        log.debug("Running initialize on NodeManager")
+        log.debug("Original startup nodes configuration")
+        log.debug(json.dumps(self.orig_startup_nodes, indent=2))
+
         nodes_cache = {}
         tmp_slots = {}
 
@@ -268,6 +288,9 @@ class NodeManager(object):
         self.nodes = nodes_cache
         self.reinitialize_counter = 0
 
+        log.debug("NodeManager initialize done : Nodes")
+        log.debug(json.dumps(self.nodes, indent=2))
+
     def remap_internal_node_object(self, node_obj):
         if not self.host_port_remap:
             # No remapping rule set, return object unmodified
@@ -276,20 +299,18 @@ class NodeManager(object):
         for remap_rule in self.host_port_remap:
             if 'from_host' in remap_rule and 'to_host' in remap_rule:
                 if remap_rule['from_host'] in node_obj[0]:
-                    # print('remapping host', node_obj[0], remap_rule['to_host'])
                     node_obj[0] = remap_rule['to_host']
 
             ## The port value is always an integer
             if 'from_port' in remap_rule and 'to_port' in remap_rule:
                 if remap_rule['from_port'] == node_obj[1]:
-                    # print('remapping port', node_obj[1], remap_rule['to_port'])
                     node_obj[1] = remap_rule['to_port']
 
         return node_obj
 
-    def increment_reinitialize_counter(self, ct=1):
+    def increment_reinitialize_counter(self, ct=1, count=1):
         for i in range(min(ct, self.reinitialize_steps)):
-            self.reinitialize_counter += 1
+            self.reinitialize_counter += count
             if self.reinitialize_counter % self.reinitialize_steps == 0:
                 self.initialize()
 
@@ -303,7 +324,11 @@ class NodeManager(object):
 
         def node_require_full_coverage(node):
             try:
-                r_node = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
+                r_node = self.get_redis_link(
+                    host=node["host"],
+                    port=node["port"],
+                    decode_responses=True,
+                )
                 return "yes" in r_node.config_get("cluster-require-full-coverage").values()
             except ConnectionError:
                 return False

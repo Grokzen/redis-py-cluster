@@ -99,9 +99,9 @@ def test_init_slots_cache_not_all_slots_not_require_full_coverage(s):
             if args == ('cluster', 'slots'):
                 # Missing slot 5460
                 return [
-                    [0, 5459, [b'127.0.0.1', 7000], [b'127.0.0.1', 7003]],
-                    [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.1', 7004]],
-                    [10923, 16383, [b'127.0.0.1', 7002], [b'127.0.0.1', 7005]],
+                    [0, 5459, ['127.0.0.1', 7000], ['127.0.0.1', 7003]],
+                    [5461, 10922, ['127.0.0.1', 7001], ['127.0.0.1', 7004]],
+                    [10923, 16383, ['127.0.0.1', 7002], ['127.0.0.1', 7005]],
                 ]
             elif args == ('CONFIG GET', 'cluster-require-full-coverage'):
                 return {'cluster-require-full-coverage': 'no'}
@@ -125,9 +125,9 @@ def test_init_slots_cache(s):
     Test that slots cache can in initialized and all slots are covered
     """
     good_slots_resp = [
-        [0, 5460, [b'127.0.0.1', 7000], [b'127.0.0.2', 7003]],
-        [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.2', 7004]],
-        [10923, 16383, [b'127.0.0.1', 7002], [b'127.0.0.2', 7005]],
+        [0, 5460, ['127.0.0.1', 7000], ['127.0.0.2', 7003]],
+        [5461, 10922, ['127.0.0.1', 7001], ['127.0.0.2', 7004]],
+        [10923, 16383, ['127.0.0.1', 7002], ['127.0.0.2', 7005]],
     ]
 
     with patch.object(Redis, 'execute_command') as execute_command_mock:
@@ -142,7 +142,7 @@ def test_init_slots_cache(s):
         s.connection_pool.nodes.initialize()
         assert len(s.connection_pool.nodes.slots) == NodeManager.RedisClusterHashSlots
         for slot_info in good_slots_resp:
-            all_hosts = [b'127.0.0.1', b'127.0.0.2']
+            all_hosts = ['127.0.0.1', '127.0.0.2']
             all_ports = [7000, 7001, 7002, 7003, 7004, 7005]
             slot_start = slot_info[0]
             slot_end = slot_info[1]
@@ -181,7 +181,6 @@ def test_init_slots_cache_slots_collision():
     In this test both nodes will say that the first slots block should be bound to different
      servers.
     """
-
     n = NodeManager(startup_nodes=[
         {"host": "127.0.0.1", "port": 7000},
         {"host": "127.0.0.1", "port": 7001},
@@ -192,17 +191,46 @@ def test_init_slots_cache_slots_collision():
         Helper function to return custom slots cache data from different redis nodes
         """
         if port == 7000:
-            result = [[0, 5460, [b'127.0.0.1', 7000], [b'127.0.0.1', 7003]],
-                      [5461, 10922, [b'127.0.0.1', 7001], [b'127.0.0.1', 7004]]]
+            result = [
+                [
+                    0,
+                    5460,
+                    ['127.0.0.1', 7000],
+                    ['127.0.0.1', 7003],
+                ],
+                [
+                    5461,
+                    10922,
+                    ['127.0.0.1', 7001],
+                    ['127.0.0.1', 7004],
+                ],
+            ]
 
         elif port == 7001:
-            result = [[0, 5460, [b'127.0.0.1', 7001], [b'127.0.0.1', 7003]],
-                      [5461, 10922, [b'127.0.0.1', 7000], [b'127.0.0.1', 7004]]]
-
+            result = [
+                [
+                    0,
+                    5460,
+                    ['127.0.0.1', 7001],
+                    ['127.0.0.1', 7003],
+                ],
+                [
+                    5461,
+                    10922,
+                    ['127.0.0.1', 7000],
+                    ['127.0.0.1', 7004],
+                ],
+            ]
         else:
             result = []
 
-        r = RedisCluster(host=host, port=port, decode_responses=True)
+        r = RedisCluster(
+            host=host,
+            port=port,
+            decode_responses=True,
+            skip_full_coverage_check=False,
+        )
+
         orig_execute_command = r.execute_command
 
         def execute_command(*args, **kwargs):
@@ -240,10 +268,18 @@ def test_all_nodes_masters():
     Set a list of nodes with random masters/slaves config and it shold be possible
     to itterate over all of them.
     """
-    n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}, {"host": "127.0.0.1", "port": 7001}])
+    n = NodeManager(
+        startup_nodes=[
+            {"host": "127.0.0.1", "port": 7000},
+            {"host": "127.0.0.1", "port": 7001}
+        ]
+    )
     n.initialize()
 
-    nodes = [node for node in n.nodes.values() if node['server_type'] == 'master']
+    nodes = [
+        node for node in n.nodes.values()
+        if node['server_type'] == 'master'
+    ]
 
     for node in n.all_masters():
         assert node in nodes
@@ -293,7 +329,6 @@ def test_cluster_slots_error():
             assert "ERROR sending 'cluster slots' command" in e.args[0]
 
 
-
 def test_cluster_slots_error_expected_responseerror():
     """
     Check that exception is not raised if initialize can't execute
@@ -303,11 +338,15 @@ def test_cluster_slots_error_expected_responseerror():
         execute_command_mock.side_effect = ResponseError("MASTERDOWN")
 
         with pytest.raises(RedisClusterException):
-            n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+            n = NodeManager(startup_nodes=[
+                {"host": "127.0.0.1", "port": 7000},
+            ])
             n.initialize()
 
         try:
-            n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+            n = NodeManager(startup_nodes=[
+                {"host": "127.0.0.1", "port": 7000},
+            ])
             n.initialize()
         except RedisClusterException as e:
             assert "Redis Cluster cannot be connected" in e.args[0]
@@ -379,7 +418,10 @@ def test_cluster_one_instance():
 
 
 def test_initialize_follow_cluster():
-    n = NodeManager(nodemanager_follow_cluster=True, startup_nodes=[{'host': '127.0.0.1', 'port': 7000}])
+    n = NodeManager(
+        nodemanager_follow_cluster=True,
+        startup_nodes=[{'host': '127.0.0.1', 'port': 7000}]
+    )
     n.orig_startup_nodes = None
     n.initialize()
 
