@@ -12,6 +12,6 @@ To setup logging for debugging inside the client during development you can add 
 	logging.basicConfig()
 	logger = logging.getLogger('rediscluster')
 	logger.setLevel(logging.DEBUG)
-	logger.propergate = True
+	logger.propagate = True
 
 Note that this logging is not reccommended to be used inside production as it can cause a performance drain and a slowdown of your client.
