@@ -315,13 +315,11 @@ class NodeManager(object):
             return node_obj
 
         for remap_rule in self.host_port_remap:
-            if 'from_host' in remap_rule and 'to_host' in remap_rule:
-                if remap_rule['from_host'] in node_obj[0]:
+            if self._remap_rule_applies(remap_rule, node_obj):
+                # We have found a valid match and can proceed with the remapping
+                if 'to_host' in remap_rule:
                     node_obj[0] = remap_rule['to_host']
-
-            ## The port value is always an integer
-            if 'from_port' in remap_rule and 'to_port' in remap_rule:
-                if remap_rule['from_port'] == node_obj[1]:
+                if 'to_port' in remap_rule:
                     node_obj[1] = remap_rule['to_port']
                 # At this point remapping has occurred, so no further rules should be processed
                 break
