@@ -29,7 +29,7 @@ or from source code
 
 
 Basic usage example
--------------
+-------------------
 
 Small sample script that shows how to get started with RedisCluster. It can also be found in the file `exmaples/basic.py`.
 
@@ -135,6 +135,7 @@ The Usage Guide
 .. toctree::
    :maxdepth: 2
    :glob:
+   :caption: Usage guide
 
    client
    commands
@@ -150,6 +151,7 @@ The Usage Guide
 .. toctree::
    :maxdepth: 2
    :glob:
+   :caption: Setup and performance
 
    cluster-setup
    benchmarks
@@ -157,16 +159,18 @@ The Usage Guide
 
 
 The Community Guide
---------------------
+-------------------
 
-.. _community-guide:
+.. _community_guide:
 
 .. toctree::
     :maxdepth: 2
     :glob:
+    :caption: Community Guide
 
     project-status
     testing
+    development
     upgrading
     release-notes
     authors

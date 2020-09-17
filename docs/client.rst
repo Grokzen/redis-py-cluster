@@ -1,14 +1,14 @@
 RedisCluster client configuration options
 =========================================
 
-This chapter is supposed to describe all the configuration options and flags that can be sent into the RedisCluster class instance. 
+This chapter will describe all the configuration options and flags that can be sent into the RedisCluster class instance. 
 
-Each option will be described in a seperate topic to describe how it works and what it does. This will only describe any options that does anything else when compared to redis-py, or new options that is cluster specific.
+Each option will be described in a seperate topic to describe how it works and what it does. This will only describe any options that does anything else when compared to the options that redis-py already provides, or new options that is cluster specific. To find out what options redis-py provides please consult the documentation and/or git repo for that project.
 
 
 
-host_port_remap
----------------
+Host port remapping
+-------------------
 
 This option exists to enable the client to fix a problem where the redis-server internally tracks a different ip:port compared to what your clients would like to connect to.
 
