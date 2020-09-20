@@ -17,17 +17,37 @@ Cluster
 
 https://redis.io/commands#cluster
 
-- **[NYV]** - CLUSTER ADDSLOTS slot [slot ...]
+- CLUSTER ADDSLOTS slot [slot ...]
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
 - **[NYV]** - CLUSTER BUMPEPOCH
-- **[NYV]** - CLUSTER COUNT_FAILURE-REPORTS node-id
+- CLUSTER COUNT_FAILURE-REPORTS node-id
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
 - CLUSTER COUNTKEYSINSLOT slot
 
  .. note::
 
     Client will route command to node that owns the slot
 
-- **[NYV]** - CLUSTER DELSLOTS slot [slot ...]
-- **[NYV]** - CLUSTER FAILOVER [FORCE|TAKEOVER]
+- CLUSTER DELSLOTS slot [slot ...]
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
+- CLUSTER FAILOVER [FORCE|TAKEOVER]
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
 - **[NYV]** - CLUSTER FLUSHSLOTS
 - **[NYV]** - CLUSTER FORGET node-id
 - CLUSTER GETKEYSINSLOT slot count
@@ -40,10 +60,22 @@ https://redis.io/commands#cluster
 
  .. note::
  
-    Command is sent to all nodees in the cluster and result is merged into a single dict with node as key.
+    Command is sent to all nodes in the cluster.
 
-- **[NYV]** - CLUSTER KEYSLOT key
-- **[NYV]** - CLUSTER MEET ip port
+    Result is merged into a single dict with node as key.
+
+- CLUSTER KEYSLOT key
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
+- CLUSTER MEET ip port
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
 - **[NYV]** - CLUSTER MYID
 - CLUSTER NODES
 
@@ -51,12 +83,42 @@ https://redis.io/commands#cluster
 
     Command will be sent to random node in the cluster as the data should be the same on all nodes in a stable/working cluster
 
-- **[NYV]** - CLUSTER REPLICATE node-id
-- **[NYV]** - CLUSTER RESET [HARD|SOFT]
-- **[NYV]** - CLUSTER SAVECONFIG
-- **[NYV]** - CLUSTER SET-CONFIG-EPOCH config-epoch
-- **[NYV]** - CLUSTER SETSLOT slot IMPORTING|MIGRATING|STABLE|NODE [node-id]
-- **[NYV]** - CLUSTER SLAVES node-id
+- CLUSTER REPLICATE node-id
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
+- CLUSTER RESET [HARD|SOFT]
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
+- CLUSTER SAVECONFIG
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
+- CLUSTER SET-CONFIG-EPOCH config-epoch
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
+- CLUSTER SETSLOT slot IMPORTING|MIGRATING|STABLE|NODE [node-id]
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
+- CLUSTER SLAVES node-id
+
+ .. note::
+ 
+     Client has custom implementation where the user has to route the command to the correct node manually.
+
 - **[NYV]** - CLUSTER REPLICAS node-id
 - CLUSTER SLOTS
 
@@ -75,19 +137,61 @@ https://redis.io/commands#connection
 
 - **[NYV]** - AUTH [username] password
 - **[NYV]** - CLIENT CACHING YES|NO
-- **[NYV]** - CLIENT ID
-- **[NYV]** - CLIENT KILL [ip:port] [ID client-id] [TYPE normal|master|slave|pubsub] [USER username] [ADDR ip:port] [SKIPME yes/no]
-- **[NYV]** - CLIENT LIST [TYPE normal|master|replica|pubsub]
-- **[NYV]** - CLIENT GETNAME
+- CLIENT ID
+
+ .. warning::
+ 
+     Command is sent to all nodes in the cluster.
+ 
+     Result from each node will be aggregated into a dict where the key will be the internal node name.
+
+- CLIENT KILL [ip:port] [ID client-id] [TYPE normal|master|slave|pubsub] [USER username] [ADDR ip:port] [SKIPME yes/no]
+
+ .. warning::
+ 
+     Command is sent to all nodes in the cluster.
+ 
+     Result from each node will be aggregated into a dict where the key will be the internal node name.
+
+- CLIENT LIST [TYPE normal|master|replica|pubsub]
+
+ .. warning::
+ 
+     Command is sent to all nodes in the cluster.
+ 
+     Result from each node will be aggregated into a dict where the key will be the internal node name.
+
+- CLIENT GETNAME
+
+ .. warning::
+ 
+     Command is sent to all nodes in the cluster.
+ 
+     Result from each node will be aggregated into a dict where the key will be the internal node name.
+
 - **[NYV]** - CLIENT GETREDIR
 - **[NYV]** - CLIENT PAUSE timeout
 - **[NYV]** - CLIENT REPLY ON|OFF|SKIP
 - **[NYV]** - CLIENT SETNAME connection-name
 - **[NYV]** - CLIENT TRACKING ON|OFF [REDIRECT client-id] [PREFIX prefix [PREFIX prefix ...]] [BCAST] [OPTIN] [OPTOUT] [NOLOOP]
 - **[NYV]** - CLIENT UNBLOCK client-id [TIMEOUT|ERROR]
-- **[NYV]** - ECHO message
+- ECHO message
+
+ .. warning::
+ 
+     Command is sent to all nodes in the cluster.
+ 
+     Result from each node will be aggregated into a dict where the key will be the internal node name.
+
 - **[NYV]** - HELLO protover [AUTH username password] [SETNAME clientname]
-- **[NYV]** - PING [message]
+- PING [message]
+
+ .. warning::
+ 
+     Command is sent to all nodes in the cluster.
+ 
+     Result from each node will be aggregated into a dict where the key will be the internal node name.
+
 - **[NYV]** - QUIT
 - **[NYV]** - SELECT index
 
@@ -110,21 +214,27 @@ Hashes
 
 https://redis.io/commands#hash
 
-- **[NYV]** - HDEL key field [field ...]
-- **[NYV]** - HEXISTS key field
-- **[NYV]** - HGET key field
-- **[NYV]** - HGETALL key
-- **[NYV]** - HINCRBY key field increment
-- **[NYV]** - HINCRBYFLOAT key field increment
-- **[NYV]** - HKEYS key
-- **[NYV]** - HLEN key
-- **[NYV]** - HMGET key field [field ...]
-- **[NYV]** - HMSET key field value [field value ...]
-- **[NYV]** - HSET key field value [field value ...]
-- **[NYV]** - HSETNX key field value
-- **[NYV]** - HSTRLEN key field
-- **[NYV]** - HVALS key
-- **[NYV]** - HSCAN key cursor [MATCH pattern] [COUNT count]
+- HDEL key field [field ...]
+- HEXISTS key field
+- HGET key field
+- HGETALL key
+- HINCRBY key field increment
+- HINCRBYFLOAT key field increment
+- HKEYS key
+- HLEN key
+- HMGET key field [field ...]
+- HMSET key field value [field value ...]
+- HSET key field value [field value ...]
+- HSETNX key field value
+- HSTRLEN key field
+- HVALS key
+- HSCAN key cursor [MATCH pattern] [COUNT count]
+
+ .. note::
+
+     HSCAN command has currently a buggy client side implementation.
+
+     It is not recommended to use any *SCAN methods.
 
 
 Hyperloglog
@@ -142,30 +252,83 @@ Keys/Generic
 
 https://redis.io/commands#generic
 
-- **[NYV]** - DEL key [key ...]
-- **[NYV]** - DUMP key
+- DEL key [key ...]
+
+ .. note::
+
+    Method has a custom client side implementation.
+
+    Command is no longer atomic.
+
+    DEL command is sent for each individual key to redis-server.
+
+- DUMP key
 - **[NYV]** - EXISTS key [key ...]
-- **[NYV]** - EXPIRE key seconds
-- **[NYV]** - EXPIREAT key timestamp
+- EXPIRE key seconds
+- EXPIREAT key timestamp
 - **[NYV]** - KEYS pattern
 - **[NYV]** - MIGRATE host port key|"" destination-db timeout [COPY] [REPLACE] [AUTH password] [AUTH2 username password] [KEYS key [key ...]]
-- **[NYV]** - MOVE key db
-- **[NYV]** - OBJECT subcommand [arguments [arguments ...]]
-- **[NYV]** - PERSIST key
-- **[NYV]** - PEXPIRE key milliseconds
-- **[NYV]** - PEXPIREAT key milliseconds-timestamp
-- **[NYV]** - PTTL key
-- **[NYV]** - RANDOMKEY
-- **[NYV]** - RENAME key newkey
-- **[NYV]** - RENAMENX key newkey
+- MOVE key db
+
+ .. note::
+ 
+     Concept of databases do not exists in a cluter
+
+- OBJECT subcommand [arguments [arguments ...]]
+
+ .. note::
+
+     Command is blocked from executing in the client.
+
+- PERSIST key
+- PEXPIRE key milliseconds
+- PEXPIREAT key milliseconds-timestamp
+- PTTL key
+- RANDOMKEY
+- RENAME key newkey
+
+ .. note::
+
+    Method has a custom client side implementation.
+
+    Command is no longer atomic.
+
+    If the slots is the same RENAME will be sent to that shard.
+    If the source and destination keys have different slots then a dump (old key/slot) -> restore (new key/slot) -> delete (old key) will be performed.
+
+- RENAMENX key newkey
+
+ .. note::
+
+    Method has a custom client side implementation.
+
+    Command is no longer atomic.
+
+    Method will check if key exists and if it does it uses the custom RENAME implementation mentioned above.
+
 - **[NYV]** - RESTORE key ttl serialized-value [REPLACE] [ABSTTL] [IDLETIME seconds] [FREQ frequency]
-- **[NYV]** - SORT key [BY pattern] [LIMIT offset count] [GET pattern [GET pattern ...]] [ASC|DESC] [ALPHA] [STORE destination]
+- SORT key [BY pattern] [LIMIT offset count] [GET pattern [GET pattern ...]] [ASC|DESC] [ALPHA] [STORE destination]
+
+ .. note::
+
+     SORT command will only work on the most basic sorting of lists.
+
+     Any additional arguments or more complex sorts can't get guaranteed to work if working with cross slots.
+
+     Command works if all used keys is in same slot.
+
 - **[NYV]** - TOUCH key [key ...]
-- **[NYV]** - TTL key
-- **[NYV]** - TYPE key
+- TTL key
+- TYPE key
 - **[NYV]** - UNLINK key [key ...]
 - **[NYV]** - WAIT numreplicas timeout
 - **[NYV]** - SCAN cursor [MATCH pattern] [COUNT count] [TYPE type]
+
+ .. note::
+
+     SCAN command has currently a buggy client side implementation.
+
+     It is not recommended to use any *SCAN methods.
 
 
 Lists
@@ -193,18 +356,25 @@ https://redis.io/commands#list
 - **[NYV]** - RPUSHX key element [element ...]
 
 
-
 PubSub
 ------
 
 https://redis.io/commands#pubsub
 
-- **[NYV]** - PSUBSCRIBE pattern [pattern ...]
-- **[NYV]** - PUBSUB subcommand [argument [argument ...]]
-- **[NYV]** - PUBLISH channel message
-- **[NYV]** - PUNSUBSCRIBE [pattern [pattern ...]]
-- **[NYV]** - SUBSCRIBE channel [channel ...]
-- **[NYV]** - UNSUBSCRIBE [channel [channel ...]]
+ .. warning::
+ 
+     All pubsub commands is possible to execute and be routed to correct node when used.
+ 
+     But in general pubsub solution should NOT be used inside a clustered environment unless you really know what you are doing.
+ 
+     Please read the documentation section about pubsub to get more information about why.
+
+- PSUBSCRIBE pattern [pattern ...]
+- PUBSUB subcommand [argument [argument ...]]
+- PUBLISH channel message
+- PUNSUBSCRIBE [pattern [pattern ...]]
+- SUBSCRIBE channel [channel ...]
+- UNSUBSCRIBE [channel [channel ...]]
 
 
 Scripting
@@ -212,12 +382,43 @@ Scripting
 
 https://redis.io/commands#scripting
 
--- **[NYV]** - EVAL script numkeys key [key ...] arg [arg ...]
--- **[NYV]** - SCRIPT DEBUG YES|SYNC|NO
--- **[NYV]** - SCRIPT EXISTS sha1 [sha1 ...]
--- **[NYV]** - SCRIPT FLUSH
--- **[NYV]** - SCRIPT KILL
--- **[NYV]** - SCRIPT LOAD script
+- EVAL script numkeys key [key ...] arg [arg ...]
+
+ .. warning::
+
+    Method has a custom client side implementation.
+
+    Command will only work if all keys point to the same slot. Otherwise a CROSSSLOT error will be raised.
+
+- SCRIPT DEBUG YES|SYNC|NO
+
+ .. warning::
+
+    Command will only be sent to all master nodes in the cluster and result will be aggregated into a dict where the key will be the internal node name.
+
+- SCRIPT EXISTS sha1 [sha1 ...]
+
+ .. warning::
+
+    Command will only be sent to all master nodes in the cluster and result will be aggregated into a dict where the key will be the internal node name.
+
+- SCRIPT FLUSH
+
+ .. warning::
+
+    Command will only be sent to all master nodes in the cluster and result will be aggregated into a dict where the key will be the internal node name.
+
+- SCRIPT KILL
+
+ .. warning::
+
+    Command has been blocked from executing in a cluster environment
+
+- SCRIPT LOAD script
+
+ .. warning::
+
+    Command will only be sent to all master nodes in the cluster and result will be aggregated into a dict where the key will be the internal node name.
 
 
 Server
@@ -297,8 +498,22 @@ https://redis.io/commands#server
 
     Command has been blocked from executing in a cluster environment
 
-- **[NYV]** - BGREWRITEAOF
-- **[NYV]** - BGSAVE [SCHEDULE]
+- BGREWRITEAOF
+
+ .. warning::
+
+    Command is sent to all nodes in the cluster.
+
+    Result from each node will be aggregated into a dict where the key will be the internal node name.
+
+- BGSAVE [SCHEDULE]
+
+ .. warning::
+ 
+     Command is sent to all nodes in the cluster.
+ 
+     Result from each node will be aggregated into a dict where the key will be the internal node name.
+
 - **[NYV]** - COMMAND
 - **[NYV]** - COMMAND COUNT
 - **[NYV]** - COMMAND GETKEYS
@@ -335,6 +550,13 @@ https://redis.io/commands#server
 - **[NYV]** - SYNC
 - **[NYV]** - PSYNC replicationid offset
 - **[NYV]** - TIME
+
+ .. note::
+ 
+    Command is sent to all nodes in the cluster.
+
+    Result is merged into a single dict with node as key.
+
 - **[NYV]** - LATENCY DOCTOR
 - **[NYV]** - LATENCY GRAPH event
 - **[NYV]** - LATENCY HISTORY event
@@ -425,25 +647,30 @@ https://redis.io/commands#string
 - **[NYV]** - APPEND key value
 - **[NYV]** - BITCOUNT key [start end]
 - **[NYV]** - BITFIELD key [GET type offset] [SET type offset value] [INCRBY type offset increment] [OVERFLOW WRAP|SAT|FAIL]
-- **[NYV]** - BITOP operation destkey key [key ...]
-- **[NYV]** - BITPOS key bit [start] [end]
-- **[NYV]** - DECR key
-- **[NYV]** - DECRBY key decrement
-- **[NYV]** - GET key
-- **[NYV]** - GETBIT key offset
-- **[NYV]** - GETRANGE key start end
-- **[NYV]** - GETSET key value
-- **[NYV]** - INCR key
-- **[NYV]** - INCRBY key increment
-- **[NYV]** - INCRBYFLOAT key increment
+- BITOP operation destkey key [key ...]
+
+ .. note::
+ 
+     Command only works if keys is in same slot. No custom client implementation exists.
+
+- BITPOS key bit [start] [end]
+- DECR key
+- DECRBY key decrement
+- GET key
+- GETBIT key offset
+- GETRANGE key start end
+- GETSET key value
+- INCR key
+- INCRBY key increment
+- INCRBYFLOAT key increment
 - **[NYV]** - MGET key [key ...]
 - **[NYV]** - MSET key value [key value ...]
 - **[NYV]** - MSETNX key value [key value ...]
 - **[NYV]** - PSETEX key milliseconds value
-- **[NYV]** - SET key value [EX seconds|PX milliseconds|KEEPTTL] [NX|XX]
-- **[NYV]** - SETBIT key offset value
-- **[NYV]** - SETEX key seconds value
-- **[NYV]** - SETNX key value
+- SET key value [EX seconds|PX milliseconds|KEEPTTL] [NX|XX]
+- SETBIT key offset value
+- SETEX key seconds value
+- SETNX key value
 - **[NYV]** - SETRANGE key offset value
 - **[NYV]** - STRALGO LCS algo-specific-argument [algo-specific-argument ...]
 - **[NYV]** - STRLEN key
