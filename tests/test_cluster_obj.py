@@ -163,7 +163,19 @@ def test_blocked_commands(r):
     These commands should be blocked and raise RedisClusterException
     """
     blocked_commands = [
-        'BITOP',
+        'ACL CAT',
+        'ACL DELUSER',
+        'ACL GENPASS',
+        'ACL GETUSER',
+        'ACL HELP',
+        'ACL LIST',
+        'ACL LOAD',
+        'ACL LOG',
+        'ACL SAVE',
+        'ACL SETUSER',
+        'ACL USERS',
+        'ACL WHOAMI',
+        'OBJECT',
         'MOVE',
         'SCRIPT KILL',
         'SENTINEL GET-MASTER-ADDR-BY-NAME',
@@ -176,6 +188,7 @@ def test_blocked_commands(r):
         'SENTINEL SLAVES',
         'SHUTDOWN',
         'SLAVEOF',
+        'WAIT',
     ]
 
     for command in blocked_commands:

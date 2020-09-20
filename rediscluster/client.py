@@ -107,7 +107,7 @@ class RedisCluster(Redis):
             'ACL SETUSER',
             'ACL USERS',
             'ACL WHOAMI',
-            'OBJECT',
+            'BITOP',
             'MOVE',
             'SCRIPT KILL',
             'SENTINEL GET-MASTER-ADDR-BY-NAME',
