@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# python std lib
-import sys
-
 x_mode_m_crc16_lookup = [
     0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
     0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
@@ -39,25 +36,10 @@ x_mode_m_crc16_lookup = [
 ]
 
 
-def _crc16_py3(data):
+def crc16(data):
     """
     """
     crc = 0
     for byte in data:
         crc = ((crc << 8) & 0xff00) ^ x_mode_m_crc16_lookup[((crc >> 8) & 0xff) ^ byte]
     return crc & 0xffff
-
-
-def _crc16_py2(data):
-    """
-    """
-    crc = 0
-    for byte in data:
-        crc = ((crc << 8) & 0xff00) ^ x_mode_m_crc16_lookup[((crc >> 8) & 0xff) ^ ord(byte)]
-    return crc & 0xffff
-
-
-if sys.version_info >= (3, 0, 0):
-    crc16 = _crc16_py3
-else:
-    crc16 = _crc16_py2
