@@ -29,6 +29,10 @@ Release Notes
     * New feature, host_port_remap. Send in a remapping configuration to RedisCluster instance where the nodes configuration recieved from the redis cluster can be altered to allow for connection in certain circumstances. See new section in client.rst in docs/ for usage example.
     * When a slot is not covered by the cluster, it will not raise SlotNotCoveredError instead of the old generic RedisClusterException. The client will not attempt to rebuild the cluster layout a few times before giving up and raising that exception to the user. (#350)
     * CLIENT SETNAME is now possible to use from the client instance. For setting the name for all connections from the client by default, see issue #802 in redis-py repo for the change that was implemented in redis-py 3.4.0.
+    * Rewrote implemented commands documentation to mimic the redis.io commands documentation and describe each command and any additional implementation that has been made.
+    * Added RTD theme to the rendered output when running the documentation in local dev mode. 
+    * Added some basic logging to the client that should make it easier to debug and track down minor issues around the main execution loop. See docs/logging.rst for implementation example into your own code.
+    * Seperated some of the exception handling inside the main execution loop to get more fine grained controll what to do at certain errors.
 
 
 2.0.0 (Aug 12, 2019)
