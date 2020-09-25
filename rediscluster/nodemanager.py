@@ -99,7 +99,6 @@ class NodeManager(object):
     def keyslot(self, key):
         """
         Calculate keyslot for a given key.
-        Tuned for compatibility with python 2.7.x
         """
         k = self.encoder.encode(key)
 
