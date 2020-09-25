@@ -1,1 +1,2 @@
-redis>=3.0.0,<4.0.0
+# Pin this to the latest released version for now. Should use development branch of redis-py in reality but will do for now
+redis>=3.5.3
