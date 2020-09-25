@@ -1,8 +1,14 @@
 Release Notes
 =============
 
-2.1.0 (May **, 2020)
+3.0.0 (xxx yy, 2020)
 --------------------
+
+    * Removed support for python 2.7 following the updated support level of redis-py 4.0.0 release.
+
+
+2.1.0 (September 26, 2020)
+--------------------------
 
     * Add new config option for Client and Pipeline classes to controll how many attempts will be made before bailing out from a ClusterDownError.
       Use "cluster_down_retry_attempts=<int>" when creating the client class to controll this behaviour.

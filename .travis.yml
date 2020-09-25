@@ -3,7 +3,6 @@ dist: xenial
 language: python
 cache: pip
 python:
-  - "2.7"
   - "3.5"
   - "3.6"
   - "3.7"
@@ -50,8 +49,6 @@ after_success:
 jobs:
   allow_failures:
     - python: "nightly"
-    - python: 2.7
-      env: TEST_PYCODESTYLE=1
     - python: 3.6
       env: TEST_PYCODESTYLE=1
     # python 3.7 has to be specified manually in the matrix

@@ -85,15 +85,16 @@ Python versions should follow the same supported python versions as specificed b
 
 If this library supports more then one major version line of `redis-py`, then the supported python versions must include the set of supported python versions by all major version lines.
 
-- 2.7
 - 3.5
 - 3.6
 - 3.7
 - 3.8
 
 
-Python 2 Compatibility Note
+Python 2 Compatibility note
 ###########################
+
+As of redis-py-cluster 3.0.0 and above, python 2.7.x will not be supported or maintained.
 
 This library follows the announced change from our upstream package redis-py. Due to this,
 we will follow the same python 2.7 deprecation timeline as stated in there.

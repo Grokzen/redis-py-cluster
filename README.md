@@ -9,7 +9,9 @@ This project is a port of `redis-rb-cluster` by antirez, with a lot of added fun
 The branch `master` will always contain the latest unstable/development code that has been merged from Pull Requests. Use the latest commit from master branch on your own risk, there is no guarantees of compatibility or stability of non tagged commits on the master branch. Only tagged releases on the `master` branch is considered stable for use.
 
 
-# Python 2 Compatibility Note
+# Python 2 Compatibility note
+
+As of redis-py-cluster 3.0.0 and above, python 2.7.x will not be supported or maintained.
 
 This library follows the announced change from our upstream package redis-py. Due to this,
 we will follow the same python 2.7 deprecation timeline as stated in there.
