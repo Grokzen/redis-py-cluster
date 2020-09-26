@@ -48,7 +48,7 @@ class NodeManager(object):
         self.encoder = Encoder(
             connection_kwargs.get('encoding', 'utf-8'),
             connection_kwargs.get('encoding_errors', 'strict'),
-            connection_kwargs.get('decode_responses', False)
+            connection_kwargs.get('decode_responses', True),
         )
         self._validate_host_port_remap(host_port_remap)
         self.host_port_remap = host_port_remap
@@ -152,7 +152,7 @@ class NodeManager(object):
 
         return self.nodes[key]
 
-    def get_redis_link(self, host, port, decode_responses=False):
+    def get_redis_link(self, host, port, decode_responses=True):
         """
         """
         allowed_keys = (

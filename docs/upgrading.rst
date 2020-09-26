@@ -3,6 +3,14 @@ Upgrading redis-py-cluster
 
 This document describes what must be done when upgrading between different versions to ensure that code still works.
 
+2.1.0 --> 3.0.0
+---------------
+
+If you are running on pythoon 2.7 then you will not be guaranteed that this lib works in that version. You should upgrade your pythoon version to 3.5+ in order for this lib and redis-py to continue to function properly.
+
+If you for any reason need to set `decode_responses=False` then you need to set that explicitly now as the default value was changed to `True`.
+
+
 2.0.0 --> 2.1.0
 ---------------
 

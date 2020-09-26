@@ -17,14 +17,13 @@ class TestEncodingCluster(object):
     """
     @pytest.fixture()
     def r(self, request):
-        return _get_client(RedisCluster, request=request, decode_responses=True)
+        return _get_client(RedisCluster, request=request)
 
     @pytest.fixture()
     def r_no_decode(self, request):
         return _get_client(
             RedisCluster,
             request=request,
-            decode_responses=False,
         )
 
     def test_simple_encoding(self, r_no_decode):
@@ -67,13 +66,11 @@ class TestEncodingCluster(object):
 
 class TestEncodingErrors(object):
     def test_ignore(self, request):
-        r = _get_client(RedisCluster, request=request, decode_responses=True,
-                        encoding_errors='ignore')
+        r = _get_client(RedisCluster, request=request, encoding_errors='ignore')
         r.set('a', b'foo\xff')
         assert r.get('a') == 'foo'
 
     def test_replace(self, request):
-        r = _get_client(RedisCluster, request=request, decode_responses=True,
-                        encoding_errors='replace')
+        r = _get_client(RedisCluster, request=request, encoding_errors='replace')
         r.set('a', b'foo\xff')
         assert r.get('a') == 'foo\ufffd'

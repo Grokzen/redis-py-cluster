@@ -81,10 +81,10 @@ if __name__ == "__main__":
 
     if not args["--nocluster"]:
         from rediscluster import RedisCluster
-        rc = RedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1, decode_responses=True)
+        rc = RedisCluster(startup_nodes=startup_nodes, max_connections=32, socket_timeout=0.1)
     else:
         from redis import Redis
-        rc = Redis(host=args["--host"], port=args["-p"], socket_timeout=0.1, decode_responses=True)
+        rc = Redis(host=args["--host"], port=args["-p"], socket_timeout=0.1)
     # create specified number processes
     processes = []
     single_request = int(args["-n"]) // int(args["-c"])

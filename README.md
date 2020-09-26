@@ -56,7 +56,7 @@ Small sample script that shows how to get started with RedisCluster. It can also
 >>> # Requires at least one node for cluster discovery. Multiple nodes is recommended.
 >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
->>> rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+>>> rc = RedisCluster(startup_nodes=startup_nodes)
 
 >>> rc.set("foo", "bar")
 True

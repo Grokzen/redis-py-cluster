@@ -43,7 +43,7 @@ Additional code examples of more advance functionality can be found in the `exam
     >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
     >>> # Note: See note on Python 3 for decode_responses behaviour
-    >>> rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+    >>> rc = RedisCluster(startup_nodes=startup_nodes)
 
     >>> rc.set("foo", "bar")
     True
@@ -53,7 +53,7 @@ Additional code examples of more advance functionality can be found in the `exam
 .. note:: Python 3
 
     Since Python 3 changed to Unicode strings from Python 2's ASCII, the return type of *most* commands will be binary strings,
-    unless the class is instantiated with the option ``decode_responses=True``.
+    unless the class is instantiated with the option ``decode_responses=Tru``.
 
     In this case, the responses will be Python 3 strings (Unicode).
 
@@ -62,6 +62,10 @@ Additional code examples of more advance functionality can be found in the `exam
     In Python 3, this means the responses will be of type `bytes`. In Python 2, they will be native strings (`str`).
 
     If `decode_responses` is set to True, for Python 3 responses will be `str`, for Python 2 they will be `unicode`.
+
+.. note:: Python 3
+
+    RedisCluster client class now defaults option `decode_responses=True` as redis-py-cluster 3.0.0 and above only supports python 3.5+ where this option should always be se to True.
 
 
 

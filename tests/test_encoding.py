@@ -17,7 +17,7 @@ class TestEncoding(object):
         return _get_client(
             redis.Redis,
             request=request,
-            decode_responses=False,
+            decode_responses=True,
         )
 
     @pytest.mark.skip(reason="Cluster specific override")

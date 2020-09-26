@@ -227,7 +227,6 @@ def test_init_slots_cache_slots_collision():
         r = RedisCluster(
             host=host,
             port=port,
-            decode_responses=True,
             skip_full_coverage_check=False,
         )
 
@@ -431,7 +430,7 @@ def test_init_with_down_node():
     If I can't connect to one of the nodes, everything should still work.
     But if I can't connect to any of the nodes, exception should be thrown.
     """
-    def get_redis_link(host, port, decode_responses=False):
+    def get_redis_link(host, port, decode_responses=True):
         if port == 7000:
             raise ConnectionError('mock connection error for 7000')
         return Redis(host=host, port=port, decode_responses=decode_responses)

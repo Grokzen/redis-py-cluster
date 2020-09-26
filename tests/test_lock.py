@@ -15,7 +15,7 @@ class TestLock(object):
         """
         Helper function modified for RedisCluster usage to make tests work
         """
-        return _get_client(RedisCluster, request=request, decode_responses=True)
+        return _get_client(RedisCluster, request=request)
 
     def get_lock(self, redis, *args, **kwargs):
         kwargs['lock_class'] = Lock

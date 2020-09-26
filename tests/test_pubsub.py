@@ -491,7 +491,6 @@ def test_pubsub_thread_publish():
 
     r = RedisCluster(
         startup_nodes=startup_nodes,
-        decode_responses=True,
         max_connections=16,
         max_connections_per_node=16,
     )
