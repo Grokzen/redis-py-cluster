@@ -11,9 +11,6 @@ python:
 services:
   - redis
 install:
-  - "if [[ $REDIS_VERSION == '3.0' ]]; then REDIS_VERSION=3.0 make redis-install; fi"
-  - "if [[ $REDIS_VERSION == '3.2' ]]; then REDIS_VERSION=3.2 make redis-install; fi"
-  - "if [[ $REDIS_VERSION == '4.0' ]]; then REDIS_VERSION=4.0 make redis-install; fi"
   - "if [[ $REDIS_VERSION == '5.0' ]]; then REDIS_VERSION=5.0 make redis-install; fi"
   - "if [[ $REDIS_VERSION == '6.0' ]]; then REDIS_VERSION=6.0 make redis-install; fi"
   - "if [[ $TEST_PYCODESTYLE == '1' ]]; then pip install pycodestyle; fi"
@@ -23,15 +20,6 @@ install:
   - "pip freeze | grep redis"
   - "pip freeze"
 env:
-  # Redis 3.0 & HIREDIS
-  - HIREDIS=0 REDIS_VERSION=3.0
-  - HIREDIS=1 REDIS_VERSION=3.0
-  # Redis 3.2 & HIREDIS
-  - HIREDIS=0 REDIS_VERSION=3.2
-  - HIREDIS=1 REDIS_VERSION=3.2
-  # Redis 4.0 & HIREDIS
-  - HIREDIS=0 REDIS_VERSION=4.0
-  - HIREDIS=1 REDIS_VERSION=4.0
   # Redis 5.0 & HIREDIS
   - HIREDIS=0 REDIS_VERSION=5.0
   - HIREDIS=1 REDIS_VERSION=5.0

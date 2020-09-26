@@ -95,6 +95,7 @@ If this library supports more then one major version line of `redis-py`, then th
 - 3.8
 
 
+
 Python 2 Compatibility note
 ###########################
 
@@ -107,6 +108,15 @@ redis-py-cluster 2.1.x will be the last major version release that supports Pyth
 The 2.1.x line will continue to get bug fixes and security patches that
 support Python 2 until August 1, 2020. redis-py-cluster 3.0.x will be the next major
 version and will require Python 3.5+.
+
+
+
+Supported redis-server versions
+-------------------------------
+
+This lib only tests for and aims to support redis-server 5.0 and above.
+
+In release 3.0.0 redis-server 3.0.x, 3.2.x and 4.0.x was dropped as officially supported redis-server versions.
 
 
 

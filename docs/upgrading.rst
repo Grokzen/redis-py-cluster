@@ -10,6 +10,8 @@ If you are running on pythoon 2.7 then you will not be guaranteed that this lib 
 
 If you for any reason need to set `decode_responses=False` then you need to set that explicitly now as the default value was changed to `True`.
 
+If you are using redis-server 3.0.x, 3.2.x or 4.0.x then you should upgrade to at least redis-server 5.0 or above/latest release. This client might work for older releases, but there will be no testing or validation or guarantes that it will work in the future.
+
 
 2.0.0 --> 2.1.0
 ---------------
