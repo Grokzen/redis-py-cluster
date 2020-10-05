@@ -442,7 +442,7 @@ class RedisCluster(Redis):
         """
         return ClusterPubSub(self.connection_pool, **kwargs)
 
-    def pipeline(self, transaction=None, shard_hint=None):
+    def pipeline(self, transaction=None, shard_hint=None, read_from_replicas=False):
         """
         Cluster impl:
             Pipelines do not work in cluster mode the same way they do in normal mode.
@@ -461,6 +461,7 @@ class RedisCluster(Redis):
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
             cluster_down_retry_attempts=self.cluster_down_retry_attempts,
+            read_from_replicas=read_from_replicas,
         )
 
     def transaction(self, *args, **kwargs):
