@@ -343,7 +343,8 @@ class ClusterConnectionPool(ConnectionPool):
             connection = self._available_connections.get(node["name"], []).pop()
         except IndexError:
             connection = self.make_connection(node)
-            if node["server_type"] == "slave":
+            server_type = node.get("server_type", "master")
+            if server_type == "slave":
                 connection.send_command('READONLY')
                 if nativestr(connection.read_response()) != 'OK':
                     raise ConnectionError('READONLY command failed')
