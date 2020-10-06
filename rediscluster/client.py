@@ -417,7 +417,7 @@ class RedisCluster(Redis):
             connection_pool_cls = ClusterConnectionPool
 
         connection_pool = connection_pool_cls.from_url(url, db=db, skip_full_coverage_check=skip_full_coverage_check, **kwargs)
-        
+
         if connection_pool.connection_class == SSLConnection:
             connection_pool.connection_class = SSLClusterConnection
 
@@ -543,7 +543,7 @@ class RedisCluster(Redis):
 
         It will try the number of times specified by the config option "self.cluster_down_retry_attempts"
         which defaults to 3 unless manually configured.
-        
+
         If it reaches the number of times, the command will raises ClusterDownException.
         """
         for _ in range(0, self.cluster_down_retry_attempts):
@@ -587,6 +587,7 @@ class RedisCluster(Redis):
 
         while ttl > 0:
             ttl -= 1
+            connection = None
 
             try:
                 if asking:
@@ -699,7 +700,8 @@ class RedisCluster(Redis):
 
                 redirect_addr, asking = "{0}:{1}".format(e.host, e.port), True
             finally:
-                self.connection_pool.release(connection)
+                if connection is not None:
+                    self.connection_pool.release(connection)
 
             log.debug("TTL loop : " + str(ttl))
 
