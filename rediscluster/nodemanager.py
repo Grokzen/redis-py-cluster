@@ -258,7 +258,7 @@ class NodeManager(object):
                 node, node_name = self.make_node_obj(master_node[0], master_node[1], 'master')
                 nodes_cache[node_name] = node
 
-                self.slave_nodes_by_master[node_name] = set()
+                self.slave_nodes_by_master[node_name] = []
 
                 for i in range(int(slot[0]), int(slot[1]) + 1):
                     if i not in tmp_slots:
@@ -270,7 +270,7 @@ class NodeManager(object):
                             target_slave_node, slave_node_name = self.make_node_obj(slave_node[0], slave_node[1], 'slave')
                             nodes_cache[slave_node_name] = target_slave_node
                             tmp_slots[i].append(target_slave_node)
-                            self.slave_nodes_by_master[node_name].add(slave_node_name)
+                            self.slave_nodes_by_master[node_name].append(slave_node_name)
                     else:
                         # Validate that 2 nodes want to use the same slot cache setup
                         if tmp_slots[i][0]['name'] != node['name']:

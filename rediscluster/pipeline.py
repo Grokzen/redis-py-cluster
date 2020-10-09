@@ -29,7 +29,8 @@ class ClusterPipeline(RedisCluster):
     """
 
     def __init__(self, connection_pool, result_callbacks=None,
-                 response_callbacks=None, startup_nodes=None, read_from_replicas=False, cluster_down_retry_attempts=3):
+                 response_callbacks=None, startup_nodes=None, read_from_replicas=False, cluster_down_retry_attempts=3,
+                 max_redirects=5, use_gevent=False):
         """
         """
         self.command_stack = []
@@ -42,6 +43,8 @@ class ClusterPipeline(RedisCluster):
         self.response_callbacks = dict_merge(response_callbacks or self.__class__.RESPONSE_CALLBACKS.copy(),
                                              self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS)
         self.cluster_down_retry_attempts = cluster_down_retry_attempts
+        self.max_redirects = max_redirects
+        self.use_gevent = use_gevent
 
     def __repr__(self):
         """
@@ -170,6 +173,8 @@ class ClusterPipeline(RedisCluster):
                     stack,
                     raise_on_error=raise_on_error,
                     allow_redirections=allow_redirections,
+                    max_redirects=self.max_redirects,
+                    use_gevent=self.use_gevent,
                 )
             except ClusterDownError:
                 # Try again with the new cluster setup. All other errors
@@ -201,8 +206,9 @@ class ClusterPipeline(RedisCluster):
             if master_node['name'] in proxy_node_by_master:
                 node = proxy_node_by_master[master_node['name']]
             else:
-                # TODO: should determine if using replicas by if command is read only
-                node = self.connection_pool.get_node_by_slot(slot, self.read_from_replicas)
+                command = c.args[0]
+                read_from_replicas = self.read_from_replicas and (command in self.READ_COMMANDS)
+                node = self.connection_pool.get_node_by_slot(slot, read_from_replicas)
                 proxy_node_by_master[master_node['name']] = node
 
                 # little hack to make sure the node name is populated. probably could clean this up.
@@ -228,7 +234,14 @@ class ClusterPipeline(RedisCluster):
         except RedisError as e:
             cmd.result = e
 
-    def _send_cluster_commands(self, stack, raise_on_error=True, allow_redirections=True):
+    def _send_cluster_commands(
+            self,
+            stack,
+            raise_on_error=True,
+            allow_redirections=True,
+            max_redirects=5,
+            use_gevent=True,
+    ):
         """
         Send a bunch of cluster commands to the redis cluster.
 
@@ -239,28 +252,30 @@ class ClusterPipeline(RedisCluster):
         # if we have to run through it again, we only retry the commands that failed.
         cmds = sorted(stack, key=lambda x: x.position)
 
-        max_redirects = 5
         cur_attempt = 0
 
         while cur_attempt < max_redirects:
-
             # build a list of node objects based on node names we need to
             nodes, connection_by_node = self._get_commands_by_node(cmds)
 
-            # send the commands in sequence.
-            # we  write to all the open sockets for each node first, before reading anything
-            # this allows us to flush all the requests out across the network essentially in parallel
-            # so that we can read them all in parallel as they come back.
-            # we dont' multiplex on the sockets as they come available, but that shouldn't make too much difference.
+            # use gevent to execute node commands in parallel
+            # this would allow the commands serialization(pack_commands)
+            # and deserialization(parse_response) to run on multiple cores and make things faster
 
-            # duke-cliff: I think it would still be faster if we use gevent to make the command in parallel
-            # the io is non-blocking, but serialization/deserialization will still be blocking previously
             node_commands = nodes.values()
-            events = []
-            for n in node_commands:
-                events.append(gevent.spawn(self._execute_node_commands, n))
 
-            gevent.joinall(events)
+            if use_gevent:
+                events = []
+                for n in node_commands:
+                    events.append(gevent.spawn(self._execute_node_commands, n))
+
+                gevent.joinall(events)
+            else:
+                for n in node_commands:
+                    n.write()
+
+                for n in node_commands:
+                    n.read()
 
             # release all of the redis connections we allocated earlier back into the connection pool.
             # we used to do this step as part of a try/finally block, but it is really dangerous to
@@ -322,13 +337,16 @@ class ClusterPipeline(RedisCluster):
 
             self.connection_pool.nodes.increment_reinitialize_counter(len(attempt))
 
-            # even in the slow mode, we could use gevent to make things faster
-            events = []
-            for c in attempt:
-                events.append(gevent.spawn(self._execute_single_command, c))
+            if use_gevent:
+                # even in the slow mode, we could use gevent to make things faster
+                events = []
+                for c in attempt:
+                    events.append(gevent.spawn(self._execute_single_command, c))
 
-            gevent.joinall(events)
-
+                gevent.joinall(events)
+            else:
+                for c in attempt:
+                    self._execute_single_command(c)
 
         # turn the response back into a simple flat array that corresponds
         # to the sequence of commands issued in the stack in pipeline.execute()
