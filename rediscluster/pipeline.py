@@ -2,6 +2,7 @@
 
 # python std lib
 import sys
+import logging
 
 # rediscluster imports
 from .client import RedisCluster
@@ -15,6 +16,10 @@ from redis import Redis
 from redis.exceptions import ConnectionError, RedisError, TimeoutError
 from redis._compat import imap, unicode
 
+from gevent import monkey; monkey.patch_all()
+import gevent
+
+log = logging.getLogger(__name__)
 
 ERRORS_ALLOW_RETRY = (ConnectionError, TimeoutError, MovedError, AskError, TryAgainError)
 
@@ -174,6 +179,55 @@ class ClusterPipeline(RedisCluster):
         # If it fails the configured number of times then raise exception back to caller of this method
         raise ClusterDownError("CLUSTERDOWN error. Unable to rebuild the cluster")
 
+    def _execute_node_commands(self, n):
+        n.write()
+
+        n.read()
+
+    def _get_commands_by_node(self, cmds):
+        nodes = {}
+        proxy_node_by_master = {}
+        connection_by_node = {}
+
+        for c in cmds:
+            # refer to our internal node -> slot table that tells us where a given
+            # command should route to.
+            slot = self._determine_slot(*c.args)
+
+            master_node = self.connection_pool.get_node_by_slot(slot)
+
+            # for the same master_node, it should always get the same proxy_node to group
+            # as many commands as possible per node
+            if master_node['name'] in proxy_node_by_master:
+                node = proxy_node_by_master[master_node['name']]
+            else:
+                # TODO: should determine if using replicas by if command is read only
+                node = self.connection_pool.get_node_by_slot(slot, self.read_from_replicas)
+                proxy_node_by_master[master_node['name']] = node
+
+                # little hack to make sure the node name is populated. probably could clean this up.
+                self.connection_pool.nodes.set_node_name(node)
+
+            node_name = node['name']
+            if node_name not in nodes:
+                if node_name in connection_by_node:
+                    connection = connection_by_node[node_name]
+                else:
+                    connection = self.connection_pool.get_connection_by_node(node)
+                    connection_by_node[node_name] = connection
+                nodes[node_name] = NodeCommands(self.parse_response, connection)
+
+            nodes[node_name].append(c)
+
+        return nodes, connection_by_node
+
+    def _execute_single_command(self, cmd):
+        try:
+            # send each command individually like we do in the main client.
+            cmd.result = super(ClusterPipeline, self).execute_command(*cmd.args, **cmd.options)
+        except RedisError as e:
+            cmd.result = e
+
     def _send_cluster_commands(self, stack, raise_on_error=True, allow_redirections=True):
         """
         Send a bunch of cluster commands to the redis cluster.
@@ -183,62 +237,69 @@ class ClusterPipeline(RedisCluster):
         """
         # the first time sending the commands we send all of the commands that were queued up.
         # if we have to run through it again, we only retry the commands that failed.
-        attempt = sorted(stack, key=lambda x: x.position)
+        cmds = sorted(stack, key=lambda x: x.position)
 
-        # build a list of node objects based on node names we need to
-        nodes = {}
+        max_redirects = 5
+        cur_attempt = 0
 
-        # as we move through each command that still needs to be processed,
-        # we figure out the slot number that command maps to, then from the slot determine the node.
-        for c in attempt:
-            # refer to our internal node -> slot table that tells us where a given
-            # command should route to.
-            slot = self._determine_slot(*c.args)
-            node = self.connection_pool.get_node_by_slot(slot)
+        while cur_attempt < max_redirects:
 
-            # little hack to make sure the node name is populated. probably could clean this up.
-            self.connection_pool.nodes.set_node_name(node)
+            # build a list of node objects based on node names we need to
+            nodes, connection_by_node = self._get_commands_by_node(cmds)
 
-            # now that we know the name of the node ( it's just a string in the form of host:port )
-            # we can build a list of commands for each node.
-            node_name = node['name']
-            if node_name not in nodes:
-                nodes[node_name] = NodeCommands(self.parse_response, self.connection_pool.get_connection_by_node(node))
+            # send the commands in sequence.
+            # we  write to all the open sockets for each node first, before reading anything
+            # this allows us to flush all the requests out across the network essentially in parallel
+            # so that we can read them all in parallel as they come back.
+            # we dont' multiplex on the sockets as they come available, but that shouldn't make too much difference.
 
-            nodes[node_name].append(c)
+            # duke-cliff: I think it would still be faster if we use gevent to make the command in parallel
+            # the io is non-blocking, but serialization/deserialization will still be blocking previously
+            node_commands = nodes.values()
+            events = []
+            for n in node_commands:
+                events.append(gevent.spawn(self._execute_node_commands, n))
 
-        # send the commands in sequence.
-        # we  write to all the open sockets for each node first, before reading anything
-        # this allows us to flush all the requests out across the network essentially in parallel
-        # so that we can read them all in parallel as they come back.
-        # we dont' multiplex on the sockets as they come available, but that shouldn't make too much difference.
-        node_commands = nodes.values()
-        for n in node_commands:
-            n.write()
+            gevent.joinall(events)
 
-        for n in node_commands:
-            n.read()
+            # release all of the redis connections we allocated earlier back into the connection pool.
+            # we used to do this step as part of a try/finally block, but it is really dangerous to
+            # release connections back into the pool if for some reason the socket has data still left in it
+            # from a previous operation. The write and read operations already have try/catch around them for
+            # all known types of errors including connection and socket level errors.
+            # So if we hit an exception, something really bad happened and putting any of
+            # these connections back into the pool is a very bad idea.
+            # the socket might have unread buffer still sitting in it, and then the
+            # next time we read from it we pass the buffered result back from a previous
+            # command and every single request after to that connection will always get
+            # a mismatched result. (not just theoretical, I saw this happen on production x.x).
+            for conn in connection_by_node.values():
+                self.connection_pool.release(conn)
 
-        # release all of the redis connections we allocated earlier back into the connection pool.
-        # we used to do this step as part of a try/finally block, but it is really dangerous to
-        # release connections back into the pool if for some reason the socket has data still left in it
-        # from a previous operation. The write and read operations already have try/catch around them for
-        # all known types of errors including connection and socket level errors.
-        # So if we hit an exception, something really bad happened and putting any of
-        # these connections back into the pool is a very bad idea.
-        # the socket might have unread buffer still sitting in it, and then the
-        # next time we read from it we pass the buffered result back from a previous
-        # command and every single request after to that connection will always get
-        # a mismatched result. (not just theoretical, I saw this happen on production x.x).
-        for n in nodes.values():
-            self.connection_pool.release(n.connection)
+            # will regroup moved commands and retry using pipeline(stacked commands)
+            # this would increase the pipeline performance a lot
+            moved_cmds = []
+            for c in cmds:
+                if isinstance(c.result, MovedError):
+                    e = c.result
+                    node = self.connection_pool.nodes.get_node(e.host, e.port, server_type='master')
+                    self.connection_pool.nodes.move_slot_to_node(e.slot_id, node)
+
+                    moved_cmds.append(c)
+
+            if moved_cmds:
+                cur_attempt += 1
+                cmds = sorted(moved_cmds, key=lambda x: x.position)
+                continue
+
+            break
 
         # if the response isn't an exception it is a valid response from the node
         # we're all done with that command, YAY!
         # if we have more commands to attempt, we've run into problems.
         # collect all the commands we are allowed to retry.
         # (MOVED, ASK, or connection errors or timeout errors)
-        attempt = sorted([c for c in attempt if isinstance(c.result, ERRORS_ALLOW_RETRY)], key=lambda x: x.position)
+        attempt = sorted([c for c in stack if isinstance(c.result, ERRORS_ALLOW_RETRY)], key=lambda x: x.position)
         if attempt and allow_redirections:
             # RETRY MAGIC HAPPENS HERE!
             # send these remaing comamnds one at a time using `execute_command`
@@ -255,13 +316,19 @@ class ClusterPipeline(RedisCluster):
             # If a lot of commands have failed, we'll be setting the
             # flag to rebuild the slots table from scratch. So MOVED errors should
             # correct themselves fairly quickly.
+
+            # with the previous redirect retries, I could barely see the slow mode happening again
+            log.info("pipeline in slow mode to execute failed commands: {}".format([c.result for c in attempt]))
+
             self.connection_pool.nodes.increment_reinitialize_counter(len(attempt))
+
+            # even in the slow mode, we could use gevent to make things faster
+            events = []
             for c in attempt:
-                try:
-                    # send each command individually like we do in the main client.
-                    c.result = super(ClusterPipeline, self).execute_command(*c.args, **c.options)
-                except RedisError as e:
-                    c.result = e
+                events.append(gevent.spawn(self._execute_single_command, c))
+
+            gevent.joinall(events)
+
 
         # turn the response back into a simple flat array that corresponds
         # to the sequence of commands issued in the stack in pipeline.execute()
