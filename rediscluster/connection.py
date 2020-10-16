@@ -45,7 +45,7 @@ class ClusterConnection(Connection):
     "Manages TCP communication to and from a Redis server"
 
     def __init__(self, *args, **kwargs):
-        log.info("Createing new ClusterConnection instance")
+        log.debug("Creating new ClusterConnection instance")
         log.debug(str(args) + " : " + str(kwargs))
 
         self.readonly = kwargs.pop('readonly', False)
