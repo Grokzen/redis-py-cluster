@@ -269,3 +269,22 @@ def skip_unless_arch_bits(arch_bits):
         REDIS_INFO["arch_bits"] != arch_bits,
         reason="server is not {}-bit".format(arch_bits),
     )
+
+
+def wait_for_command(client, monitor, command):
+    # issue a command with a key name that's local to this process.
+    # if we find a command with our key before the command we're waiting
+    # for, something went wrong
+    redis_version = REDIS_INFO["version"]
+    if StrictVersion(redis_version) >= StrictVersion('5.0.0'):
+        id_str = str(client.client_id())
+    else:
+        id_str = '%08x' % random.randrange(2**32)
+    key = '__REDIS-PY-%s__' % id_str
+    client.get(key)
+    while True:
+        monitor_response = monitor.next_command()
+        if command in monitor_response['command']:
+            return monitor_response
+        if key in monitor_response['command']:
+            return None
