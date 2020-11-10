@@ -1,26 +1,12 @@
 from __future__ import unicode_literals
 from redis._compat import unicode
-from .conftest import skip_if_server_version_lt
+from .conftest import skip_if_server_version_lt, wait_for_command
 
 # 3rd party imports
 import pytest
 
 
-def wait_for_command(client, monitor, command):
-    # issue a command with a key name that's local to this process.
-    # if we find a command with our key before the command we're waiting
-    # for, something went wrong
-    key = '__REDIS-PY-%s__' % str(client.client_id())
-    client.get(key)
-    while True:
-        monitor_response = monitor.next_command()
-        if command in monitor_response['command']:
-            return monitor_response
-        if key in monitor_response['command']:
-            return None
-
-
-class TestPipeline(object):
+class TestMonitor(object):
     @skip_if_server_version_lt('5.0.0')
     @pytest.mark.xfail(reason="Monitor feature not yet implemented")
     def test_wait_command_not_found(self, r):
