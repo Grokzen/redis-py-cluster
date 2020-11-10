@@ -2,8 +2,8 @@ import pytest
 import multiprocessing
 import contextlib
 
-import redis
-from redis.connection import Connection, ConnectionPool
+import rediscluster
+from rediscluster.connection import ClusterConnection, ClusterConnectionPool
 from redis.exceptions import ConnectionError
 
 from .conftest import _get_client
@@ -18,25 +18,28 @@ def exit_callback(callback, *args):
 
 
 class TestMultiprocessing(object):
+    """
+    Cluster: tests must use the cluster specific connection class and client class
+             to make tests valid for a cluster case.
+    """
     # Test connection sharing between forks.
     # See issue #1085 for details.
 
     # use a multi-connection client as that's the only type that is
-    # actually fork/process-safe
+    # actuall fork/process-safe
     @pytest.fixture()
     def r(self, request):
         return _get_client(
-            redis.Redis,
+            rediscluster.RedisCluster,
             request=request,
             single_connection_client=False)
 
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_close_connection_in_child(self):
         """
         A connection owned by a parent and closed by a child doesn't
         destroy the file descriptors so a parent can still use it.
         """
-        conn = Connection()
+        conn = ClusterConnection(port=7000)
         conn.send_command('ping')
         assert conn.read_response() == b'PONG'
 
@@ -57,13 +60,12 @@ class TestMultiprocessing(object):
         conn.send_command('ping')
         assert conn.read_response() == b'PONG'
 
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_close_connection_in_parent(self):
         """
         A connection owned by a parent is unusable by a child if the parent
         (the owning process) closes the connection.
         """
-        conn = Connection()
+        conn = ClusterConnection(port=7000)
         conn.send_command('ping')
         assert conn.read_response() == b'PONG'
 
@@ -86,16 +88,15 @@ class TestMultiprocessing(object):
         assert proc.exitcode == 0
 
     @pytest.mark.parametrize('max_connections', [1, 2, None])
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_pool(self, max_connections):
         """
         A child will create its own connections when using a pool created
         by a parent.
         """
-        pool = ConnectionPool.from_url('redis://localhost',
+        pool = ClusterConnectionPool.from_url('redis://localhost:7000',
                                        max_connections=max_connections)
 
-        conn = pool.get_connection('ping')
+        conn = pool.get_random_connection()
         main_conn_pid = conn.pid
         with exit_callback(pool.release, conn):
             conn.send_command('ping')
@@ -103,7 +104,7 @@ class TestMultiprocessing(object):
 
         def target(pool):
             with exit_callback(pool.disconnect):
-                conn = pool.get_connection('ping')
+                conn = pool.get_random_connection()
                 assert conn.pid != main_conn_pid
                 with exit_callback(pool.release, conn):
                     assert conn.send_command('ping') is None
@@ -116,27 +117,26 @@ class TestMultiprocessing(object):
 
         # Check that connection is still alive after fork process has exited
         # and disconnected the connections in its pool
-        conn = pool.get_connection('ping')
+        conn = pool.get_random_connection()
         with exit_callback(pool.release, conn):
             assert conn.send_command('ping') is None
             assert conn.read_response() == b'PONG'
 
     @pytest.mark.parametrize('max_connections', [1, 2, None])
-    @pytest.mark.skip(reason="Cluster specific override")
     def test_close_pool_in_main(self, max_connections):
         """
         A child process that uses the same pool as its parent isn't affected
         when the parent disconnects all connections within the pool.
         """
-        pool = ConnectionPool.from_url('redis://localhost',
+        pool = ClusterConnectionPool.from_url('redis://localhost:7000',
                                        max_connections=max_connections)
 
-        conn = pool.get_connection('ping')
+        conn = pool.get_random_connection()
         assert conn.send_command('ping') is None
         assert conn.read_response() == b'PONG'
 
         def target(pool, disconnect_event):
-            conn = pool.get_connection('ping')
+            conn = pool.get_random_connection()
             with exit_callback(pool.release, conn):
                 assert conn.send_command('ping') is None
                 assert conn.read_response() == b'PONG'
@@ -153,18 +153,3 @@ class TestMultiprocessing(object):
         ev.set()
         proc.join(3)
         assert proc.exitcode == 0
-
-    def test_redis_client(self, r):
-        "A redis client created in a parent can also be used in a child"
-        assert r.ping() is True
-
-        def target(client):
-            assert client.ping() is True
-            del client
-
-        proc = multiprocessing.Process(target=target, args=(r,))
-        proc.start()
-        proc.join(3)
-        assert proc.exitcode == 0
-
-        assert r.ping() is True
