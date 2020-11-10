@@ -60,3 +60,14 @@ All new features must implement tests to show that it works as intended.
 All implemented tests must pass on all supported python versions. List of supported versions can be found in `README.md`.
 
 All tests should be assumed to work against the test environment that is implemented when running in `travis-ci`. Currently that means 6 nodes in the cluster, 3 masters, 3 slaves, using port `7000-7005` and the node on port `7000` must be accessible on `127.0.0.1`
+
+
+## Testing strategy and how to implement cluster specific tests
+
+A new way of having the old upstream tests from redis-py combined with the cluster specific and unique tests that is needed to validate cluster functionality. This has been designed to improve the speed of which tests is updated from uptream as new redis-py releases is made and to make it easier to port them into the cluster variant.
+
+How do you implement a test for this code?
+
+The simplest case, this is a new cluster only/specific test that has nothing to do with the upstream redis-py package. If the test is related or could be classified to be added to one of the already existing test files that is mirrored from redis-py, then you should put this new test in the `..._cluster.py` version of the same file.
+
+If you need to make some kind of cluster unique adjustment to a test mirrorer from redis-py upstream, then do the following. In the mirrored file, for example `test_commands.py` you add the following decorator `@skip_for_no_cluster_impl()` to the method you want to modify. Then you copy the entire method and add it to the same class/method structure but inside the cluster specific version of the test file. In this example you would put it in `test_commands_cluster.py`. Copy the entire test method and keep it as similar as possible to make it easier to update in the future in-case there is changes in upstream redis-py tests.
