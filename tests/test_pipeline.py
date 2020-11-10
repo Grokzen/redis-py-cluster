@@ -217,7 +217,7 @@ class TestPipeline(object):
         r['b'] = 2
 
         with r.pipeline() as pipe:
-            pipe.watch('a', 'b')§
+            pipe.watch('a', 'b')
             r['b'] = 3
             pipe.multi()
             pipe.get('a')
