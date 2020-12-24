@@ -78,7 +78,7 @@ class SSLClusterConnection(SSLConnection):
     """
 
     def __init__(self, *args, **kwargs):
-        log.info("Createing new SSLClusterConnection instance")
+        log.info("Creating new SSLClusterConnection instance")
         log.debug(str(args) + " : " + str(kwargs))
 
         self.readonly = kwargs.pop('readonly', False)
