@@ -611,6 +611,7 @@ class RedisCluster(Redis):
                     connection = self.connection_pool.get_connection_by_node(node)
 
                 log.debug("Determined node to execute : " + str(node))
+                self._check_ready_to_send(connection)
 
                 if asking:
                     connection.send_command('ASKING')
@@ -665,6 +666,7 @@ class RedisCluster(Redis):
 
             except TimeoutError as e:
                 log.exception("TimeoutError")
+                connection.disconnect()
 
                 if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.05)
@@ -676,6 +678,7 @@ class RedisCluster(Redis):
                 self.connection_pool.disconnect()
                 self.connection_pool.reset()
                 self.refresh_table_asap = True
+                connection = None
 
                 raise e
             except MovedError as e:
@@ -699,6 +702,9 @@ class RedisCluster(Redis):
                 log.exception("AskError")
 
                 redirect_addr, asking = "{0}:{1}".format(e.host, e.port), True
+            except BaseException as e:
+                connection.disconnect()
+                raise e
             finally:
                 if connection is not None:
                     self.connection_pool.release(connection)
@@ -706,6 +712,22 @@ class RedisCluster(Redis):
             log.debug("TTL loop : " + str(ttl))
 
         raise ClusterError('TTL exhausted.')
+
+    def _check_ready_to_send(self, connection):
+        """check if the connection is ready to send a command."""
+        # connections that the pool provides should be ready to send
+        # a command. if not, the connection was either returned to the
+        # pool before all data has been read or the socket has been
+        # closed. Either way, reconnect and verify everything is good.
+        connection.connect()
+        try:
+            if connection.can_read():
+                raise ConnectionError('Connection has data')
+        except ConnectionError:
+            connection.disconnect()
+            connection.connect()
+            if connection.can_read():
+                raise ConnectionError('Connection not ready')
 
     def _execute_command_on_nodes(self, nodes, *args, **kwargs):
         """
