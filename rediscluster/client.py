@@ -362,6 +362,11 @@ class RedisCluster(Redis):
 
             log.debug("Connection pool class " + str(connection_pool_cls))
 
+            # If connection pool fails to initialize, parent class (Redis) __del__
+            # will try to access self.connection before it's defined
+            # throwing an AttributeError.
+            self.connection = None
+
             pool = connection_pool_cls(
                 startup_nodes=startup_nodes,
                 init_slot_cache=init_slot_cache,
