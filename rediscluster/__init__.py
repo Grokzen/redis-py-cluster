@@ -23,6 +23,7 @@ from rediscluster.exceptions import (
     MovedError,
     MasterDownError,
 )
+from rediscluster.pipeline import ClusterPipeline
 
 
 def int_or_str(value):
@@ -45,6 +46,7 @@ __all__ = [
     ClusterDownError,
     ClusterDownException,
     ClusterError,
+    ClusterPipeline,
     MasterDownError,
     MovedError,
     RedisCluster,
