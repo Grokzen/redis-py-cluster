@@ -60,7 +60,6 @@ Example scripts:
 
     rc = RedisCluster(
         startup_nodes=startup_nodes,
-        decode_responses=True,
         host_port_remap=[
             {
                 'from_host': '172.18.0.2',
@@ -113,7 +112,6 @@ This feature is also useful in cases such as when one is trying to access AWS El
     rc = RedisCluster(
         startup_nodes=startup_nodes,
         host_port_remap=host_port_remap,
-        decode_responses=True,
         ssl=True,
         ssl_cert_reqs=None,
         # Needed for Elasticache Clusters

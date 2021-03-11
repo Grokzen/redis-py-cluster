@@ -1,8 +1,16 @@
 Release Notes
 =============
 
-2.1.0 (May **, 2020)
+3.0.0 (xxx yy, 2020)
 --------------------
+
+    * Removed support for python 2.7 following the updated support level of redis-py 4.0.0 release.
+    * RedisCluster client class now default "decode_responses=True" as that was always needed anyway in python 3.5+
+    * Redis-server version ranges 3.0.x, 3.2.x & 4.0.x was dropped as officially supported. Redis-server version 5.0 and above is now recommended to use in a cluster and with this client.
+
+
+2.1.0 (September 26, 2020)
+--------------------------
 
     * Add new config option for Client and Pipeline classes to controll how many attempts will be made before bailing out from a ClusterDownError.
       Use "cluster_down_retry_attempts=<int>" when creating the client class to controll this behaviour.

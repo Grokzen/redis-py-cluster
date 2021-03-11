@@ -302,7 +302,8 @@ class RedisCluster(Redis):
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=None, max_connections_per_node=False, init_slot_cache=True,
                  readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
-                 connection_class=None, read_from_replicas=False, cluster_down_retry_attempts=3, host_port_remap=None, **kwargs):
+                 connection_class=None, read_from_replicas=False, cluster_down_retry_attempts=3, host_port_remap=None, decode_responses=True,
+                 **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -377,6 +378,7 @@ class RedisCluster(Redis):
                 nodemanager_follow_cluster=nodemanager_follow_cluster,
                 connection_class=connection_class,
                 host_port_remap=host_port_remap,
+                decode_responses=decode_responses,
                 **kwargs
             )
 

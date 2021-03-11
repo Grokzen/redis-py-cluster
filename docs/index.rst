@@ -43,7 +43,7 @@ Additional code examples of more advance functionality can be found in the `exam
     >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
     >>> # Note: See note on Python 3 for decode_responses behaviour
-    >>> rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+    >>> rc = RedisCluster(startup_nodes=startup_nodes)
 
     >>> rc.set("foo", "bar")
     True
@@ -53,7 +53,7 @@ Additional code examples of more advance functionality can be found in the `exam
 .. note:: Python 3
 
     Since Python 3 changed to Unicode strings from Python 2's ASCII, the return type of *most* commands will be binary strings,
-    unless the class is instantiated with the option ``decode_responses=True``.
+    unless the class is instantiated with the option ``decode_responses=Tru``.
 
     In this case, the responses will be Python 3 strings (Unicode).
 
@@ -62,6 +62,10 @@ Additional code examples of more advance functionality can be found in the `exam
     In Python 3, this means the responses will be of type `bytes`. In Python 2, they will be native strings (`str`).
 
     If `decode_responses` is set to True, for Python 3 responses will be `str`, for Python 2 they will be `unicode`.
+
+.. note:: Python 3
+
+    RedisCluster client class now defaults option `decode_responses=True` as redis-py-cluster 3.0.0 and above only supports python 3.5+ where this option should always be se to True.
 
 
 
@@ -85,15 +89,17 @@ Python versions should follow the same supported python versions as specificed b
 
 If this library supports more then one major version line of `redis-py`, then the supported python versions must include the set of supported python versions by all major version lines.
 
-- 2.7
 - 3.5
 - 3.6
 - 3.7
 - 3.8
 
 
-Python 2 Compatibility Note
+
+Python 2 Compatibility note
 ###########################
+
+As of redis-py-cluster 3.0.0 and above, python 2.7.x will not be supported or maintained.
 
 This library follows the announced change from our upstream package redis-py. Due to this,
 we will follow the same python 2.7 deprecation timeline as stated in there.
@@ -102,6 +108,15 @@ redis-py-cluster 2.1.x will be the last major version release that supports Pyth
 The 2.1.x line will continue to get bug fixes and security patches that
 support Python 2 until August 1, 2020. redis-py-cluster 3.0.x will be the next major
 version and will require Python 3.5+.
+
+
+
+Supported redis-server versions
+-------------------------------
+
+This lib only tests for and aims to support redis-server 5.0 and above.
+
+In release 3.0.0 redis-server 3.0.x, 3.2.x and 4.0.x was dropped as officially supported redis-server versions.
 
 
 

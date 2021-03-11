@@ -150,7 +150,7 @@ def o(request, *args, **kwargs):
     """
     Create a RedisCluster instance with decode_responses set to True.
     """
-    return _init_client(request, cls=RedisCluster, decode_responses=True, **kwargs)
+    return _init_client(request, cls=RedisCluster, **kwargs)
 
 
 @pytest.fixture()

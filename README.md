@@ -9,7 +9,9 @@ This project is a port of `redis-rb-cluster` by antirez, with a lot of added fun
 The branch `master` will always contain the latest unstable/development code that has been merged from Pull Requests. Use the latest commit from master branch on your own risk, there is no guarantees of compatibility or stability of non tagged commits on the master branch. Only tagged releases on the `master` branch is considered stable for use.
 
 
-# Python 2 Compatibility Note
+# Python 2 Compatibility note
+
+As of redis-py-cluster 3.0.0 and above, python 2.7.x will not be supported or maintained.
 
 This library follows the announced change from our upstream package redis-py. Due to this,
 we will follow the same python 2.7 deprecation timeline as stated in there.
@@ -18,6 +20,13 @@ redis-py-cluster 2.1.x will be the last major version release that supports Pyth
 The 2.1.x line will continue to get bug fixes and security patches that
 support Python 2 until August 1, 2020. redis-py-cluster 3.0.x will be the next major
 version and will require Python 3.5+.
+
+
+# Supported redis-server versions
+
+This lib only tests for and aims to support redis-server 5.0 and above.
+
+In release 3.0.0 redis-server 3.0.x, 3.2.x and 4.0.x was dropped as officially supported redis-server versions.
 
 
 # Documentation
@@ -54,7 +63,7 @@ Small sample script that shows how to get started with RedisCluster. It can also
 >>> # Requires at least one node for cluster discovery. Multiple nodes is recommended.
 >>> startup_nodes = [{"host": "127.0.0.1", "port": "7000"}]
 
->>> rc = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+>>> rc = RedisCluster(startup_nodes=startup_nodes)
 
 >>> rc.set("foo", "bar")
 True

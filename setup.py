@@ -32,12 +32,12 @@ setup(
     url='http://github.com/grokzen/redis-py-cluster',
     license='MIT',
     install_requires=[
-        'redis>=3.0.0,<4.0.0'
+        'redis>=3.5.3'
     ],
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4",
+    python_requires=">=3.5",
     extras_require={
         'hiredis': [
-            "hiredis>=0.1.3",
+            "hiredis>=0.2.0",
         ],
     },
     keywords=[
@@ -54,8 +54,6 @@ setup(
         # 'Development Status :: 6 - Mature',
         # 'Development Status :: 7 - Inactive',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
