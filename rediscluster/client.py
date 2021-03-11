@@ -172,7 +172,7 @@ class RedisCluster(Redis):
 
     # Not complete, but covers the major ones
     # https://redis.io/commands
-    READ_COMMANDS = [
+    READ_COMMANDS = frozenset([
         "BITCOUNT",
         "BITPOS",
         "EXISTS",
@@ -212,7 +212,7 @@ class RedisCluster(Redis):
         "ZCOUNT",
         "ZRANGE",
         "ZSCORE"
-    ]
+    ])
 
     RESULT_CALLBACKS = dict_merge(
         string_keys_to_dict([
@@ -466,6 +466,7 @@ class RedisCluster(Redis):
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
             cluster_down_retry_attempts=self.cluster_down_retry_attempts,
+            read_from_replicas=self.read_from_replicas,
         )
 
     def transaction(self, *args, **kwargs):
@@ -583,7 +584,6 @@ class RedisCluster(Redis):
 
         redirect_addr = None
         asking = False
-        is_read_replica = False
 
         try_random_node = False
         slot = self._determine_slot(*args)
@@ -611,7 +611,6 @@ class RedisCluster(Redis):
                             slot,
                             self.read_from_replicas and (command in self.READ_COMMANDS)
                         )
-                        is_read_replica = node['server_type'] == 'slave'
 
                     connection = self.connection_pool.get_connection_by_node(node)
 
@@ -621,12 +620,6 @@ class RedisCluster(Redis):
                     connection.send_command('ASKING')
                     self.parse_response(connection, "ASKING", **kwargs)
                     asking = False
-                if is_read_replica:
-                    # Ask read replica to accept reads (see https://redis.io/commands/readonly)
-                    # TODO: do we need to handle errors from this response?
-                    connection.send_command('READONLY')
-                    self.parse_response(connection, 'READONLY', **kwargs)
-                    is_read_replica = False
 
                 connection.send_command(*args)
                 return self.parse_response(connection, command, **kwargs)
@@ -693,8 +686,8 @@ class RedisCluster(Redis):
                 self.refresh_table_asap = True
                 self.connection_pool.nodes.increment_reinitialize_counter()
 
-                node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
-                self.connection_pool.nodes.slots[e.slot_id][0] = node
+                node = self.connection_pool.nodes.get_node(e.host, e.port, server_type='master')
+                self.connection_pool.nodes.move_slot_to_node(e.slot_id, node)
             except TryAgainError as e:
                 log.exception("TryAgainError")
 

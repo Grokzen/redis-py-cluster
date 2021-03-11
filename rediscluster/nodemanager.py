@@ -39,6 +39,7 @@ class NodeManager(object):
         self.connection_kwargs = connection_kwargs
         self.nodes = {}
         self.slots = {}
+        self.slave_nodes_by_master = {}
         self.startup_nodes = [] if startup_nodes is None else startup_nodes
         self.orig_startup_nodes = [node for node in self.startup_nodes]
         self.reinitialize_counter = 0
@@ -257,6 +258,8 @@ class NodeManager(object):
                 node, node_name = self.make_node_obj(master_node[0], master_node[1], 'master')
                 nodes_cache[node_name] = node
 
+                self.slave_nodes_by_master[node_name] = []
+
                 for i in range(int(slot[0]), int(slot[1]) + 1):
                     if i not in tmp_slots:
                         tmp_slots[i] = [node]
@@ -267,6 +270,7 @@ class NodeManager(object):
                             target_slave_node, slave_node_name = self.make_node_obj(slave_node[0], slave_node[1], 'slave')
                             nodes_cache[slave_node_name] = target_slave_node
                             tmp_slots[i].append(target_slave_node)
+                            self.slave_nodes_by_master[node_name].append(slave_node_name)
                     else:
                         # Validate that 2 nodes want to use the same slot cache setup
                         if tmp_slots[i][0]['name'] != node['name']:
@@ -408,6 +412,25 @@ class NodeManager(object):
         self.nodes[node_name] = node
 
         return node
+
+    def get_node(self, host, port, server_type=None):
+        node, node_name = self.make_node_obj(host, port, server_type)
+        if node_name not in self.nodes:
+            self.nodes[node_name] = node
+        return self.nodes[node_name]
+
+    def move_slot_to_node(self, slot, node):
+        """
+        When moved response received, we should move all replicas with the master to the new slot.
+        """
+        node_name = node['name']
+        self.slots[slot] = [node]
+        slave_nodes = self.slave_nodes_by_master.get(node_name)
+        if slave_nodes:
+            for slave_name in slave_nodes:
+                slave_node = self.nodes.get(slave_name)
+                if slave_node:
+                    self.slots[slot].append(slave_node)
 
     def populate_startup_nodes(self):
         """
