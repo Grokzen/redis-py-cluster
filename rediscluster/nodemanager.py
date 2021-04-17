@@ -228,6 +228,8 @@ class NodeManager(object):
             except (ConnectionError, TimeoutError):
                 continue
             except ResponseError as e:
+                log.exception("ReseponseError sending 'cluster slots' to redis server")
+
                 # Isn't a cluster connection, so it won't parse these exceptions automatically
                 message = e.__str__()
                 if 'CLUSTERDOWN' in message or 'MASTERDOWN' in message:
