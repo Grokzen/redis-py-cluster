@@ -375,7 +375,7 @@ class RedisCluster(Redis):
                 nodemanager_follow_cluster=nodemanager_follow_cluster,
                 connection_class=connection_class,
                 host_port_remap=host_port_remap,
-                **kwargs,
+                **kwargs
             )
 
         super(RedisCluster, self).__init__(connection_pool=pool, **kwargs)

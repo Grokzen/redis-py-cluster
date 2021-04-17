@@ -242,7 +242,7 @@ class TestClusterBlockingConnectionPool(object):
             max_connections=max_connections,
             max_connections_per_node=max_connections_per_node,
             timeout=timeout,
-            **connection_kwargs,
+            **connection_kwargs
         )
         return pool
 
@@ -405,7 +405,7 @@ class TestReadOnlyConnectionPool(object):
             init_slot_cache=init_slot_cache,
             max_connections=max_connections,
             startup_nodes=startup_nodes,
-            **connection_kwargs,
+            **connection_kwargs
         )
         return pool
 
@@ -492,7 +492,7 @@ class TestBlockingConnectionPool(object):
             connection_class=DummyConnection,
             max_connections=max_connections,
             timeout=timeout,
-            **connection_kwargs,
+            **connection_kwargs
         )
         return pool
 
