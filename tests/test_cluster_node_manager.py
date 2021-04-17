@@ -140,7 +140,7 @@ def test_init_slots_cache(s):
         execute_command_mock.side_effect = patch_execute_command
 
         s.connection_pool.nodes.initialize()
-        assert len(s.connection_pool.nodes.slots) == NodeManager.RedisClusterHashSlots
+        assert len(s.connection_pool.nodes.slots) == NodeManager.REDIS_CLUSTER_HASH_SLOTS
         for slot_info in good_slots_resp:
             all_hosts = ['127.0.0.1', '127.0.0.2']
             all_ports = [7000, 7001, 7002, 7003, 7004, 7005]
@@ -452,7 +452,7 @@ def test_host_port_remap():
         host_port_remap=None,
     )
     # Test that providing wrong root level object type will raise config exception. List is expected
-    with pytest.raises(RedisClusterConfigError) as excp:
+    with pytest.raises(RedisClusterConfigError):
         n = NodeManager(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
             host_port_remap={},
@@ -463,7 +463,7 @@ def test_host_port_remap():
         host_port_remap=[],
     )
     # A wrong object type inside host_port_remap list shold raise error
-    with pytest.raises(RedisClusterConfigError) as excp:
+    with pytest.raises(RedisClusterConfigError):
         n = NodeManager(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
             host_port_remap=[None],
@@ -474,42 +474,42 @@ def test_host_port_remap():
         host_port_remap=[{}, {}],
     )
     # If we only have either or from_host or to_host set we should get an error
-    with pytest.raises(RedisClusterConfigError) as excp:
+    with pytest.raises(RedisClusterConfigError):
         n = NodeManager(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
             host_port_remap=[{'from_host': ''}],
         )
-    with pytest.raises(RedisClusterConfigError) as excp:
+    with pytest.raises(RedisClusterConfigError):
         n = NodeManager(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
             host_port_remap=[{'to_host': ''}],
         )
     # If we only have either or from_port or to_port set we should get an error
-    with pytest.raises(RedisClusterConfigError) as excp:
+    with pytest.raises(RedisClusterConfigError):
         n = NodeManager(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
             host_port_remap=[{'from_port': ''}],
         )
-    with pytest.raises(RedisClusterConfigError) as excp:
+    with pytest.raises(RedisClusterConfigError):
         n = NodeManager(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
             host_port_remap=[{'to_port': ''}],
         )
     # Invalid keys in the rules should also raise exception
-    with pytest.raises(RedisClusterConfigError) as excp:
+    with pytest.raises(RedisClusterConfigError):
         n = NodeManager(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
             host_port_remap=[{'invalid_key': ''}],
         )
 
     # Invalid ips in the rules should raise exception
-    with pytest.raises(RedisClusterConfigError) as excp:
+    with pytest.raises(RedisClusterConfigError):
         n = NodeManager(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
             host_port_remap=[{'from_host': '127.2.x.w', 'to_host': '127.0.0.1'}],
         )
     # Incomplete ips in the rules should raise exception
-    with pytest.raises(RedisClusterConfigError) as excp:
+    with pytest.raises(RedisClusterConfigError):
         n = NodeManager(
             startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
             host_port_remap=[{'from_host': '127.2', 'to_host': '127.0.0.1'}],
@@ -527,7 +527,7 @@ def test_host_port_remap():
     # If no host_port_remap is set then a node obj should not be modified in any way when remapping it
     n = NodeManager(
         host_port_remap=None,
-        startup_nodes=[{"host": "127.0.0.1", "port": 7000}]
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
     )
     initial_node_obj = ['127.0.0.1', 7000, 'xyz']
     unmodified_remapped_obj = n.remap_internal_node_object(initial_node_obj)
@@ -535,9 +535,11 @@ def test_host_port_remap():
 
     # Test that modifying both host and port works
     n = NodeManager(
-        host_port_remap=[{'from_host': '127.1.1.1', 'to_host': '128.0.0.1', 'from_port': 7000, 'to_port': 7001},
-                         {'from_host': '127.2.2.2', 'to_host': '128.0.0.1', 'from_port': 7000, 'to_port': 7005}],
-        startup_nodes=[{"host": "128.0.0.1", "port": 7000}]
+        host_port_remap=[
+            {'from_host': '127.1.1.1', 'to_host': '128.0.0.1', 'from_port': 7000, 'to_port': 7001},
+            {'from_host': '127.2.2.2', 'to_host': '128.0.0.1', 'from_port': 7000, 'to_port': 7005},
+        ],
+        startup_nodes=[{"host": "128.0.0.1", "port": 7000}],
     )
     initial_node_obj = ['127.1.1.1', 7000, 'xyz']
     remapped_obj = n.remap_internal_node_object(initial_node_obj)
@@ -546,9 +548,11 @@ def test_host_port_remap():
 
     # Validate that ports are NOT remapped in isolation if hosts are also present
     n = NodeManager(
-        host_port_remap=[{'from_host': '127.2.2.2', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7001},
-                         {'from_host': '127.3.3.3', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7005}],
-        startup_nodes=[{"host": "127.0.0.1", "port": 7000}]
+        host_port_remap=[
+            {'from_host': '127.2.2.2', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7001},
+            {'from_host': '127.3.3.3', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7005},
+        ],
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
     )
     initial_node_obj = ['127.0.0.1', 7000, 'xyz']
     remapped_obj = n.remap_internal_node_object(initial_node_obj)
@@ -557,10 +561,12 @@ def test_host_port_remap():
 
     # Validate that first applicable rule is applied
     n = NodeManager(
-        host_port_remap=[{'from_host': '127.2.2.2', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7001},
-                         {'from_host': '127.3.3.3', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7005},
-                         {'from_host': '127.2.2.2', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7006}],
-        startup_nodes=[{"host": "127.0.0.1", "port": 7000}]
+        host_port_remap=[
+            {'from_host': '127.2.2.2', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7001},
+            {'from_host': '127.3.3.3', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7005},
+            {'from_host': '127.2.2.2', 'to_host': '127.0.0.1', 'from_port': 7000, 'to_port': 7006},
+        ],
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
     )
     initial_node_obj = ['127.2.2.2', 7000, 'xyz']
     remapped_obj = n.remap_internal_node_object(initial_node_obj)
@@ -569,9 +575,11 @@ def test_host_port_remap():
 
     # Validate just port mapping works
     n = NodeManager(
-        host_port_remap=[{'from_port': 7000, 'to_port': 7001},
-                         {'from_port': 7002, 'to_port': 7005}],
-        startup_nodes=[{"host": "127.0.0.1", "port": 7000}]
+        host_port_remap=[
+            {'from_port': 7000, 'to_port': 7001},
+            {'from_port': 7002, 'to_port': 7005},
+        ],
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
     )
     initial_node_obj = ['127.0.0.1', 7000, 'xyz']
     remapped_obj = n.remap_internal_node_object(initial_node_obj)
@@ -580,9 +588,11 @@ def test_host_port_remap():
 
     # Validate just host mapping works
     n = NodeManager(
-        host_port_remap=[{'from_host': '127.2.2.2', 'to_host': '127.0.0.1'},
-                         {'from_host': '127.3.3.3', 'to_host': '127.0.0.2'}],
-        startup_nodes=[{"host": "127.0.0.1", "port": 7000}]
+        host_port_remap=[
+            {'from_host': '127.2.2.2', 'to_host': '127.0.0.1'},
+            {'from_host': '127.3.3.3', 'to_host': '127.0.0.2'},
+        ],
+        startup_nodes=[{"host": "127.0.0.1", "port": 7000}],
     )
     initial_node_obj = ['127.3.3.3', 7000, 'xyz']
     remapped_obj = n.remap_internal_node_object(initial_node_obj)

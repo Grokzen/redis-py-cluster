@@ -44,6 +44,7 @@ class ClusterCrossSlotError(ResponseError):
 class ClusterDownError(ClusterError, ResponseError):
     """
     """
+
     def __init__(self, resp):
         self.args = (resp, )
         self.message = resp
@@ -72,6 +73,7 @@ class AskError(ResponseError):
 class TryAgainError(ResponseError):
     """
     """
+
     def __init__(self, *args, **kwargs):
         pass
 
@@ -80,6 +82,7 @@ class MovedError(AskError):
     """
     """
     pass
+
 
 class MasterDownError(ClusterDownError):
     """

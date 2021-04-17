@@ -7,7 +7,6 @@ import time
 from threading import Thread
 
 # rediscluster imports
-from rediscluster.client import RedisCluster
 from rediscluster.connection import (
     ClusterConnectionPool, ClusterBlockingConnectionPool, ClusterReadOnlyConnectionPool,
     ClusterConnection, UnixDomainSocketConnection)
@@ -213,7 +212,7 @@ class TestConnectionPool(object):
     def test_from_url_connection_classes(self):
         from rediscluster.client import RedisCluster
         from rediscluster.connection import ClusterConnectionPool, ClusterConnection, SSLClusterConnection
-        
+
         r = RedisCluster.from_url('redis://localhost:7000')
         assert isinstance(r.connection_pool, ClusterConnectionPool)
         # connection_class is not an object but a ref to the class
@@ -224,7 +223,7 @@ class TestConnectionPool(object):
         assert r.connection_pool.connection_class == SSLClusterConnection
 
         # Unix socket connections do not work in cluster environment
-        with pytest.raises(RedisClusterException) as ex:
+        with pytest.raises(RedisClusterException):
             r = RedisCluster.from_url('unix://foobar@/tmp/random.sock')
 
 
@@ -243,7 +242,8 @@ class TestClusterBlockingConnectionPool(object):
             max_connections=max_connections,
             max_connections_per_node=max_connections_per_node,
             timeout=timeout,
-            **connection_kwargs)
+            **connection_kwargs,
+        )
         return pool
 
     def test_connection_creation(self):
@@ -370,9 +370,11 @@ class TestClusterBlockingConnectionPool(object):
             'db': 0,
             'client_name': 'test-client'
         }
-        pool = self.get_pool(connection_kwargs=connection_kwargs,
-                             connection_class=ClusterConnection,
-                             init_slot_cache=False)
+        pool = self.get_pool(
+            connection_kwargs=connection_kwargs,
+            connection_class=ClusterConnection,
+            init_slot_cache=False,
+        )
         expected = 'ClusterBlockingConnectionPool<ClusterConnection<host=localhost,port=7000,db=0,client_name=test-client>>'
         assert repr(pool) == expected
 
@@ -386,9 +388,11 @@ class TestClusterBlockingConnectionPool(object):
             'db': 1,
             'client_name': 'test-client',
         }
-        pool = self.get_pool(connection_kwargs=connection_kwargs,
-                             connection_class=UnixDomainSocketConnection,
-                             init_slot_cache=False)
+        pool = self.get_pool(
+            connection_kwargs=connection_kwargs,
+            connection_class=UnixDomainSocketConnection,
+            init_slot_cache=False,
+        )
         expected = 'ClusterBlockingConnectionPool<UnixDomainSocketConnection<path=/abc,db=1,client_name=test-client>>'
         assert repr(pool) == expected
 
@@ -401,7 +405,8 @@ class TestReadOnlyConnectionPool(object):
             init_slot_cache=init_slot_cache,
             max_connections=max_connections,
             startup_nodes=startup_nodes,
-            **connection_kwargs)
+            **connection_kwargs,
+        )
         return pool
 
     @pytest.mark.xfail(reason="Broken, needs repair")
@@ -483,10 +488,12 @@ class TestReadOnlyConnectionPool(object):
 class TestBlockingConnectionPool(object):
     def get_pool(self, connection_kwargs=None, max_connections=10, timeout=20):
         connection_kwargs = connection_kwargs or {}
-        pool = redis.BlockingConnectionPool(connection_class=DummyConnection,
-                                            max_connections=max_connections,
-                                            timeout=timeout,
-                                            **connection_kwargs)
+        pool = redis.BlockingConnectionPool(
+            connection_class=DummyConnection,
+            max_connections=max_connections,
+            timeout=timeout,
+            **connection_kwargs,
+        )
         return pool
 
     def test_connection_creation(self):
@@ -688,15 +695,17 @@ class TestConnectionPoolURLParsing(object):
         assert pool.max_connections == 10
 
     def test_boolean_parsing(self):
-        for expected, value in (
-                (None, None),
-                (None, ''),
-                (False, 0), (False, '0'),
-                (False, 'f'), (False, 'F'), (False, 'False'),
-                (False, 'n'), (False, 'N'), (False, 'No'),
-                (True, 1), (True, '1'),
-                (True, 'y'), (True, 'Y'), (True, 'Yes'),
-        ):
+        test_data = (
+            (None, None),
+            (None, ''),
+            (False, 0), (False, '0'),
+            (False, 'f'), (False, 'F'), (False, 'False'),
+            (False, 'n'), (False, 'N'), (False, 'No'),
+            (True, 1), (True, '1'),
+            (True, 'y'), (True, 'Y'), (True, 'Yes'),
+        )
+
+        for expected, value in test_data:
             assert expected is to_bool(value)
 
     def test_extra_querystring_options(self):
@@ -709,7 +718,7 @@ class TestConnectionPoolURLParsing(object):
             'username': None,
             'password': None,
             'a': '1',
-            'b': '2'
+            'b': '2',
         }
 
     def test_calling_from_subclass_returns_correct_instance(self):
@@ -788,7 +797,7 @@ class TestConnectionPoolUnixSocketURLParsing(object):
             'username': None,
             'password': None,
             'a': '1',
-            'b': '2'
+            'b': '2',
         }
 
 
@@ -813,24 +822,19 @@ class TestSSLConnectionURLParsing(object):
             def get_connection(self, *args, **kwargs):
                 return self.make_connection()
 
-        pool = DummyConnectionPool.from_url(
-            'rediss://?ssl_cert_reqs=none')
+        pool = DummyConnectionPool.from_url('rediss://?ssl_cert_reqs=none')
         assert pool.get_connection('_').cert_reqs == ssl.CERT_NONE
 
-        pool = DummyConnectionPool.from_url(
-            'rediss://?ssl_cert_reqs=optional')
+        pool = DummyConnectionPool.from_url('rediss://?ssl_cert_reqs=optional')
         assert pool.get_connection('_').cert_reqs == ssl.CERT_OPTIONAL
 
-        pool = DummyConnectionPool.from_url(
-            'rediss://?ssl_cert_reqs=required')
+        pool = DummyConnectionPool.from_url('rediss://?ssl_cert_reqs=required')
         assert pool.get_connection('_').cert_reqs == ssl.CERT_REQUIRED
 
-        pool = DummyConnectionPool.from_url(
-            'rediss://?ssl_check_hostname=False')
+        pool = DummyConnectionPool.from_url('rediss://?ssl_check_hostname=False')
         assert pool.get_connection('_').check_hostname is False
 
-        pool = DummyConnectionPool.from_url(
-            'rediss://?ssl_check_hostname=True')
+        pool = DummyConnectionPool.from_url('rediss://?ssl_check_hostname=True')
         assert pool.get_connection('_').check_hostname is True
 
 
@@ -874,8 +878,10 @@ class TestConnection(object):
         """
         pipe = r.pipeline()
         with pytest.raises(redis.BusyLoadingError):
-            pipe.immediate_execute_command('DEBUG', 'ERROR',
-                                           'LOADING fake message')
+            pipe.immediate_execute_command(
+                'DEBUG', 'ERROR',
+                'LOADING fake message',
+            )
         pool = r.connection_pool
         assert not pipe.connection
         assert len(pool._available_connections) == 1

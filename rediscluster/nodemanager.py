@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 class NodeManager(object):
     """
     """
-    RedisClusterHashSlots = 16384
+    REDIS_CLUSTER_HASH_SLOTS = 16384
 
     def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
                  host_port_remap=None, **connection_kwargs):
@@ -86,7 +86,7 @@ class NodeManager(object):
                 socket.inet_aton(item.get('to_host', '0.0.0.0').strip())
             except socket.error:
                 raise RedisClusterConfigError("Both from_host and to_host in host_port_remap rule must be a valid ip address")
-            if len(item.get('from_host', '0.0.0.0').split('.')) < 4 or len(item.get('to_host', '0.0.0.0').split('.')) < 4 :
+            if len(item.get('from_host', '0.0.0.0').split('.')) < 4 or len(item.get('to_host', '0.0.0.0').split('.')) < 4:
                 raise RedisClusterConfigError(
                     "Both from_host and to_host in host_port_remap rule must must have all octets specified")
 
@@ -110,7 +110,7 @@ class NodeManager(object):
             if end > -1 and end != start + 1:
                 k = k[start + 1:end]
 
-        return crc16(k) % self.RedisClusterHashSlots
+        return crc16(k) % self.REDIS_CLUSTER_HASH_SLOTS
 
     def node_from_slot(self, slot):
         """
@@ -286,7 +286,7 @@ class NodeManager(object):
                 need_full_slots_coverage = self.cluster_require_full_coverage(nodes_cache)
 
             # Validate if all slots are covered or if we should try next startup node
-            for i in range(0, self.RedisClusterHashSlots):
+            for i in range(0, self.REDIS_CLUSTER_HASH_SLOTS):
                 if i not in tmp_slots and need_full_slots_coverage:
                     all_slots_covered = False
 
@@ -299,7 +299,7 @@ class NodeManager(object):
 
         if not all_slots_covered:
             raise RedisClusterException("All slots are not covered after query all startup_nodes. {0} of {1} covered...".format(
-                len(tmp_slots), self.RedisClusterHashSlots))
+                len(tmp_slots), self.REDIS_CLUSTER_HASH_SLOTS))
 
         # Set the tmp variables to the real variables
         self.slots = tmp_slots

@@ -4,9 +4,7 @@
 from __future__ import with_statement
 
 # rediscluster imports
-from rediscluster.exceptions import (
-    RedisClusterException, ClusterDownError
-)
+from rediscluster.exceptions import RedisClusterException
 from rediscluster.utils import (
     string_keys_to_dict,
     dict_merge,

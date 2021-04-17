@@ -12,12 +12,14 @@ from rediscluster.client import RedisCluster
 import pytest
 
 # import redis
+import redis
 from redis import Redis
 from redis.exceptions import ConnectionError
 from redis._compat import basestring, unichr
 
 from .conftest import _get_client
-from .conftest import skip_if_server_version_lt, skip_if_redis_py_version_lt
+from .conftest import skip_if_server_version_lt
+
 
 def wait_for_message(pubsub, timeout=0.1, ignore_subscribe_messages=False):
     now = time.time()

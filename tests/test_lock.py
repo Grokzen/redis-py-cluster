@@ -4,7 +4,6 @@ import time
 from rediscluster import RedisCluster
 
 from redis.exceptions import LockError, LockNotOwnedError
-from redis.client import Redis
 from redis.lock import Lock
 from .conftest import _get_client
 

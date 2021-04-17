@@ -102,7 +102,7 @@ class SSLClusterConnection(SSLConnection):
 
             if nativestr(self.read_response()) != 'OK':
                 raise ConnectionError('READONLY command failed')
- 
+
 
 class ClusterConnectionPool(ConnectionPool):
     """
@@ -328,7 +328,7 @@ class ClusterConnectionPool(ConnectionPool):
 
         try:
             return self.get_connection_by_node(self.get_node_by_slot(slot))
-        except (KeyError, RedisClusterException) as exc:
+        except (KeyError, RedisClusterException):
             return self.get_random_connection()
 
     def get_connection_by_node(self, node):
@@ -353,7 +353,7 @@ class ClusterConnectionPool(ConnectionPool):
         """
         try:
             return self.nodes.slots[slot][0]
-        except KeyError as ke:
+        except KeyError:
             raise SlotNotCoveredError('Slot "{slot}" not covered by the cluster. "skip_full_coverage_check={skip_full_coverage_check}"'.format(
                 slot=slot, skip_full_coverage_check=self.nodes._skip_full_coverage_check,
             ))
@@ -397,11 +397,11 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
         # not available.
         >>> pool = ClusterBlockingConnectionPool(timeout=5)
     """
+
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
                  max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
                  skip_full_coverage_check=False, nodemanager_follow_cluster=False,
                  timeout=20, **connection_kwargs):
-
         self.timeout = timeout
 
         super(ClusterBlockingConnectionPool, self).__init__(
@@ -413,7 +413,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
             reinitialize_steps=reinitialize_steps,
             skip_full_coverage_check=skip_full_coverage_check,
             nodemanager_follow_cluster=nodemanager_follow_cluster,
-            **connection_kwargs
+            **connection_kwargs,
         )
 
     def _blocking_pool_factory(self):
@@ -557,7 +557,8 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
             max_connections=max_connections,
             readonly=True,
             nodemanager_follow_cluster=nodemanager_follow_cluster,
-            **connection_kwargs)
+            **connection_kwargs,
+        )
 
         self.master_node_commands = ('SCAN', 'SSCAN', 'HSCAN', 'ZSCAN')
 

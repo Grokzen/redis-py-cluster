@@ -8,13 +8,13 @@ import re
 from rediscluster.client import RedisCluster
 from rediscluster.connection import ClusterConnectionPool, ClusterReadOnlyConnectionPool
 from rediscluster.exceptions import RedisClusterException
-from tests.conftest import _get_client, skip_if_server_version_lt
+from tests.conftest import _get_client
 
 # 3rd party imports
 import pytest
 from mock import patch
-from redis._compat import unichr, unicode
-from redis.exceptions import WatchError, ResponseError, ConnectionError
+from redis._compat import unicode
+from redis.exceptions import ResponseError, ConnectionError
 
 
 class TestPipeline(object):
@@ -336,11 +336,13 @@ class TestReadOnlyPipeline(object):
                 'server_type': 'slave',
             }
 
-            master_value = {'host': '127.0.0.1', 'name': '127.0.0.1:7001', 'port': 7001, 'server_type': 'master'}
-            with patch.object(
-                    ClusterConnectionPool,
-                    'get_master_node_by_slot',
-                    return_value=master_value) as return_master_mock:
+            master_value = {
+                'host': '127.0.0.1',
+                'name': '127.0.0.1:7001',
+                'port': 7001,
+                'server_type': 'master',
+            }
+            with patch.object(ClusterConnectionPool, 'get_master_node_by_slot', return_value=master_value):
                 readonly_client = RedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
                 with readonly_client.pipeline() as readonly_pipe:
                     assert readonly_pipe.get('foo88').get('foo87').execute() == [b'bar', b'foo']

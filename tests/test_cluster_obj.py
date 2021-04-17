@@ -3,7 +3,6 @@
 # python std lib
 from __future__ import with_statement
 import re
-import time
 
 # rediscluster imports
 from rediscluster import RedisCluster
@@ -116,7 +115,7 @@ def test_empty_startup_nodes():
     Test that exception is raised when empty providing empty startup_nodes
     """
     with pytest.raises(RedisClusterException) as ex:
-        r = RedisCluster(startup_nodes=[])
+        RedisCluster(startup_nodes=[])
 
     assert unicode(ex.value).startswith("No startup nodes provided"), unicode(ex.value)
 
@@ -230,7 +229,12 @@ def test_cluster_of_one_instance():
 
             def side_effect_rebuild_slots_cache(self):
                 # make new node cache that points to 7007 instead of 7006
-                self.nodes = [{'host': '127.0.0.1', 'server_type': 'master', 'port': 7006, 'name': '127.0.0.1:7006'}]
+                self.nodes = [{
+                    'host': '127.0.0.1',
+                    'server_type': 'master',
+                    'port': 7006,
+                    'name': '127.0.0.1:7006',
+                }]
                 self.slots = {}
 
                 for i in range(0, 16383):
@@ -243,7 +247,12 @@ def test_cluster_of_one_instance():
 
                 # Second call should map all to 7007
                 def map_7007(self):
-                    self.nodes = [{'host': '127.0.0.1', 'server_type': 'master', 'port': 7007, 'name': '127.0.0.1:7007'}]
+                    self.nodes = [{
+                        'host': '127.0.0.1',
+                        'server_type': 'master',
+                        'port': 7007,
+                        'name': '127.0.0.1:7007',
+                    }]
                     self.slots = {}
 
                     for i in range(0, 16383):
@@ -452,11 +461,14 @@ def test_access_correct_slave_with_readonly_mode_client(sr):
             'server_type': 'slave',
         }
 
-        master_value = {'host': '127.0.0.1', 'name': '127.0.0.1:7000', 'port': 7000, 'server_type': 'master'}
-        with patch.object(
-                ClusterConnectionPool,
-                'get_master_node_by_slot',
-                return_value=master_value) as return_master_mock:
+        master_value = {
+            'host': '127.0.0.1',
+            'name': '127.0.0.1:7000',
+            'port': 7000,
+            'server_type': 'master',
+        }
+
+        with patch.object(ClusterConnectionPool, 'get_master_node_by_slot', return_value=master_value):
             readonly_client = RedisCluster(host="127.0.0.1", port=7000, readonly_mode=True)
             assert b'foo' == readonly_client.get('foo16706')
 
@@ -481,7 +493,14 @@ def test_refresh_using_specific_nodes(r):
 
             def side_effect_rebuild_slots_cache(self):
                 # start with all slots mapped to 7006
-                self.nodes = {'127.0.0.1:7006': {'host': '127.0.0.1', 'server_type': 'master', 'port': 7006, 'name': '127.0.0.1:7006'}}
+                self.nodes = {
+                    '127.0.0.1:7006': {
+                        'host': '127.0.0.1',
+                        'server_type': 'master',
+                        'port': 7006,
+                        'name': '127.0.0.1:7006',
+                    },
+                }
                 self.slots = {}
 
                 for i in range(0, 16383):
@@ -494,7 +513,14 @@ def test_refresh_using_specific_nodes(r):
 
                 # After the first connection fails, a reinitialize should follow the cluster to 7007
                 def map_7007(self):
-                    self.nodes = {'127.0.0.1:7007': {'host': '127.0.0.1', 'server_type': 'master', 'port': 7007, 'name': '127.0.0.1:7007'}}
+                    self.nodes = {
+                        '127.0.0.1:7007': {
+                            'host': '127.0.0.1',
+                            'server_type': 'master',
+                            'port': 7007,
+                            'name': '127.0.0.1:7007',
+                        },
+                    }
                     self.slots = {}
 
                     for i in range(0, 16383):

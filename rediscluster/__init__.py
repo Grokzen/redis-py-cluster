@@ -2,7 +2,6 @@
 
 # python std lib
 import logging
-import sys
 
 # rediscluster imports
 from rediscluster.client import RedisCluster

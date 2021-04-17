@@ -6,14 +6,20 @@ import re
 import redis
 import time
 
-from redis._compat import (unichr, ascii_letters, iteritems, iterkeys,
-                           itervalues, long, basestring)
+from redis._compat import (
+    unichr, ascii_letters, iteritems, iterkeys,
+    itervalues, long, basestring,
+)
 from redis.client import parse_info
 from redis import exceptions
 
-from .conftest import (skip_if_server_version_lt, skip_if_server_version_gte,
-                       skip_unless_arch_bits, REDIS_6_VERSION,
-                       skip_for_no_cluster_impl)
+from .conftest import (
+    REDIS_6_VERSION,
+    skip_for_no_cluster_impl,
+    skip_if_server_version_gte,
+    skip_if_server_version_lt,
+    skip_unless_arch_bits,
+)
 
 
 @pytest.fixture()

@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 from socket import gethostbyaddr
-from functools import wraps
 
 # rediscluster imports
-from .exceptions import (
-    RedisClusterException, ClusterDownError
-)
+from .exceptions import RedisClusterException
 
 # 3rd party imports
 from redis._compat import basestring, nativestr

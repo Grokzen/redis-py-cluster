@@ -156,7 +156,7 @@ class ClusterPipeline(RedisCluster):
 
         It will try the number of times specified by the config option "self.cluster_down_retry_attempts"
         which defaults to 3 unless manually configured.
-        
+
         If it reaches the number of times, the command will raises ClusterDownException.
         """
         for _ in range(0, self.cluster_down_retry_attempts):

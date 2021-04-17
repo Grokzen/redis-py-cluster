@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 # python std lib
-import datetime
 import json
 import logging
 import random
@@ -45,11 +44,10 @@ from .utils import (
 from redis import Redis
 from redis.client import list_or_args, parse_info
 from redis.connection import Connection, SSLConnection
-from redis._compat import iteritems, basestring, izip, nativestr, long
+from redis._compat import iteritems, nativestr, long
 from redis.exceptions import (
     BusyLoadingError,
     ConnectionError,
-    DataError,
     RedisError,
     ResponseError,
     TimeoutError,
@@ -211,7 +209,7 @@ class RedisCluster(Redis):
         "ZCARD",
         "ZCOUNT",
         "ZRANGE",
-        "ZSCORE"
+        "ZSCORE",
     ]
 
     RESULT_CALLBACKS = dict_merge(
@@ -377,7 +375,7 @@ class RedisCluster(Redis):
                 nodemanager_follow_cluster=nodemanager_follow_cluster,
                 connection_class=connection_class,
                 host_port_remap=host_port_remap,
-                **kwargs
+                **kwargs,
             )
 
         super(RedisCluster, self).__init__(connection_pool=pool, **kwargs)
@@ -447,7 +445,7 @@ class RedisCluster(Redis):
         """
         return ClusterPubSub(self.connection_pool, **kwargs)
 
-    def pipeline(self, transaction=None, shard_hint=None):
+    def pipeline(self, transaction=None, shard_hint=None, read_from_replicas=False):
         """
         Cluster impl:
             Pipelines do not work in cluster mode the same way they do in normal mode.
@@ -466,6 +464,7 @@ class RedisCluster(Redis):
             result_callbacks=self.result_callbacks,
             response_callbacks=self.response_callbacks,
             cluster_down_retry_attempts=self.cluster_down_retry_attempts,
+            read_from_replicas=read_from_replicas,
         )
 
     def transaction(self, *args, **kwargs):
@@ -492,7 +491,7 @@ class RedisCluster(Redis):
 
         if command in ['XREADGROUP', 'XREAD']:
             stream_idx = args.index(b'STREAMS')
-            keys_ids = list(args[stream_idx + 1: ])
+            keys_ids = list(args[stream_idx + 1:])
             idx_split = len(keys_ids) // 2
             keys = keys_ids[: idx_split]
             slots = {self.connection_pool.nodes.keyslot(key) for key in keys}
@@ -642,10 +641,10 @@ class RedisCluster(Redis):
                 # This is the last attempt before we run out of TTL, raise the exception
                 if ttl == 1:
                     raise e
-            except (RedisClusterException, BusyLoadingError) as e:
+            except (RedisClusterException, BusyLoadingError):
                 log.exception("RedisClusterException || BusyLoadingError")
                 raise
-            except ConnectionError as e:
+            except ConnectionError:
                 log.exception("ConnectionError")
 
                 connection.disconnect()
@@ -667,8 +666,7 @@ class RedisCluster(Redis):
                     self.connection_pool.nodes.increment_reinitialize_counter(
                         count=self.connection_pool.nodes.reinitialize_steps,
                     )
-
-            except TimeoutError as e:
+            except TimeoutError:
                 log.exception("TimeoutError")
 
                 if ttl < self.RedisClusterRequestTTL / 2:
@@ -695,7 +693,7 @@ class RedisCluster(Redis):
 
                 node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
                 self.connection_pool.nodes.slots[e.slot_id][0] = node
-            except TryAgainError as e:
+            except TryAgainError:
                 log.exception("TryAgainError")
 
                 if ttl < self.RedisClusterRequestTTL / 2:
@@ -733,7 +731,7 @@ class RedisCluster(Redis):
 
                 connection.send_command(*args)
                 res[node["name"]] = self.parse_response(connection, command, **kwargs)
-            except ClusterDownError as e:
+            except ClusterDownError:
                 self.connection_pool.disconnect()
                 self.connection_pool.reset()
                 self.refresh_table_asap = True

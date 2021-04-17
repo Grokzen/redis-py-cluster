@@ -10,16 +10,11 @@ from rediscluster.exceptions import RedisClusterException
 from rediscluster.utils import dict_merge
 from .conftest import (
     skip_if_server_version_lt,
-    skip_if_redis_py_version_lt,
-    skip_if_server_version_gte,
-    skip_for_no_cluster_impl,
-    skip_unless_arch_bits,
     REDIS_6_VERSION,
 )
 
 # 3rd party imports
 import pytest
-from redis.exceptions import RedisError
 from redis import exceptions
 
 

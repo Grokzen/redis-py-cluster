@@ -34,11 +34,7 @@ class TestPipeline(object):
         with r.pipeline() as pipe:
             (pipe.set('a', memoryview(b'a1'))
                  .get('a'))
-            assert pipe.execute() == \
-                [
-                    True,
-                    b'a1',
-                ]
+            assert pipe.execute() == [True, b'a1']
 
     def test_pipeline_length(self, r):
         with r.pipeline() as pipe:
