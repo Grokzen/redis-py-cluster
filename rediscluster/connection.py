@@ -434,7 +434,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
             reinitialize_steps=reinitialize_steps,
             skip_full_coverage_check=skip_full_coverage_check,
             nodemanager_follow_cluster=nodemanager_follow_cluster,
-            **connection_kwargs,
+            **connection_kwargs
         )
 
     def _blocking_pool_factory(self):
@@ -578,7 +578,7 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
             max_connections=max_connections,
             readonly=True,
             nodemanager_follow_cluster=nodemanager_follow_cluster,
-            **connection_kwargs,
+            **connection_kwargs
         )
 
         self.master_node_commands = ('SCAN', 'SSCAN', 'HSCAN', 'ZSCAN')
