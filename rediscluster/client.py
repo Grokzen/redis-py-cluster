@@ -512,7 +512,7 @@ class RedisCluster(Redis):
         `res` is a dict with the following structure Dict(NodeName, CommandResult)
         """
         if command in self.result_callbacks:
-            return self.result_callbacks[command](command, res, **kwargs)
+            return self.result_callbacks[command](command, res)
 
         # Default way to handle result
         return first_key(command, res)
