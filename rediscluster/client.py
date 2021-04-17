@@ -804,14 +804,19 @@ class RedisCluster(Redis):
             for slot in slots
         ]
 
-    def cluster_failover(self, node_id, option):
+    def cluster_failover(self, node_id, option=None):
         """
         Forces a slave to perform a manual failover of its master
 
         Sends to specefied node
         """
-        assert option.upper() in ('FORCE', 'TAKEOVER')  # TODO: change this option handling
-        return self.execute_command('CLUSTER FAILOVER', option, node_id=node_id)
+        if option:
+            if option.upper() not in ['FORCE', 'TAKEOVER']:
+                raise RedisError('Invalid option for CLUSTER FAILOVER command: {0}'.format(option))
+            else:
+                return self.execute_command('CLUSTER FAILOVER', option, node_id=node_id)
+        else:
+            return self.execute_command('CLUSTER FAILOVER', node_id=node_id)
 
     def cluster_info(self):
         """
