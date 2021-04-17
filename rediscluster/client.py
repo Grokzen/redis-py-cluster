@@ -668,6 +668,7 @@ class RedisCluster(Redis):
                     )
             except TimeoutError:
                 log.exception("TimeoutError")
+                connection.disconnect()
 
                 if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.05)
@@ -679,6 +680,7 @@ class RedisCluster(Redis):
                 self.connection_pool.disconnect()
                 self.connection_pool.reset()
                 self.refresh_table_asap = True
+                connection = None
 
                 raise e
             except MovedError as e:
@@ -702,6 +704,10 @@ class RedisCluster(Redis):
                 log.exception("AskError")
 
                 redirect_addr, asking = "{0}:{1}".format(e.host, e.port), True
+            except BaseException as e:
+                log.exception("BaseException")
+                connection.disconnect()
+                raise e
             finally:
                 if connection is not None:
                     self.connection_pool.release(connection)
