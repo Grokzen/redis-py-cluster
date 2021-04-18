@@ -78,7 +78,7 @@ class SSLClusterConnection(SSLConnection):
     """
 
     def __init__(self, *args, **kwargs):
-        log.info("Creating new SSLClusterConnection instance")
+        log.debug("Creating new SSLClusterConnection instance")
         log.debug(str(args) + " : " + str(kwargs))
 
         self.readonly = kwargs.pop('readonly', False)
@@ -123,7 +123,7 @@ class ClusterConnectionPool(ConnectionPool):
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around a lot.
         """
-        log.info("Creating new ClusterConnectionPool instance")
+        log.debug("Creating new ClusterConnectionPool instance")
 
         if connection_class is None:
             connection_class = ClusterConnection
