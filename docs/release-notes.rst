@@ -1,7 +1,17 @@
 Release Notes
 =============
 
-2.1.0 (May **, 2020)
+2.1.1 (Apr 18 2021)
+
+    * ClusterPipeline is now exposed when doing "from rediscluster import *"
+    * Fix issue where connection would be None in some cases when connection pool fails to initialize
+    * Ported in a fix from redis-py where it now checks if a connection is ready or not before returning the connection for usage
+    * ClusterFailover command option is no longer mandatory but optional as it is intended
+    * Fixed "SLOWLOG GET" kwarg command where it failed on decode_responses
+    * BaseException is now caught when executing commands and it will disconnect and the connection before raising the exception.
+    * Logging exception on ReseponseError when doing the initial connection to the startup_nodes instances
+
+2.1.0 (Sept 26, 2020)
 --------------------
 
     * Add new config option for Client and Pipeline classes to controll how many attempts will be made before bailing out from a ClusterDownError.

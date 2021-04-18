@@ -66,7 +66,7 @@ True
 
 ## License & Authors
 
-Copyright (c) 2013-2020 Johan Andersson
+Copyright (c) 2013-2021 Johan Andersson
 
 MIT (See docs/License.txt file)
 
