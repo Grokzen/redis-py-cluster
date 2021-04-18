@@ -1,7 +1,13 @@
 Release Notes
 =============
 
+2.1.2 (Apr 18 2021)
+-------------------
+
+    * Fixed bug where "from rediscluster import *" would not work correct
+
 2.1.1 (Apr 18 2021)
+-------------------
 
     * ClusterPipeline is now exposed when doing "from rediscluster import *"
     * Fix issue where connection would be None in some cases when connection pool fails to initialize
