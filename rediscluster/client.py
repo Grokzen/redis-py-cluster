@@ -53,6 +53,50 @@ from redis.exceptions import (
     TimeoutError,
 )
 
+# Not complete, but covers the major ones
+# https://redis.io/commands
+READ_COMMANDS = frozenset([
+    "BITCOUNT",
+    "BITPOS",
+    "EXISTS",
+    "GEODIST",
+    "GEOHASH",
+    "GEOPOS",
+    "GEORADIUS",
+    "GEORADIUSBYMEMBER",
+    "GET",
+    "GETBIT",
+    "GETRANGE",
+    "HEXISTS",
+    "HGET",
+    "HGETALL",
+    "HKEYS",
+    "HLEN",
+    "HMGET",
+    "HSTRLEN",
+    "HVALS",
+    "KEYS",
+    "LINDEX",
+    "LLEN",
+    "LRANGE",
+    "MGET",
+    "PTTL",
+    "RANDOMKEY",
+    "SCARD",
+    "SDIFF",
+    "SINTER",
+    "SISMEMBER",
+    "SMEMBERS",
+    "SRANDMEMBER",
+    "STRLEN",
+    "SUNION",
+    "TTL",
+    "ZCARD",
+    "ZCOUNT",
+    "ZRANGE",
+    "ZSCORE",
+])
+
 
 log = logging.getLogger(__name__)
 
@@ -167,50 +211,6 @@ class RedisCluster(Redis):
             "CLUSTER GETKEYSINSLOT",
         ], 'slot-id'),
     )
-
-    # Not complete, but covers the major ones
-    # https://redis.io/commands
-    READ_COMMANDS = [
-        "BITCOUNT",
-        "BITPOS",
-        "EXISTS",
-        "GEODIST",
-        "GEOHASH",
-        "GEOPOS",
-        "GEORADIUS",
-        "GEORADIUSBYMEMBER",
-        "GET",
-        "GETBIT",
-        "GETRANGE",
-        "HEXISTS",
-        "HGET",
-        "HGETALL",
-        "HKEYS",
-        "HLEN",
-        "HMGET",
-        "HSTRLEN",
-        "HVALS",
-        "KEYS",
-        "LINDEX",
-        "LLEN",
-        "LRANGE",
-        "MGET",
-        "PTTL",
-        "RANDOMKEY",
-        "SCARD",
-        "SDIFF",
-        "SINTER",
-        "SISMEMBER",
-        "SMEMBERS",
-        "SRANDMEMBER",
-        "STRLEN",
-        "SUNION",
-        "TTL",
-        "ZCARD",
-        "ZCOUNT",
-        "ZRANGE",
-        "ZSCORE",
-    ]
 
     RESULT_CALLBACKS = dict_merge(
         string_keys_to_dict([
@@ -608,7 +608,7 @@ class RedisCluster(Redis):
                     else:
                         node = self.connection_pool.get_node_by_slot(
                             slot,
-                            self.read_from_replicas and (command in self.READ_COMMANDS)
+                            self.read_from_replicas and (command in READ_COMMANDS)
                         )
                         is_read_replica = node['server_type'] == 'slave'
 
