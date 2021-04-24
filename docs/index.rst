@@ -172,6 +172,7 @@ The Community Guide
     testing
     development
     upgrading
+    release-process
     release-notes
     authors
     license
