@@ -1,6 +1,13 @@
 Release Notes
 =============
 
+2.1.3 (Apr 24 2021)
+-------------------
+
+    * Add example script pipelin-readonly-replica.py to show how to use replica nodes to offload read commands from primary node
+    * max_connection now defaults to 50 in ClusterBlockingConnectionPool to avoid issue with infinite loop in queue mechanism
+    * Using read replica for read commands inside pipeline is now better supported. Feature might be unstable to use as own risk.
+
 2.1.2 (Apr 18 2021)
 -------------------
 
