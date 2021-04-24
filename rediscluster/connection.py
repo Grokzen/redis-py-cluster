@@ -420,7 +420,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
     """
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
-                 max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
+                 max_connections=50, max_connections_per_node=False, reinitialize_steps=None,
                  skip_full_coverage_check=False, nodemanager_follow_cluster=False,
                  timeout=20, **connection_kwargs):
         self.timeout = timeout
