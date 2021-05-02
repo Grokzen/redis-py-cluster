@@ -504,6 +504,10 @@ class RedisCluster(Redis):
         # OBJECT command uses a special keyword as first positional argument
         if command == 'OBJECT':
             key = args[2]
+        
+        #adding RedisGears specific commands
+        if command =='RG.TRIGGER':
+            key = args[2]
 
         return self.connection_pool.nodes.keyslot(key)
 
