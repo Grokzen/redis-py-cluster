@@ -647,7 +647,11 @@ class RedisCluster(Redis):
             except ConnectionError:
                 log.exception("ConnectionError")
 
-                connection.disconnect()
+                # ConnectionError can also be raised if we couldn't get a connection
+                # from the pool before timing out, so check that this is an actual
+                # connection before attempting to disconnect.
+                if connection is not None:
+                    connection.disconnect()
                 connection_error_retry_counter += 1
 
                 # Give the node 0.1 seconds to get back up and retry again with same
