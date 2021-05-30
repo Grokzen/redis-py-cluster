@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-2.1.3 (Apr 24 2021)
+2.1.3 (May 30 2021)
 -------------------
 
     * Add example script pipelin-readonly-replica.py to show how to use replica nodes to offload read commands from primary node
