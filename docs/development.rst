@@ -19,4 +19,4 @@ To start the local development server run from the root folder of this git repo
 
 	sphinx-autobuild docs docs/_build/html
 
-Open up `localhost:8000` in your web-browser to view the online documentaion
+Open up `localhost:8000` in your web-browser to view the online documentation

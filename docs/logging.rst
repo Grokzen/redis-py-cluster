@@ -14,4 +14,4 @@ To setup logging for debugging inside the client during development you can add 
 	logger.setLevel(logging.DEBUG)
 	logger.propagate = True
 
-Note that this logging is not reccommended to be used inside production as it can cause a performance drain and a slowdown of your client.
+Note that this logging is not recommended to be used inside production as it can cause a performance drain and a slowdown of your client.
