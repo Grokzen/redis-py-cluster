@@ -31,7 +31,7 @@ or from source code
 Basic usage example
 -------------------
 
-Small sample script that shows how to get started with RedisCluster. It can also be found in the file `exmaples/basic.py`.
+Small sample script that shows how to get started with RedisCluster. It can also be found in the file `examples/basic.py`.
 
 Additional code examples of more advance functionality can be found in the `examples/` folder in the source code git repo.
 

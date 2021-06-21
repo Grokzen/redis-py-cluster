@@ -774,7 +774,7 @@ class RedisCluster(Redis):
         """
         Assign new hash slots to receiving node
 
-        Sends to specefied node
+        Sends to specified node
         """
         return self.execute_command('CLUSTER ADDSLOTS', *slots, node_id=node_id)
 
@@ -782,7 +782,7 @@ class RedisCluster(Redis):
         """
         Return the number of local keys in the specified hash slot
 
-        Send to node based on specefied slot_id
+        Send to node based on specified slot_id
         """
         return self.execute_command('CLUSTER COUNTKEYSINSLOT', slot_id)
 
@@ -790,7 +790,7 @@ class RedisCluster(Redis):
         """
         Return the number of failure reports active for a given node
 
-        Sends to specefied node
+        Sends to specified node
         """
         return self.execute_command('CLUSTER COUNT-FAILURE-REPORTS', node_id=node_id)
 
@@ -812,7 +812,7 @@ class RedisCluster(Redis):
         """
         Forces a slave to perform a manual failover of its master
 
-        Sends to specefied node
+        Sends to specified node
         """
         if option:
             if option.upper() not in ['FORCE', 'TAKEOVER']:
@@ -842,7 +842,7 @@ class RedisCluster(Redis):
         """
         Force a node cluster to handshake with another node.
 
-        Sends to specefied node
+        Sends to specified node
         """
         return self.execute_command('CLUSTER MEET', host, port, node_id=node_id)
 
@@ -858,7 +858,7 @@ class RedisCluster(Redis):
         """
         Reconfigure a node as a slave of the specified master node
 
-        Sends to specefied node
+        Sends to specified node
         """
         return self.execute_command('CLUSTER REPLICATE', target_node_id)
 
@@ -869,7 +869,7 @@ class RedisCluster(Redis):
         If 'soft' is True then it will send 'SOFT' argument
         If 'soft' is False then it will send 'HARD' argument
 
-        Sends to specefied node
+        Sends to specified node
         """
         return self.execute_command('CLUSTER RESET', b'SOFT' if soft else b'HARD', node_id=node_id)
 
@@ -901,7 +901,7 @@ class RedisCluster(Redis):
 
     def cluster_get_keys_in_slot(self, slot, num_keys):
         """
-        Returns the number of keys in the specefied cluster slot
+        Returns the number of keys in the specified cluster slot
         """
         return self.execute_command('CLUSTER GETKEYSINSLOT', slot, num_keys)
 
@@ -909,7 +909,7 @@ class RedisCluster(Redis):
         """
         Set the configuration epoch in a new node
 
-        Sends to specefied node
+        Sends to specified node
         """
         return self.execute_command('CLUSTER SET-CONFIG-EPOCH', epoch, node_id=node_id)
 
@@ -918,7 +918,7 @@ class RedisCluster(Redis):
         """
         Bind an hash slot to a specific node
 
-        Sends to specefied node
+        Sends to specified node
         """
         if state.upper() in ('IMPORTING', 'MIGRATING', 'NODE') and node_id is not None:
             return self.execute_command('CLUSTER SETSLOT', slot_id, state, node_id)
