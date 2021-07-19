@@ -270,7 +270,8 @@ class ClusterConnectionPool(ConnectionPool):
 
         self._created_connections_per_node.setdefault(node['name'], 0)
         self._created_connections_per_node[node['name']] += 1
-        connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
+        readonly = node["server_type"] == "slave"
+        connection = self.connection_class(host=node["host"], port=node["port"], readonly=readonly, **self.connection_kwargs)
 
         # Must store node in the connection to make it easier to track
         connection.node = node
@@ -472,7 +473,8 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
 
     def make_connection(self, node):
         """ Create a new connection """
-        connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
+        readonly = node["server_type"] == "slave"
+        connection = self.connection_class(host=node["host"], port=node["port"], readonly=readonly, **self.connection_kwargs)
         self._connections.append(connection)
         connection.node = node
         return connection
