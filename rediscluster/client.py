@@ -710,7 +710,8 @@ class RedisCluster(Redis):
                 redirect_addr, asking = "{0}:{1}".format(e.host, e.port), True
             except BaseException as e:
                 log.exception("BaseException")
-                connection.disconnect()
+                if connection is not None:
+                    connection.disconnect()
                 raise e
             finally:
                 if connection is not None:
