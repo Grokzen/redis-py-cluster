@@ -277,7 +277,7 @@ class ClusterConnectionPool(ConnectionPool):
 
         return connection
 
-    def release(self, connection):
+    def release(self, connection, add_to_pool=True):
         """
         Releases the connection back to the pool
         """
@@ -296,7 +296,15 @@ class ClusterConnectionPool(ConnectionPool):
             pass
             # TODO: Log.warning("Tried to release connection that did not exist any longer : {0}".format(connection))
 
-        self._available_connections.setdefault(connection.node["name"], []).append(connection)
+        if add_to_pool:
+            self._available_connections.setdefault(connection.node["name"], []).append(connection)
+        else:
+            # If we don't add it back to the pool it shouldn't count towards the
+            # connection pool, or we'll artificially reduce the maximum size of the
+            # pool
+            self._created_connections_per_node.setdefault(node['name'], 0)
+            if self._created_connections_per_node[connection.node["name"]] > 0:
+                self._created_connections_per_node[connection.node["name"]] -= 1
 
     def disconnect(self):
         """
@@ -538,7 +546,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
 
         return connection
 
-    def release(self, connection):
+    def release(self, connection, add_to_pool=True):
         """
         Releases the connection back to the pool
         """
@@ -546,9 +554,13 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
         if connection.pid != self.pid:
             return
 
+        # In some cases we don't want to add back this connection to the pool but
+        # we still want to free its slot
+        conn_to_add = connection if add_to_pool else None
+
         # Put the connection back into the pool.
         try:
-            self._get_pool(connection.node).put_nowait(connection)
+            self._get_pool(connection.node).put_nowait(conn_to_add)
         except Full:
             # perhaps the pool has been reset() after a fork? regardless,
             # we don't want this connection
