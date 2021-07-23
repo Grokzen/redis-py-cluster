@@ -187,7 +187,6 @@ class ClusterConnectionPool(ConnectionPool):
         log.debug("Resetting ConnectionPool")
 
         self.pid = os.getpid()
-        self._created_connections = 0
         self._created_connections_per_node = {}  # Dict(Node, Int)
         self._available_connections = {}  # Dict(Node, List)
         self._in_use_connections = {}  # Dict(Node, Set)
@@ -270,7 +269,6 @@ class ClusterConnectionPool(ConnectionPool):
 
         self._created_connections_per_node.setdefault(node['name'], 0)
         self._created_connections_per_node[node['name']] += 1
-        self._created_connections += 1
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
 
         # Must store node in the connection to make it easier to track
@@ -384,6 +382,10 @@ class ClusterConnectionPool(ConnectionPool):
         """
         """
         return self.get_master_node_by_slot(slot)
+    
+    @property
+    def _created_connections(self):
+        return sum(self._created_connections_per_node.values())
 
 
 class ClusterBlockingConnectionPool(ClusterConnectionPool):
