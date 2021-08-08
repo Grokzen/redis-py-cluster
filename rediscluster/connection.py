@@ -187,10 +187,8 @@ class ClusterConnectionPool(ConnectionPool):
         log.debug("Resetting ConnectionPool")
 
         self.pid = os.getpid()
-        self._created_connections = 0
-        self._created_connections_per_node = {}  # Dict(Node, Int)
-        self._available_connections = {}  # Dict(Node, List)
-        self._in_use_connections = {}  # Dict(Node, Set)
+        self._available_connections = defaultdict(list)  # Dict(Node, List)
+        self._in_use_connections = defaultdict(set)  # Dict(Node, Set)
         self._check_lock = threading.Lock()
 
     def _checkpid(self):
@@ -229,10 +227,7 @@ class ClusterConnectionPool(ConnectionPool):
         except IndexError:
             connection = self.make_connection(node)
 
-        if node['name'] not in self._in_use_connections:
-            self._in_use_connections[node['name']] = set()
-
-        self._in_use_connections[node['name']].add(connection)
+        self._in_use_connections.get(node['name'], set()).add(connection)
 
         try:
             # ensure this connection is connected to Redis
@@ -262,14 +257,25 @@ class ClusterConnectionPool(ConnectionPool):
         Create a new connection
         """
         num_connections = self.count_all_num_connections(node)
-        if num_connections >= self.max_connections:
-            if self.max_connections_per_node:
-                raise RedisClusterException("Too many connection ({0}) for node: {1}".format(num_connections, node['name']))
+        while num_connections >= self.max_connections:
+            # cannot allocate connections without freeing unused ones first
+            conns_by_node = self._available_connections.values()
+            random.shuffle(conns_by_node)  # randomly choose a node
+            freed_conn = False
+            for connections in conns_by_node:
+                if len(connections) > 0:
+                    connections.pop().disconnect()
+                    freed_conn = True
+                    break
 
-            raise RedisClusterException("Too many connections")
+            if freed_conn:
+                num_connections = self.count_all_num_connections(node)
+            else:
+                if self.max_connections_per_node:
+                    raise RedisClusterException("Too many connection ({0}) for node: {1}".format(num_connections, node['name']))
 
-        self._created_connections_per_node.setdefault(node['name'], 0)
-        self._created_connections_per_node[node['name']] += 1
+                raise RedisClusterException("Too many connections")
+
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
 
         # Must store node in the connection to make it easier to track
@@ -310,14 +316,23 @@ class ClusterConnectionPool(ConnectionPool):
         for node_connections in all_conns:
             for connection in node_connections:
                 connection.disconnect()
+        
+        # Remove disconnected connections, so new connections to new nodes can be made
+        self._available_connections.clear()
+        self._in_use_connections.clear()
 
     def count_all_num_connections(self, node):
         """
         """
         if self.max_connections_per_node:
-            return self._created_connections_per_node.get(node['name'], 0)
+            avail_count = len(self._available_connections.get(node['name'], []))
+            in_use_count = len(self._in_use_connections.get(node['name'], []))
+            return avail_count + in_use_count
 
-        return sum([i for i in list(self._created_connections_per_node.values())])
+        avail_count = sum(len(i) for i in self._available_connections.values())
+        in_use_count = sum(len(i) for i in self._in_use_connections.values())
+
+        return avail_count + in_use_count
 
     def get_random_connection(self):
         """
