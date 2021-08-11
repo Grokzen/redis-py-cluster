@@ -384,7 +384,7 @@ class ClusterConnectionPool(ConnectionPool):
         return self.get_master_node_by_slot(slot)
     
     @property
-    def _created_connections(self):
+    def count_all_num_connections(self):
         return sum(self._created_connections_per_node.values())
 
 
