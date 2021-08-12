@@ -273,8 +273,8 @@ class ClusterConnectionPool(ConnectionPool):
             else:
                 if self.max_connections_per_node:
                     raise RedisClusterException("Too many connection ({0}) for node: {1}".format(num_connections, node['name']))
-
-                raise RedisClusterException("Too many connections")
+                else:
+                    raise RedisClusterException("Too many connections")
 
         connection = self.connection_class(host=node["host"], port=node["port"], **self.connection_kwargs)
 
