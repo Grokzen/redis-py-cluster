@@ -590,7 +590,7 @@ class RedisCluster(Redis):
         connection_error_retry_counter = 0
 
         def log_exception(message, exception):
-            if ttl == 1:
+            if ttl == 0:
                 # This is the last attempt before we run out of TTL, so log the full exception.
                 log.exception(message)
             else:
@@ -647,7 +647,7 @@ class RedisCluster(Redis):
                 time.sleep(0.1)
 
                 # This is the last attempt before we run out of TTL, raise the exception
-                if ttl == 1:
+                if ttl == 0:
                     raise e
             except (RedisClusterException, BusyLoadingError):
                 log.exception("RedisClusterException || BusyLoadingError")
