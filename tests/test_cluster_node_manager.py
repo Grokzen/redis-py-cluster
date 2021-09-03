@@ -169,7 +169,7 @@ def test_empty_startup_nodes():
 
 def test_wrong_startup_nodes_type():
     """
-    If something other then a list type itteratable is provided it should fail
+    If something other then a list type iterable is provided it should fail
     """
     with pytest.raises(RedisClusterException):
         NodeManager({})
@@ -263,9 +263,19 @@ def test_all_nodes():
         assert node in nodes
 
 
+def test_startup_nodes_are_populated():
+    """
+    Set a list of nodes and it should be possible to iterate over all
+    """
+    n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
+    n.initialize()
+
+    assert sorted([node['port'] for node in n.startup_nodes]) == [7000, 7000, 7001, 7002, 7003, 7004, 7005]
+
+
 def test_all_nodes_masters():
     """
-    Set a list of nodes with random masters/slaves config and it shold be possible
+    Set a list of nodes with random masters/slaves config and it should be possible
     to iterate over all of them.
     """
     n = NodeManager(
