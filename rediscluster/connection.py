@@ -112,7 +112,8 @@ class ClusterConnectionPool(ConnectionPool):
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
                  max_connections=None, max_connections_per_node=False, reinitialize_steps=None,
-                 skip_full_coverage_check=False, nodemanager_follow_cluster=False, host_port_remap=None,
+                 skip_full_coverage_check=False, nodemanager_follow_cluster=False,
+                 nodemanager_random_cluster_nodes=False, host_port_remap=None,
                  **connection_kwargs):
         """
         :skip_full_coverage_check:
@@ -122,6 +123,9 @@ class ClusterConnectionPool(ConnectionPool):
             The node manager will during initialization try the last set of nodes that
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around a lot.
+        :nodemanager_random_cluster_nodes:
+            The node manager will use disorder nodes during initialization, avoid all
+            cluster slots command are send to first node.
         """
         log.debug("Creating new ClusterConnectionPool instance")
 
@@ -152,6 +156,7 @@ class ClusterConnectionPool(ConnectionPool):
             skip_full_coverage_check=skip_full_coverage_check,
             max_connections=self.max_connections,
             nodemanager_follow_cluster=nodemanager_follow_cluster,
+            nodemanager_random_cluster_nodes=nodemanager_random_cluster_nodes,
             host_port_remap=host_port_remap,
             **connection_kwargs
         )
@@ -422,7 +427,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
                  max_connections=50, max_connections_per_node=False, reinitialize_steps=None,
                  skip_full_coverage_check=False, nodemanager_follow_cluster=False,
-                 timeout=20, **connection_kwargs):
+                 nodemanager_random_cluster_nodes=False, timeout=20, **connection_kwargs):
         self.timeout = timeout
 
         super(ClusterBlockingConnectionPool, self).__init__(
@@ -434,6 +439,7 @@ class ClusterBlockingConnectionPool(ClusterConnectionPool):
             reinitialize_steps=reinitialize_steps,
             skip_full_coverage_check=skip_full_coverage_check,
             nodemanager_follow_cluster=nodemanager_follow_cluster,
+            nodemanager_random_cluster_nodes=nodemanager_random_cluster_nodes,
             **connection_kwargs
         )
 
@@ -566,7 +572,8 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
     """
 
     def __init__(self, startup_nodes=None, init_slot_cache=True, connection_class=None,
-                 max_connections=None, nodemanager_follow_cluster=False, **connection_kwargs):
+                 max_connections=None, nodemanager_follow_cluster=False, 
+                 nodemanager_random_cluster_nodes=False, **connection_kwargs):
         """
         """
         if connection_class is None:
@@ -578,6 +585,7 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
             max_connections=max_connections,
             readonly=True,
             nodemanager_follow_cluster=nodemanager_follow_cluster,
+            nodemanager_random_cluster_nodes=nodemanager_random_cluster_nodes,
             **connection_kwargs
         )
 
