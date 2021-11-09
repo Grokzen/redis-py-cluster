@@ -616,6 +616,13 @@ class RedisCluster(Redis):
 
                 log.debug("Determined node to execute : " + str(node))
 
+                # Sleep longer for the master because it takes longer to reelect a leader than to use a new replica.
+                # 10 ms base for replica, 20 ms base for master
+                if is_read_replica:
+                    connection_error_base = .01
+                else:
+                    connection_error_base = .02
+
                 if asking:
                     connection.send_command('ASKING')
                     self.parse_response(connection, "ASKING", **kwargs)
@@ -652,13 +659,12 @@ class RedisCluster(Redis):
                 # connection before attempting to disconnect.
                 if connection is not None:
                     connection.disconnect()
-                connection_error_retry_counter += 1
 
-                # Give the node 0.1 seconds to get back up and retry again with same
-                # node and configuration. After 5 attempts then try to reinitialize
+                # Sleep with exponential backoff and jitter. After 5 attempts then try to reinitialize
                 # the cluster and see if the nodes configuration has changed or not
                 if connection_error_retry_counter < 5:
-                    time.sleep(0.25)
+                    time.sleep(random.uniform(0, connection_error_base * 2 ** connection_error_retry_counter))
+                    connection_error_retry_counter += 1
                 else:
                     # Reset the counter back to 0 as it should have 5 new attempts
                     # after the client tries to reinitailize the cluster setup to the
