@@ -589,6 +589,13 @@ class RedisCluster(Redis):
         ttl = int(self.RedisClusterRequestTTL)
         connection_error_retry_counter = 0
 
+        # Sleep longer for the master because it takes longer to reelect a leader than to use a new replica.
+        # 10 ms base for replica, 20 ms base for master
+        if self.read_from_replicas and command in READ_COMMANDS:
+            connection_error_base = .01
+        else:
+            connection_error_base = .02
+
         while ttl > 0:
             ttl -= 1
             connection = None
@@ -615,13 +622,6 @@ class RedisCluster(Redis):
                     connection = self.connection_pool.get_connection_by_node(node)
 
                 log.debug("Determined node to execute : " + str(node))
-
-                # Sleep longer for the master because it takes longer to reelect a leader than to use a new replica.
-                # 10 ms base for replica, 20 ms base for master
-                if is_read_replica:
-                    connection_error_base = .01
-                else:
-                    connection_error_base = .02
 
                 if asking:
                     connection.send_command('ASKING')
