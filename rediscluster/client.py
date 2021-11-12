@@ -301,7 +301,7 @@ class RedisCluster(Redis):
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=None, max_connections_per_node=False, init_slot_cache=True,
                  readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
                  connection_class=None, read_from_replicas=False, cluster_down_retry_attempts=3, host_port_remap=None,
-                 connection_error_retries=None, connection_error_delay=None, **kwargs):
+                 **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -388,8 +388,6 @@ class RedisCluster(Redis):
         self.response_callbacks = CaseInsensitiveDict(dict_merge(self.response_callbacks, self.CLUSTER_COMMANDS_RESPONSE_CALLBACKS))
         self.read_from_replicas = read_from_replicas
         self.cluster_down_retry_attempts = cluster_down_retry_attempts
-        self.connection_error_retries = connection_error_retries or 7
-        self.connection_error_delay = connection_error_delay or .01
 
     @classmethod
     def from_url(cls, url, db=None, skip_full_coverage_check=False, readonly_mode=False, read_from_replicas=False, **kwargs):
@@ -591,13 +589,13 @@ class RedisCluster(Redis):
         slot = self._determine_slot(*args)
         ttl = int(self.RedisClusterRequestTTL)
         connection_error_retry_counter = 0
-
+        connection_error_retries = 7
         # Sleep longer for the master because it takes longer to reelect a leader than to use a new replica.
         # 10 ms base for replica, 20 ms base for master
         if self.read_from_replicas and command in READ_COMMANDS:
-            connection_error_delay = self.connection_error_delay
+            connection_error_delay = .01
         else:
-            connection_error_delay = 2 * self.connection_error_delay
+            connection_error_delay = .02
 
         while ttl > 0:
             ttl -= 1
@@ -665,7 +663,7 @@ class RedisCluster(Redis):
 
                 # Sleep with exponential backoff and jitter. After the specified number of attempts,
                 # then try to reinitialize the cluster and see if the nodes configuration has changed or not
-                if connection_error_retry_counter < self.connection_error_retries:
+                if connection_error_retry_counter < connection_error_retries:
                     time.sleep(random.uniform(0, connection_error_delay * 2 ** connection_error_retry_counter))
                     connection_error_retry_counter += 1
                 else:
