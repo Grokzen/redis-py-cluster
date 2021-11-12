@@ -50,7 +50,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'redis-py-cluster'
+project = u'affirm-redis-py-cluster'
 copyright = u'2013-2020, Johan Andersson'
 author = u'Johan Andersson'
 
