@@ -75,29 +75,29 @@ class TestConnectionPool(object):
     def test_connection_creation(self):
         connection_kwargs = {'foo': 'bar', 'biz': 'baz'}
         pool = self.get_pool(connection_kwargs=connection_kwargs)
-        connection = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        connection = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000, "sever_type": "master"})
         assert isinstance(connection, DummyConnection)
         assert connection.kwargs == connection_kwargs
 
     def test_multiple_connections(self):
         pool = self.get_pool()
-        c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
-        c2 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000, "sever_type": "master"})
+        c2 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001, "sever_type": "slave"})
         assert c1 != c2
 
     def test_max_connections(self):
         pool = self.get_pool(max_connections=2)
-        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
-        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000, "sever_type": "master"})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001, "sever_type": "slave"})
         with pytest.raises(RedisClusterException):
             pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
 
     def test_max_connections_per_node(self):
         pool = self.get_pool(max_connections=2, max_connections_per_node=True)
-        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
-        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
-        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
-        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000, "sever_type": "master"})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001, "sever_type": "master"})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000, "sever_type": "master"})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001, "sever_type": "master"})
         with pytest.raises(RedisClusterException):
             pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
 
@@ -107,9 +107,9 @@ class TestConnectionPool(object):
 
     def test_reuse_previously_released_connection(self):
         pool = self.get_pool()
-        c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        c1 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000, "sever_type": "master"})
         pool.release(c1)
-        c2 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
+        c2 = pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000, "sever_type": "master"})
         assert c1 == c2
 
     def test_repr_contains_db_info_tcp(self):
@@ -431,8 +431,8 @@ class TestReadOnlyConnectionPool(object):
 
     def test_max_connections(self):
         pool = self.get_pool(max_connections=2)
-        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
-        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000, "sever_type": "master"})
+        pool.get_connection_by_node({"host": "127.0.0.1", "port": 7001, "sever_type": "master"})
         with pytest.raises(RedisClusterException):
             pool.get_connection_by_node({"host": "127.0.0.1", "port": 7000})
 

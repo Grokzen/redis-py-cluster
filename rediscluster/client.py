@@ -582,7 +582,6 @@ class RedisCluster(Redis):
 
         redirect_addr = None
         asking = False
-        is_read_replica = False
 
         try_random_node = False
         slot = self._determine_slot(*args)
@@ -610,7 +609,6 @@ class RedisCluster(Redis):
                             slot,
                             self.read_from_replicas and (command in READ_COMMANDS)
                         )
-                        is_read_replica = node['server_type'] == 'slave'
 
                     connection = self.connection_pool.get_connection_by_node(node)
 
@@ -620,12 +618,6 @@ class RedisCluster(Redis):
                     connection.send_command('ASKING')
                     self.parse_response(connection, "ASKING", **kwargs)
                     asking = False
-                if is_read_replica:
-                    # Ask read replica to accept reads (see https://redis.io/commands/readonly)
-                    # TODO: do we need to handle errors from this response?
-                    connection.send_command('READONLY')
-                    self.parse_response(connection, 'READONLY', **kwargs)
-                    is_read_replica = False
 
                 connection.send_command(*args)
                 return self.parse_response(connection, command, **kwargs)
