@@ -300,7 +300,8 @@ class RedisCluster(Redis):
 
     def __init__(self, host=None, port=None, startup_nodes=None, max_connections=None, max_connections_per_node=False, init_slot_cache=True,
                  readonly_mode=False, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
-                 connection_class=None, read_from_replicas=False, cluster_down_retry_attempts=3, host_port_remap=None, **kwargs):
+                 nodemanager_random_cluster_nodes=False, connection_class=None, read_from_replicas=False, cluster_down_retry_attempts=3, 
+                 host_port_remap=None, **kwargs):
         """
         :startup_nodes:
             List of nodes that initial bootstrapping can be done from
@@ -319,6 +320,9 @@ class RedisCluster(Redis):
             The node manager will during initialization try the last set of nodes that
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around alot.
+        :nodemanager_random_cluster_nodes:
+            The node manager will use disorder nodes during initialization, avoid all
+            cluster slots command are send to first node.
         :**kwargs:
             Extra arguments that will be sent into Redis instance when created
             (See Official redis-py doc for supported kwargs
@@ -373,6 +377,7 @@ class RedisCluster(Redis):
                 max_connections_per_node=max_connections_per_node,
                 skip_full_coverage_check=skip_full_coverage_check,
                 nodemanager_follow_cluster=nodemanager_follow_cluster,
+                nodemanager_random_cluster_nodes=nodemanager_random_cluster_nodes,
                 connection_class=connection_class,
                 host_port_remap=host_port_remap,
                 **kwargs

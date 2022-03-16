@@ -23,7 +23,8 @@ class NodeManager(object):
     """
     REDIS_CLUSTER_HASH_SLOTS = 16384
 
-    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False, nodemanager_follow_cluster=False,
+    def __init__(self, startup_nodes=None, reinitialize_steps=None, skip_full_coverage_check=False,         
+                 nodemanager_follow_cluster=False, nodemanager_random_cluster_nodes=False,
                  host_port_remap=None, **connection_kwargs):
         """
         :skip_full_coverage_check:
@@ -33,6 +34,9 @@ class NodeManager(object):
             The node manager will during initialization try the last set of nodes that
             it was operating on. This will allow the client to drift along side the cluster
             if the cluster nodes move around alot.
+        :nodemanager_random_cluster_nodes:
+            The node manager will use disorder nodes during initialization, avoid all
+            cluster slots command are send to first node.
         """
         log.debug("Creating new NodeManager instance")
 
@@ -45,6 +49,7 @@ class NodeManager(object):
         self.reinitialize_steps = reinitialize_steps or 25
         self._skip_full_coverage_check = skip_full_coverage_check
         self.nodemanager_follow_cluster = nodemanager_follow_cluster
+        self.nodemanager_random_cluster_nodes = nodemanager_random_cluster_nodes
         self.encoder = Encoder(
             connection_kwargs.get('encoding', 'utf-8'),
             connection_kwargs.get('encoding_errors', 'strict'),
@@ -219,7 +224,8 @@ class NodeManager(object):
         # With this option the client will attempt to connect to any of the previous set of nodes instead of the original set of nodes
         if self.nodemanager_follow_cluster:
             nodes = self.startup_nodes
-
+        if self.nodemanager_random_cluster_nodes:
+            random.shuffle(nodes)
         for node in nodes:
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
