@@ -203,7 +203,13 @@ class ClusterPipeline(RedisCluster):
             # we can build a list of commands for each node.
             node_name = node['name']
             if node_name not in nodes:
-                nodes[node_name] = NodeCommands(self.parse_response, self.connection_pool.get_connection_by_node(node))
+                try:
+                    nodes[node_name] = NodeCommands(self.parse_response, self.connection_pool.get_connection_by_node(node))
+                except RedisClusterException:
+                    # we may run into "Too many connections" error. all unused connections should be released
+                    for n in nodes.values():
+                        self.connection_pool.release(n.connection)
+                    raise
 
             nodes[node_name].append(c)
 
