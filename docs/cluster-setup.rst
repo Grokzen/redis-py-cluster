@@ -19,7 +19,7 @@ A fully functional docker image can be found at https://github.com/Grokzen/docke
 
 See repo `README` for detailed instructions how to setup and run.
 
-
+A docker_compose.yml file is included in the test suite, which can be used to run a redis cluster configured appropriately to run the tests against.
 
 Vagrant
 -------

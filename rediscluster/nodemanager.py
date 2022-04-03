@@ -306,6 +306,7 @@ class NodeManager(object):
         # Set the tmp variables to the real variables
         self.slots = tmp_slots
         self.nodes = nodes_cache
+        self.populate_startup_nodes()
         self.reinitialize_counter = 0
 
         log.debug("NodeManager initialize done : Nodes")
@@ -413,7 +414,8 @@ class NodeManager(object):
 
     def populate_startup_nodes(self):
         """
-        Do something with all startup nodes and filters out any duplicates
+        Use nodes to populate startup_nodes, so that we have more chances
+        if a subset of the cluster fails.
         """
         for item in self.startup_nodes:
             self.set_node_name(item)

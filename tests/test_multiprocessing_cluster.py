@@ -117,7 +117,6 @@ class TestMultiprocessing(object):
 
         # Check that connection is still alive after fork process has exited
         # and disconnected the connections in its pool
-        conn = pool.get_random_connection()
         with exit_callback(pool.release, conn):
             assert conn.send_command('ping') is None
             assert conn.read_response() == b'PONG'

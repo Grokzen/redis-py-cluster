@@ -589,6 +589,14 @@ class RedisCluster(Redis):
         ttl = int(self.RedisClusterRequestTTL)
         connection_error_retry_counter = 0
 
+        def log_exception(message, exception):
+            if ttl == 0:
+                # This is the last attempt before we run out of TTL, so log the full exception.
+                log.exception(message)
+            else:
+                # We are going to retry, and therefore may yet succeed, so just log a warning.
+                log.warning(message + str(exception))
+
         while ttl > 0:
             ttl -= 1
             connection = None
@@ -630,7 +638,7 @@ class RedisCluster(Redis):
                 connection.send_command(*args)
                 return self.parse_response(connection, command, **kwargs)
             except SlotNotCoveredError as e:
-                log.exception("SlotNotCoveredError")
+                log_exception("SlotNotCoveredError", e)
 
                 # In some cases during failover to a replica is happening
                 # a slot sometimes is not covered by the cluster layout and
@@ -639,13 +647,13 @@ class RedisCluster(Redis):
                 time.sleep(0.1)
 
                 # This is the last attempt before we run out of TTL, raise the exception
-                if ttl == 1:
+                if ttl == 0:
                     raise e
             except (RedisClusterException, BusyLoadingError):
                 log.exception("RedisClusterException || BusyLoadingError")
                 raise
-            except ConnectionError:
-                log.exception("ConnectionError")
+            except ConnectionError as e:
+                log_exception("ConnectionError", e)
 
                 # ConnectionError can also be raised if we couldn't get a connection
                 # from the pool before timing out, so check that this is an actual
@@ -670,8 +678,8 @@ class RedisCluster(Redis):
                     self.connection_pool.nodes.increment_reinitialize_counter(
                         count=self.connection_pool.nodes.reinitialize_steps,
                     )
-            except TimeoutError:
-                log.exception("TimeoutError")
+            except TimeoutError as e:
+                log_exception("TimeoutError", e)
                 connection.disconnect()
 
                 if ttl < self.RedisClusterRequestTTL / 2:
@@ -692,20 +700,20 @@ class RedisCluster(Redis):
                 # This counter will increase faster when the same client object
                 # is shared between multiple threads. To reduce the frequency you
                 # can set the variable 'reinitialize_steps' in the constructor.
-                log.exception("MovedError")
+                log_exception("MovedError", e)
 
                 self.refresh_table_asap = True
                 self.connection_pool.nodes.increment_reinitialize_counter()
 
                 node = self.connection_pool.nodes.set_node(e.host, e.port, server_type='master')
                 self.connection_pool.nodes.slots[e.slot_id][0] = node
-            except TryAgainError:
-                log.exception("TryAgainError")
+            except TryAgainError as e:
+                log_exception("TryAgainError", e)
 
                 if ttl < self.RedisClusterRequestTTL / 2:
                     time.sleep(0.05)
             except AskError as e:
-                log.exception("AskError")
+                log_exception("AskError", e)
 
                 redirect_addr, asking = "{0}:{1}".format(e.host, e.port), True
             except BaseException as e:
