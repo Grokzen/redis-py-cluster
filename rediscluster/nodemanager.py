@@ -208,7 +208,7 @@ class NodeManager(object):
         log.debug(json.dumps(self.orig_startup_nodes, indent=2))
 
         nodes_cache = {}
-        tmp_slots = {}
+        keyslots = {}
 
         all_slots_covered = False
         disagreements = []
@@ -222,8 +222,8 @@ class NodeManager(object):
 
         for node in nodes:
             try:
-                r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
-                cluster_slots = r.execute_command("cluster", "slots")
+                redis_node = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
+                cluster_slots = redis_node.execute_command("cluster", "slots")
                 startup_nodes_reachable = True
             except (ConnectionError, TimeoutError):
                 continue
@@ -248,49 +248,42 @@ class NodeManager(object):
 
             # No need to decode response because Redis should handle that for us...
             for slot in cluster_slots:
-                master_node = slot[2]
+                start_slot = slot[0]
+                end_slot = slot[1]
+                slot_nodes = slot[2:]
+                role = 'master'  # first node is the master
 
-                if master_node[0] == '':
-                    master_node[0] = node['host']
-                master_node[1] = int(master_node[1])
+                nodes_for_keyslot = []
+                for slot_node in slot_nodes:
+                    slot_node, node_name = self.make_node_obj(slot_node[0], slot_node[1], role, remap=True)
+                    nodes_cache[node_name] = slot_node
+                    nodes_for_keyslot.append(slot_node)
+                    role = 'slave'  # subsequent nodes are not masters
 
-                master_node = self.remap_internal_node_object(master_node)
+                master_node = nodes_for_keyslot[0]
+                if master_node['host'] == '':
+                    master_node['host'] = node['host']
 
-                node, node_name = self.make_node_obj(master_node[0], master_node[1], 'master')
-                nodes_cache[node_name] = node
-
-                for i in range(int(slot[0]), int(slot[1]) + 1):
-                    if i not in tmp_slots:
-                        tmp_slots[i] = [node]
-                        slave_nodes = [slot[j] for j in range(3, len(slot))]
-
-                        for slave_node in slave_nodes:
-                            slave_node = self.remap_internal_node_object(slave_node)
-                            target_slave_node, slave_node_name = self.make_node_obj(slave_node[0], slave_node[1], 'slave')
-                            nodes_cache[slave_node_name] = target_slave_node
-                            tmp_slots[i].append(target_slave_node)
+                for i in range(int(start_slot), int(end_slot) + 1):
+                    if i not in keyslots:
+                        keyslots[i] = nodes_for_keyslot
                     else:
                         # Validate that 2 nodes want to use the same slot cache setup
-                        if tmp_slots[i][0]['name'] != node['name']:
+                        if keyslots[i][0]['name'] != master_node['name']:
                             disagreements.append("{0} vs {1} on slot: {2}".format(
-                                tmp_slots[i][0]['name'], node['name'], i),
+                                keyslots[i][0]['name'], master_node['name'], i),
                             )
 
                             if len(disagreements) > 5:
                                 raise RedisClusterException("startup_nodes could not agree on a valid slots cache. {0}".format(", ".join(disagreements)))
 
-                self.populate_startup_nodes()
-                self.refresh_table_asap = False
+            if not self._skip_full_coverage_check and self.cluster_require_full_coverage(nodes_cache):
 
-            if self._skip_full_coverage_check:
-                need_full_slots_coverage = False
-            else:
-                need_full_slots_coverage = self.cluster_require_full_coverage(nodes_cache)
-
-            # Validate if all slots are covered or if we should try next startup node
-            for i in range(0, self.REDIS_CLUSTER_HASH_SLOTS):
-                if i not in tmp_slots and need_full_slots_coverage:
-                    all_slots_covered = False
+                # Validate if all slots are covered or if we should try next startup node
+                for i in range(0, self.REDIS_CLUSTER_HASH_SLOTS):
+                    if i not in keyslots:
+                        all_slots_covered = False
+                        break
 
             if all_slots_covered:
                 # All slots are covered and application can continue to execute
@@ -301,12 +294,13 @@ class NodeManager(object):
 
         if not all_slots_covered:
             raise RedisClusterException("All slots are not covered after query all startup_nodes. {0} of {1} covered...".format(
-                len(tmp_slots), self.REDIS_CLUSTER_HASH_SLOTS))
+                len(keyslots), self.REDIS_CLUSTER_HASH_SLOTS))
 
-        # Set the tmp variables to the real variables
-        self.slots = tmp_slots
+        # Finalize real variables
+        self.slots = keyslots
         self.nodes = nodes_cache
         self.reinitialize_counter = 0
+        self.populate_startup_nodes()
 
         log.debug("NodeManager initialize done : Nodes")
         log.debug(json.dumps(self.nodes, indent=2))
@@ -363,12 +357,12 @@ class NodeManager(object):
 
         def node_require_full_coverage(node):
             try:
-                r_node = self.get_redis_link(
+                redis_node = self.get_redis_link(
                     host=node["host"],
                     port=node["port"],
                     decode_responses=True,
                 )
-                return "yes" in r_node.config_get("cluster-require-full-coverage").values()
+                return "yes" in redis_node.config_get("cluster-require-full-coverage").values()
             except ConnectionError:
                 return False
             except Exception:
@@ -386,16 +380,19 @@ class NodeManager(object):
         if "name" not in n:
             n["name"] = "{0}:{1}".format(n["host"], n["port"])
 
-    def make_node_obj(self, host, port, server_type):
+    def make_node_obj(self, host, port, server_type, remap=False):
         """
         Create a node datastructure.
 
         Returns the node datastructure and the node name
         """
+        if remap:
+            host, port = self.remap_internal_node_object([host, port])
+
         node_name = "{0}:{1}".format(host, port)
         node = {
             'host': host,
-            'port': port,
+            'port': int(port),
             'name': node_name,
             'server_type': server_type
         }
@@ -415,12 +412,12 @@ class NodeManager(object):
         """
         Do something with all startup nodes and filters out any duplicates
         """
-        for item in self.startup_nodes:
-            self.set_node_name(item)
+        for node in self.startup_nodes:
+            self.set_node_name(node)
 
-        for n in self.nodes.values():
-            if n not in self.startup_nodes:
-                self.startup_nodes.append(n)
+        for node in self.nodes.values():
+            if node not in self.startup_nodes:
+                self.startup_nodes.append(node)
 
         # freeze it so we can set() it
         uniq = {frozenset(node.items()) for node in self.startup_nodes}
