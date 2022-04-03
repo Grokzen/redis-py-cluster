@@ -203,7 +203,15 @@ class ClusterPipeline(RedisCluster):
             # we can build a list of commands for each node.
             node_name = node['name']
             if node_name not in nodes:
-                nodes[node_name] = NodeCommands(self.parse_response, self.connection_pool.get_connection_by_node(node))
+                try:
+                    nodes[node_name] = NodeCommands(self.parse_response, self.connection_pool.get_connection_by_node(node))
+                except:
+                    # Sommething happened, maybe the pool is full, we need to release any connection
+                    # we've taken or we'll leak them. Because we're not sure if the connections are
+                    # in a good state we'll release their slot but not reuse them
+                    for n in nodes.values():
+                        self.connection_pool.release(n.connection, add_to_pool=False)
+                    raise
 
             nodes[node_name].append(c)
 
