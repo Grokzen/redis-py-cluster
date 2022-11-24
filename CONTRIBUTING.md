@@ -88,7 +88,7 @@ All tests should be assumed to work against the test environment that is impleme
 
 ## Testing strategy and how to implement cluster specific tests
 
-A new way of having the old upstream tests from redis-py combined with the cluster specific and unique tests that is needed to validate cluster functionality. This has been designed to improve the speed of which tests is updated from uptream as new redis-py releases is made and to make it easier to port them into the cluster variant.
+A new way of having the old upstream tests from redis-py combined with the cluster specific and unique tests that is needed to validate cluster functionality. This has been designed to improve the speed of which tests is updated from upstream as new redis-py releases is made and to make it easier to port them into the cluster variant.
 
 How do you implement a test for this code?
 

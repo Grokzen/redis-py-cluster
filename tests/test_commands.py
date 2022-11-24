@@ -39,7 +39,7 @@ def slowlog(request, r):
 
 def redis_server_time(client):
     """
-    Method adapted from uptream to return the server timestamp from the main
+    Method adapted from upstream to return the server timestamp from the main
     cluster node that we assigned as port 7000 node.
     This is not ideal but will be done for now.
     """
@@ -1987,7 +1987,7 @@ class TestRedisCommands(object):
     @skip_for_no_cluster_impl()
     def test_readwrite(self, r):
         """
-        FIXME: Needs cluster impelmentation
+        FIXME: Needs cluster implementation
         """
         assert r.readwrite()
 
@@ -1995,7 +1995,7 @@ class TestRedisCommands(object):
     @skip_for_no_cluster_impl()
     def test_readonly_invalid_cluster_state(self, r):
         """
-        FIXME: Needs cluster impelmentation
+        FIXME: Needs cluster implementation
         """
         with pytest.raises(exceptions.RedisError):
             r.readonly()
@@ -2004,7 +2004,7 @@ class TestRedisCommands(object):
     @skip_for_no_cluster_impl()
     def test_readonly(self, mock_cluster_resp_ok):
         """
-        FIXME: Needs cluster impelmentation
+        FIXME: Needs cluster implementation
         """
         assert mock_cluster_resp_ok.readonly() is True
 

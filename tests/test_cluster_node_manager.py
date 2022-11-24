@@ -158,7 +158,7 @@ def test_init_slots_cache(s):
 
 def test_empty_startup_nodes():
     """
-    It should not be possible to create a node manager with no nodes specefied
+    It should not be possible to create a node manager with no nodes specified
     """
     with pytest.raises(RedisClusterException):
         NodeManager()
@@ -252,7 +252,7 @@ def test_init_slots_cache_slots_collision():
 
 def test_all_nodes():
     """
-    Set a list of nodes and it should be possible to itterate over all
+    Set a list of nodes and it should be possible to iterate over all
     """
     n = NodeManager(startup_nodes=[{"host": "127.0.0.1", "port": 7000}])
     n.initialize()
@@ -266,7 +266,7 @@ def test_all_nodes():
 def test_all_nodes_masters():
     """
     Set a list of nodes with random masters/slaves config and it shold be possible
-    to itterate over all of them.
+    to iterate over all of them.
     """
     n = NodeManager(
         startup_nodes=[

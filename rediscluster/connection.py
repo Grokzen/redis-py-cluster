@@ -596,7 +596,7 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
 
     def get_master_connection_by_slot(self, slot):
         """
-        Returns a connection for the Master node for the specefied slot.
+        Returns a connection for the Master node for the specified slot.
 
         Do not return a random node if master node is not available for any reason.
         """
@@ -606,7 +606,7 @@ class ClusterReadOnlyConnectionPool(ClusterConnectionPool):
     def get_random_master_slave_connection_by_slot(self, slot):
         """
         Returns a random connection from the set of (master + slaves) for the
-        specefied slot. If connection is not reachable then return a random connection.
+        specified slot. If connection is not reachable then return a random connection.
         """
         self._checkpid()
 

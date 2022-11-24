@@ -7,7 +7,7 @@ According to the current official redis documentation on `PUBLISH`::
 
     Integer reply: the number of clients that received the message.
 
-It was initially assumed that if we had clients connected to different nodes in the cluster it would still report back the correct number of clients that recieved the message.
+It was initially assumed that if we had clients connected to different nodes in the cluster it would still report back the correct number of clients that received the message.
 
 However after some testing of this command it was discovered that it would only report the number of clients that have subscribed on the same server the `PUBLISH` command was executed on.
 
@@ -60,7 +60,7 @@ This new solution is probably future safe and it will probably be a similar solu
 Known limitations with pubsub
 -----------------------------
 
-Pattern subscribe and publish do not work properly because if we hash a pattern like `fo*` we will get a keyslot for that string but there is a endless posiblity of channel names based on that pattern that we can't know in advance. This feature is not limited but the commands is not recommended to use right now.
+Pattern subscribe and publish do not work properly because if we hash a pattern like `fo*` we will get a keyslot for that string but there is a endless possibility of channel names based on that pattern that we can't know in advance. This feature is not limited but the commands is not recommended to use right now.
 
 The implemented solution will only work if other clients use/adopt the same behaviour. If some other client behaves differently, there might be problems with `PUBLISH` and `SUBSCRIBE` commands behaving wrong.
 

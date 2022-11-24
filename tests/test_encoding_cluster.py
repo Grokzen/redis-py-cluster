@@ -12,7 +12,7 @@ class TestEncodingCluster(object):
     We must import the entire class due to the seperate fixture that uses RedisCluster as client
     class instead of the normal Redis instance.
 
-    FIXME: If possible, monkeypatching TestEncoding class would be preffered but kinda impossible in reality
+    FIXME: If possible, monkeypatching TestEncoding class would be preferred but kinda impossible in reality
     """
     @pytest.fixture()
     def r(self, request):
