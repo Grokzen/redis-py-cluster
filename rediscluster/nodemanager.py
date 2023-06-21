@@ -225,7 +225,8 @@ class NodeManager(object):
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")
                 startup_nodes_reachable = True
-            except (ConnectionError, TimeoutError):
+            except (ConnectionError, TimeoutError) as e:
+                log.exception("Failed to sending 'cluster slots' to redis server: {0}".format(node), exc_info=e)
                 continue
             except ResponseError as e:
                 log.exception("ReseponseError sending 'cluster slots' to redis server")

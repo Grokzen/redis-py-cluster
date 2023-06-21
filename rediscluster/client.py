@@ -585,7 +585,6 @@ class RedisCluster(Redis):
         asking = False
         is_read_replica = False
 
-        try_random_node = False
         slot = self._determine_slot(*args)
         ttl = int(self.RedisClusterRequestTTL)
         connection_error_retry_counter = 0
@@ -605,9 +604,6 @@ class RedisCluster(Redis):
                 if asking:
                     node = self.connection_pool.nodes.nodes[redirect_addr]
                     connection = self.connection_pool.get_connection_by_node(node)
-                elif try_random_node:
-                    connection = self.connection_pool.get_random_connection()
-                    try_random_node = False
                 else:
                     if self.refresh_table_asap:
                         # MOVED
@@ -677,14 +673,15 @@ class RedisCluster(Redis):
                     self.connection_pool.nodes.increment_reinitialize_counter(
                         count=self.connection_pool.nodes.reinitialize_steps,
                     )
-            except TimeoutError:
-                log.exception("TimeoutError")
-                connection.disconnect()
+            except TimeoutError as e:
+                log.exception("TimeoutError", exc_info=e)
+                if connection is not None:
+                    connection.disconnect()
 
-                if ttl < self.RedisClusterRequestTTL / 2:
-                    time.sleep(0.05)
-                else:
-                    try_random_node = True
+                time.sleep(0.25)
+                # rebuild cluster nodes when timeout happens
+                self.refresh_table_asap = True
+                self.connection_pool.nodes.initialize()
             except ClusterDownError as e:
                 log.exception("ClusterDownError")
 
