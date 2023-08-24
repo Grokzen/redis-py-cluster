@@ -224,6 +224,9 @@ class NodeManager(object):
             try:
                 r = self.get_redis_link(host=node["host"], port=node["port"], decode_responses=True)
                 cluster_slots = r.execute_command("cluster", "slots")
+                if len(cluster_slots) == 0:
+                    raise ResponseError('CLUSTERSLOTEMPTY')
+
                 startup_nodes_reachable = True
             except (ConnectionError, TimeoutError):
                 continue
@@ -232,7 +235,7 @@ class NodeManager(object):
 
                 # Isn't a cluster connection, so it won't parse these exceptions automatically
                 message = e.__str__()
-                if 'CLUSTERDOWN' in message or 'MASTERDOWN' in message:
+                if 'CLUSTERDOWN' in message or 'MASTERDOWN' in message or 'CLUSTERSLOTEMPTY' in message:
                     continue
                 else:
                     raise RedisClusterException("ERROR sending 'cluster slots' command to redis server: {0}".format(node))
